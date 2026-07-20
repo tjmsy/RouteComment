@@ -12,6 +12,10 @@ type UiState = {
   animationTimeMs: number;
   isPlaying: boolean;
   playbackSpeed: number;
+  headingUp: boolean;
+  commentTool: "map" | "follow";
+  /** Follow-range pick: waiting for start click, or end click after startMs. */
+  followRangeStartMs: number | null;
   activeRoutePlanId: string | null;
   showTrack: boolean;
   mapOpacity: number;
@@ -27,6 +31,9 @@ type UiState = {
   setAnimationTimeMs: (ms: number) => void;
   setIsPlaying: (playing: boolean) => void;
   setPlaybackSpeed: (speed: number) => void;
+  setHeadingUp: (on: boolean) => void;
+  setCommentTool: (tool: "map" | "follow") => void;
+  setFollowRangeStartMs: (ms: number | null) => void;
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
@@ -56,6 +63,9 @@ export const useUiStore = create<UiState>((set, get) => ({
   animationTimeMs: 0,
   isPlaying: false,
   playbackSpeed: 1,
+  headingUp: false,
+  commentTool: "map",
+  followRangeStartMs: null,
   activeRoutePlanId: null,
   showTrack: true,
   mapOpacity: 0.75,
@@ -71,13 +81,16 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefStep: 0,
       georefPin: null,
       georefPendingFrom: null,
+      followRangeStartMs: null,
       statusMessage:
         mode === "georef"
           ? georefHint(0)
           : mode === "plan"
             ? "Click the map to draw the route plan"
             : mode === "comment"
-              ? "Click the map to place a comment"
+              ? get().commentTool === "follow"
+                ? "Click the GPS track to set the range start"
+                : "Click the map to place a comment"
               : "",
     }),
 
@@ -104,6 +117,17 @@ export const useUiStore = create<UiState>((set, get) => ({
   setAnimationTimeMs: (ms) => set({ animationTimeMs: ms }),
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setHeadingUp: (on) => set({ headingUp: on }),
+  setCommentTool: (tool) =>
+    set({
+      commentTool: tool,
+      followRangeStartMs: null,
+      statusMessage:
+        tool === "follow"
+          ? "Click the GPS track to set the range start, then the end"
+          : "Click the map to place a pin comment",
+    }),
+  setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),

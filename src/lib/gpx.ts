@@ -1,4 +1,5 @@
 import { gpx } from "@tmcw/togeojson";
+import { bearing } from "./geo";
 import type { TrackPoint } from "./types";
 
 type GeoJsonFeature = {
@@ -101,20 +102,43 @@ export function interpolateTrackPosition(
   points: TrackPoint[],
   timeMs: number,
 ): { lng: number; lat: number } | null {
+  const pose = interpolateTrackPose(points, timeMs);
+  return pose ? { lng: pose.lng, lat: pose.lat } : null;
+}
+
+/** Position + travel bearing (degrees clockwise from north) along the track. */
+export function interpolateTrackPose(
+  points: TrackPoint[],
+  timeMs: number,
+): { lng: number; lat: number; bearing: number } | null {
   if (points.length === 0) return null;
-  if (points.length === 1) return { lng: points[0].lng, lat: points[0].lat };
+  if (points.length === 1) {
+    return { lng: points[0].lng, lat: points[0].lat, bearing: 0 };
+  }
 
   const timed = points.map((p, i) => ({
     ...p,
     timeOffsetMs: p.timeOffsetMs ?? i * 1000,
   }));
 
+  const bearingOf = (a: TrackPoint, b: TrackPoint) =>
+    bearing(a.lat, a.lng, b.lat, b.lng);
+
   if (timeMs <= (timed[0].timeOffsetMs ?? 0)) {
-    return { lng: timed[0].lng, lat: timed[0].lat };
+    return {
+      lng: timed[0].lng,
+      lat: timed[0].lat,
+      bearing: bearingOf(timed[0], timed[1]),
+    };
   }
   const last = timed[timed.length - 1];
   if (timeMs >= (last.timeOffsetMs ?? 0)) {
-    return { lng: last.lng, lat: last.lat };
+    const prev = timed[timed.length - 2];
+    return {
+      lng: last.lng,
+      lat: last.lat,
+      bearing: bearingOf(prev, last),
+    };
   }
 
   for (let i = 0; i < timed.length - 1; i++) {
@@ -127,10 +151,15 @@ export function interpolateTrackPosition(
       return {
         lng: a.lng + (b.lng - a.lng) * u,
         lat: a.lat + (b.lat - a.lat) * u,
+        bearing: bearingOf(a, b),
       };
     }
   }
-  return { lng: last.lng, lat: last.lat };
+  return {
+    lng: last.lng,
+    lat: last.lat,
+    bearing: bearingOf(timed[timed.length - 2], last),
+  };
 }
 
 export function trackDurationMs(points: TrackPoint[]): number {
@@ -145,7 +174,16 @@ export function nearestTrackTimeOffset(
   lng: number,
   lat: number,
 ): number | undefined {
-  if (points.length === 0) return undefined;
+  const hit = nearestTrackPoint(points, lng, lat);
+  return hit?.timeOffsetMs;
+}
+
+export function nearestTrackPoint(
+  points: TrackPoint[],
+  lng: number,
+  lat: number,
+): TrackPoint | null {
+  if (points.length === 0) return null;
   let best = 0;
   let bestDist = Infinity;
   points.forEach((p, i) => {
@@ -156,5 +194,35 @@ export function nearestTrackTimeOffset(
     }
   });
   const p = points[best];
-  return p.timeOffsetMs ?? best * 1000;
+  return {
+    ...p,
+    timeOffsetMs: p.timeOffsetMs ?? best * 1000,
+  };
+}
+
+/** Sub-polyline of the track covering [startMs, endMs]. */
+export function trackSliceCoordinates(
+  points: TrackPoint[],
+  startMs: number,
+  endMs: number,
+): [number, number][] {
+  if (points.length === 0) return [];
+  const a = Math.min(startMs, endMs);
+  const b = Math.max(startMs, endMs);
+  const timed = points.map((p, i) => ({
+    ...p,
+    timeOffsetMs: p.timeOffsetMs ?? i * 1000,
+  }));
+  const coords: [number, number][] = [];
+  for (const p of timed) {
+    const t = p.timeOffsetMs ?? 0;
+    if (t >= a && t <= b) coords.push([p.lng, p.lat]);
+  }
+  if (coords.length === 0) {
+    const start = interpolateTrackPosition(points, a);
+    const end = interpolateTrackPosition(points, b);
+    if (start) coords.push([start.lng, start.lat]);
+    if (end) coords.push([end.lng, end.lat]);
+  }
+  return coords;
 }

@@ -9,20 +9,38 @@ export type TrackPoint = {
   timeOffsetMs?: number;
 };
 
+export const PLAN_COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#0891b2",
+  "#ca8a04",
+  "#dc2626",
+  "#16a34a",
+  "#ea580c",
+  "#db2777",
+] as const;
+
 export type RoutePlan = {
   id: string;
   name: string;
   coordinates: [number, number][]; // lng, lat
   visible: boolean;
+  color: string;
 };
+
+/** map = pinned on map; follow = bubble follows runner in a track-time range */
+export type CommentKind = "map" | "follow";
 
 export type Comment = {
   id: string;
+  kind: CommentKind;
   lng: number;
   lat: number;
   text: string;
-  /** Track-relative time for animation sync (optional). */
-  timeOffsetMs?: number;
+  /** Inclusive start of the track-time range for follow comments (ms). */
+  timeStartMs?: number;
+  /** Inclusive end of the track-time range for follow comments (ms). */
+  timeEndMs?: number;
 };
 
 export type ProjectData = {
@@ -30,7 +48,6 @@ export type ProjectData = {
   name: string;
   mapImage: { fileName: string } | null;
   georef: {
-    /** Geographic pose of the map image overlay (streetview-o style). */
     pose: OMapPose | null;
   };
   track: { points: TrackPoint[] };
@@ -47,6 +64,12 @@ export type ImageSourceCoordinates = [
   [number, number],
 ];
 
+export function nextPlanColor(existing: RoutePlan[]): string {
+  const used = new Set(existing.map((p) => p.color));
+  const free = PLAN_COLORS.find((c) => !used.has(c));
+  return free ?? PLAN_COLORS[existing.length % PLAN_COLORS.length];
+}
+
 export function createEmptyProject(name = "Untitled"): ProjectData {
   return {
     version: 1,
@@ -54,14 +77,56 @@ export function createEmptyProject(name = "Untitled"): ProjectData {
     mapImage: null,
     georef: { pose: null },
     track: { points: [] },
-    routePlans: [
-      {
-        id: crypto.randomUUID(),
-        name: "Plan A",
-        coordinates: [],
-        visible: true,
-      },
-    ],
+    routePlans: [],
     comments: [],
   };
+}
+
+/** Normalize legacy comments that only had timeOffsetMs / no kind. */
+export function normalizeComment(
+  raw: Partial<Comment> & { timeOffsetMs?: number },
+): Comment {
+  const timeStartMs =
+    raw.timeStartMs ??
+    (typeof raw.timeOffsetMs === "number" ? raw.timeOffsetMs : undefined);
+  let timeEndMs = raw.timeEndMs;
+  if (timeEndMs == null && timeStartMs != null) {
+    timeEndMs = timeStartMs + 5000;
+  }
+  const kind: CommentKind =
+    raw.kind === "follow" || raw.kind === "map"
+      ? raw.kind
+      : timeStartMs != null
+        ? "follow"
+        : "map";
+  return {
+    id: raw.id ?? crypto.randomUUID(),
+    kind,
+    lng: raw.lng ?? 0,
+    lat: raw.lat ?? 0,
+    text: raw.text ?? "",
+    timeStartMs: kind === "follow" ? timeStartMs : undefined,
+    timeEndMs: kind === "follow" ? timeEndMs : undefined,
+  };
+}
+
+export function normalizeRoutePlan(
+  raw: Partial<RoutePlan>,
+  index: number,
+): RoutePlan {
+  return {
+    id: raw.id ?? crypto.randomUUID(),
+    name: raw.name ?? `Plan ${String.fromCharCode(65 + index)}`,
+    coordinates: raw.coordinates ?? [],
+    visible: raw.visible !== false,
+    color: raw.color ?? PLAN_COLORS[index % PLAN_COLORS.length],
+  };
+}
+
+export function commentActiveAt(comment: Comment, timeMs: number): boolean {
+  if (comment.kind !== "follow") return false;
+  if (comment.timeStartMs == null || comment.timeEndMs == null) return false;
+  const a = Math.min(comment.timeStartMs, comment.timeEndMs);
+  const b = Math.max(comment.timeStartMs, comment.timeEndMs);
+  return timeMs >= a && timeMs <= b;
 }

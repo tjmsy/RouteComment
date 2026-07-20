@@ -6,7 +6,7 @@ import type {
   RoutePlan,
   TrackPoint,
 } from "../lib/types";
-import { createEmptyProject } from "../lib/types";
+import { createEmptyProject, nextPlanColor } from "../lib/types";
 
 type ProjectState = {
   project: ProjectData;
@@ -35,6 +35,8 @@ type ProjectState = {
   setTrack: (points: TrackPoint[]) => void;
 
   setRoutePlans: (plans: RoutePlan[]) => void;
+  addRoutePlan: () => string;
+  removeRoutePlan: (id: string) => void;
   updateRoutePlan: (id: string, patch: Partial<RoutePlan>) => void;
   appendPlanCoordinate: (planId: string, coord: [number, number]) => void;
   undoPlanCoordinate: (planId: string) => void;
@@ -111,6 +113,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   setRoutePlans: (plans) =>
     set((s) => ({
       project: { ...s.project, routePlans: plans },
+    })),
+
+  addRoutePlan: () => {
+    const id = crypto.randomUUID();
+    set((s) => {
+      const n = s.project.routePlans.length;
+      const plan: RoutePlan = {
+        id,
+        name: `Plan ${String.fromCharCode(65 + n)}`,
+        coordinates: [],
+        visible: true,
+        color: nextPlanColor(s.project.routePlans),
+      };
+      return {
+        project: {
+          ...s.project,
+          routePlans: [...s.project.routePlans, plan],
+        },
+      };
+    });
+    return id;
+  },
+
+  removeRoutePlan: (id) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        routePlans: s.project.routePlans.filter((p) => p.id !== id),
+      },
     })),
 
   updateRoutePlan: (id, patch) =>

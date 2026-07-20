@@ -1,6 +1,10 @@
 import JSZip from "jszip";
 import type { OMapPose, ProjectData } from "./types";
-import { createEmptyProject } from "./types";
+import {
+  createEmptyProject,
+  normalizeComment,
+  normalizeRoutePlan,
+} from "./types";
 import { parseGpx, withTimeOffsets } from "./gpx";
 
 export type LoadedProject = {
@@ -97,9 +101,11 @@ function normalizeProject(
     track: { points: parsed.track?.points ?? [] },
     routePlans:
       parsed.routePlans && parsed.routePlans.length > 0
-        ? parsed.routePlans
+        ? parsed.routePlans.map((p, i) => normalizeRoutePlan(p, i))
         : base.routePlans,
-    comments: parsed.comments ?? [],
+    comments: (parsed.comments ?? []).map((c) =>
+      normalizeComment(c as Parameters<typeof normalizeComment>[0]),
+    ),
   };
 }
 

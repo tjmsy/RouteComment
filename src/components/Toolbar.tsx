@@ -55,6 +55,13 @@ export function Toolbar() {
   const setMapOpacity = useUiStore((s) => s.setMapOpacity);
   const terrain3d = useUiStore((s) => s.terrain3d);
   const setTerrain3d = useUiStore((s) => s.setTerrain3d);
+  const setupGpxDone = useUiStore((s) => s.setupGpxDone);
+  const setupMapDone = useUiStore((s) => s.setupMapDone);
+  const markSetupGpxDone = useUiStore((s) => s.markSetupGpxDone);
+  const markSetupMapDone = useUiStore((s) => s.markSetupMapDone);
+  const skipSetupGpx = useUiStore((s) => s.skipSetupGpx);
+  const skipSetupMap = useUiStore((s) => s.skipSetupMap);
+  const completeSetup = useUiStore((s) => s.completeSetup);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
   const statusMessage = useUiStore((s) => s.statusMessage);
@@ -64,16 +71,25 @@ export function Toolbar() {
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
 
+  const setupComplete = setupGpxDone && setupMapDone;
+
   const activePlan =
     project.routePlans.find((p) => p.id === activeRoutePlanId) ??
     project.routePlans[0];
 
   const onMapImage = async (file: File | undefined) => {
     if (!file) return;
+    if (!setupGpxDone) {
+      setStatusMessage(
+        "Load GPX first (or Skip) so the map zooms to the course area.",
+      );
+      return;
+    }
     const url = URL.createObjectURL(file);
     try {
       const size = await readImageSize(url);
       setMapImage(file, url, file.name, size);
+      markSetupMapDone();
       setMode("georef");
       resetGeorefAlign();
       setStatusMessage(
@@ -96,7 +112,12 @@ export function Toolbar() {
       }
       setTrack(points);
       setAnimationTimeMs(0);
-      setStatusMessage(`Loaded ${points.length} track points.`);
+      markSetupGpxDone();
+      setStatusMessage(
+        setupMapDone
+          ? `Loaded ${points.length} track points.`
+          : `Loaded ${points.length} track points. Add a map image to georeference, or Skip to continue without one.`,
+      );
     } catch {
       setStatusMessage("Failed to parse GPX.");
     }
@@ -131,6 +152,7 @@ export function Toolbar() {
         setActiveRoutePlanId(loaded.data.routePlans[0].id);
       }
       setAnimationTimeMs(0);
+      completeSetup();
       setMode("view");
       setStatusMessage("Project loaded.");
     } catch (e) {
@@ -141,12 +163,27 @@ export function Toolbar() {
   };
 
   const enterGeoref = () => {
+    if (!setupGpxDone) {
+      setStatusMessage(
+        "Load GPX first (or Skip) so the map zooms to the course area.",
+      );
+      return;
+    }
     if (!project.mapImage) {
       setStatusMessage("Load a map image first (Event setup → Map image).");
       return;
     }
+    markSetupMapDone();
     setMode("georef");
     resetGeorefAlign();
+  };
+
+  const onSkipGpx = () => {
+    skipSetupGpx();
+  };
+
+  const onSkipMap = () => {
+    skipSetupMap();
   };
 
   return (
@@ -156,12 +193,19 @@ export function Toolbar() {
         <p className="tagline">Orienteering review</p>
       </div>
 
-      <div className="mode-row mode-row-main">
+      <div
+        className={
+          setupComplete
+            ? "mode-row mode-row-main"
+            : "mode-row mode-row-main mode-row-locked"
+        }
+      >
         {MODES.map((m) => (
           <button
             key={m.id}
             type="button"
-            className={mode === m.id ? "active" : ""}
+            className={mode === m.id && setupComplete ? "active" : ""}
+            disabled={!setupComplete}
             onClick={() => setMode(m.id)}
           >
             {m.label}
@@ -169,7 +213,10 @@ export function Toolbar() {
         ))}
       </div>
 
-      <details className="panel event-setup" open={mode === "georef"}>
+      <details
+        className="panel event-setup"
+        {...(!setupComplete || mode === "georef" ? { open: true as const } : {})}
+      >
         <summary>Event setup</summary>
         <label className="field">
           <span>Event / project name</span>
@@ -181,13 +228,66 @@ export function Toolbar() {
           />
         </label>
 
+        {!setupComplete && !setupGpxDone && (
+          <p className="hint setup-hint">
+            Start with GPX so the map jumps to the competition area, then add
+            the map image.
+          </p>
+        )}
+        {!setupComplete && setupGpxDone && !setupMapDone && (
+          <p className="hint setup-hint">
+            Add a map image to georeference, or Skip to continue without one.
+          </p>
+        )}
+
+        <div className="setup-step">
+          <div className="btn-row">
+            <button
+              type="button"
+              className={!setupGpxDone ? "setup-primary" : ""}
+              onClick={() => gpxInputRef.current?.click()}
+            >
+              GPX
+            </button>
+            {!setupComplete && !setupGpxDone && (
+              <button type="button" className="btn-skip" onClick={onSkipGpx}>
+                Skip GPX
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="setup-step">
+          <div className="btn-row">
+            <button
+              type="button"
+              className={
+                setupGpxDone && !setupMapDone ? "setup-primary" : ""
+              }
+              disabled={!setupGpxDone}
+              title={
+                setupGpxDone
+                  ? undefined
+                  : "Load GPX first (or Skip) so the map zooms to the course area."
+              }
+              onClick={() => mapInputRef.current?.click()}
+            >
+              Map image
+            </button>
+            {!setupComplete && setupGpxDone && !setupMapDone && (
+              <button type="button" className="btn-skip" onClick={onSkipMap}>
+                Skip map
+              </button>
+            )}
+          </div>
+          {!setupGpxDone && (
+            <p className="hint">
+              Load GPX first (or Skip) so the map zooms to the course area.
+            </p>
+          )}
+        </div>
+
         <div className="btn-row">
-          <button type="button" onClick={() => mapInputRef.current?.click()}>
-            Map image
-          </button>
-          <button type="button" onClick={() => gpxInputRef.current?.click()}>
-            GPX
-          </button>
           <button type="button" onClick={onSave}>
             Save ZIP
           </button>
@@ -230,6 +330,7 @@ export function Toolbar() {
           <button
             type="button"
             className={mode === "georef" ? "active-mode-btn" : ""}
+            disabled={!setupGpxDone || !project.mapImage}
             onClick={enterGeoref}
           >
             Georeference map

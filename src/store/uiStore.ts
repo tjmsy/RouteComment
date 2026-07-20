@@ -20,6 +20,10 @@ type UiState = {
   showTrack: boolean;
   mapOpacity: number;
   terrain3d: boolean;
+  /** GPX loaded or skipped during onboarding. */
+  setupGpxDone: boolean;
+  /** Map image loaded or skipped during onboarding. */
+  setupMapDone: boolean;
   georefStep: GeorefStep;
   georefPin: LngLat | null;
   georefPendingFrom: LngLat | null;
@@ -39,6 +43,11 @@ type UiState = {
   setShowTrack: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
   setTerrain3d: (on: boolean) => void;
+  markSetupGpxDone: () => void;
+  markSetupMapDone: () => void;
+  skipSetupGpx: () => void;
+  skipSetupMap: () => void;
+  completeSetup: () => void;
   setGeorefStep: (step: GeorefStep) => void;
   setGeorefPin: (pin: LngLat | null) => void;
   setGeorefPendingFrom: (pt: LngLat | null) => void;
@@ -72,12 +81,28 @@ export const useUiStore = create<UiState>((set, get) => ({
   showTrack: true,
   mapOpacity: 0.75,
   terrain3d: false,
+  setupGpxDone: false,
+  setupMapDone: false,
   georefStep: 0,
   georefPin: null,
   georefPendingFrom: null,
-  statusMessage: "",
+  statusMessage:
+    "Start with GPX so the map jumps to the competition area, then add the map image.",
 
-  setMode: (mode) =>
+  setMode: (mode) => {
+    const { setupGpxDone, setupMapDone } = get();
+    const setupComplete = setupGpxDone && setupMapDone;
+    if (
+      !setupComplete &&
+      (mode === "view" || mode === "plan" || mode === "comment")
+    ) {
+      set({
+        statusMessage: !setupGpxDone
+          ? "Finish Event setup: load GPX (or Skip), then map image (or Skip)."
+          : "Finish Event setup: add a map image (or Skip) to continue.",
+      });
+      return;
+    }
     set({
       mode,
       isPlaying: mode === "georef" ? false : get().isPlaying,
@@ -95,7 +120,8 @@ export const useUiStore = create<UiState>((set, get) => ({
                 ? "Click the GPS track to set the range start"
                 : "Click the map to place a comment"
               : "",
-    }),
+    });
+  },
 
   toggleCommentExpanded: (id) => {
     const cur = get().expandedCommentIds;
@@ -129,6 +155,31 @@ export const useUiStore = create<UiState>((set, get) => ({
   setShowTrack: (show) => set({ showTrack: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
   setTerrain3d: (on) => set({ terrain3d: on }),
+  markSetupGpxDone: () =>
+    set({
+      setupGpxDone: true,
+      statusMessage: get().setupMapDone
+        ? get().statusMessage
+        : "Add a map image to georeference, or Skip to continue without one.",
+    }),
+  markSetupMapDone: () => set({ setupMapDone: true }),
+  skipSetupGpx: () =>
+    set({
+      setupGpxDone: true,
+      statusMessage:
+        "GPX skipped. Add a map image to georeference, or Skip to continue without one.",
+    }),
+  skipSetupMap: () =>
+    set({
+      setupMapDone: true,
+      mode: "view",
+      statusMessage: "Setup complete. You can add a map image later in Event setup.",
+    }),
+  completeSetup: () =>
+    set({
+      setupGpxDone: true,
+      setupMapDone: true,
+    }),
   setGeorefStep: (step) =>
     set({ georefStep: step, statusMessage: georefHint(step) }),
   setGeorefPin: (pin) => set({ georefPin: pin }),

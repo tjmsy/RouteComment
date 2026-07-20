@@ -125,6 +125,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         coordinates: [],
         visible: true,
         color: nextPlanColor(s.project.routePlans),
+        lineWidth: 3,
       };
       return {
         project: {

@@ -26,6 +26,8 @@ export type RoutePlan = {
   coordinates: [number, number][]; // lng, lat
   visible: boolean;
   color: string;
+  /** MapLibre line width in pixels */
+  lineWidth: number;
 };
 
 /** map = pinned on map; follow = bubble follows runner in a track-time range */
@@ -114,12 +116,19 @@ export function normalizeRoutePlan(
   raw: Partial<RoutePlan>,
   index: number,
 ): RoutePlan {
+  const lineWidth =
+    typeof raw.lineWidth === "number" &&
+    Number.isFinite(raw.lineWidth) &&
+    raw.lineWidth > 0
+      ? Math.min(20, Math.max(1, raw.lineWidth))
+      : 3;
   return {
     id: raw.id ?? crypto.randomUUID(),
     name: raw.name ?? `Plan ${String.fromCharCode(65 + index)}`,
     coordinates: raw.coordinates ?? [],
     visible: raw.visible !== false,
     color: raw.color ?? PLAN_COLORS[index % PLAN_COLORS.length],
+    lineWidth,
   };
 }
 

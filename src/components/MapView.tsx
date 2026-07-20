@@ -29,40 +29,48 @@ const RUNNER_SOURCE = "runner-pos";
 const RUNNER_LAYER = "runner-circle";
 
 const INITIAL_WIDTH_FRACTION = 0.55;
-const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const OSM_RASTER_SOURCE = "osm-raster";
+const OSM_RASTER_LAYER = "osm-raster-layer";
 const TERRAIN_SOURCE = "mapterhorn-dem";
 const TERRAIN_PITCH = 45;
 const DEFAULT_MAX_PITCH = 60;
 
-function isAppOwnedLayer(id: string): boolean {
-  return (
-    id === MAP_IMAGE_LAYER ||
-    id === TRACK_LAYER ||
-    id === TRACK_ENDS_LAYER ||
-    id === TRACK_RANGE_LAYER ||
-    id === RUNNER_LAYER ||
-    id.startsWith(PLAN_SOURCE_PREFIX)
-  );
-}
+/** Dark canvas + single OSM raster (starts hidden — no world-map flash). */
+const BASE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    [OSM_RASTER_SOURCE]: {
+      type: "raster",
+      tiles: [
+        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap contributors",
+      maxzoom: 19,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#1a211c" },
+    },
+    {
+      id: OSM_RASTER_LAYER,
+      type: "raster",
+      source: OSM_RASTER_SOURCE,
+      layout: { visibility: "none" },
+    },
+  ],
+};
 
-/** Show/hide OpenFreeMap (and other style) layers; keep app overlays only. */
 function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
-  const style = map.getStyle();
-  if (!style?.layers) return;
-  const vis = visible ? "visible" : "none";
-  for (const layer of style.layers) {
-    if (isAppOwnedLayer(layer.id)) continue;
-    try {
-      map.setLayoutProperty(layer.id, "visibility", vis);
-    } catch {
-      // ignore
-    }
-  }
-  // Solid app background when basemap is off (avoids flash of world map).
-  const canvas = map.getCanvas();
-  canvas.style.background = visible ? "" : "#1a211c";
-  const container = map.getContainer();
-  container.style.background = visible ? "" : "#1a211c";
+  if (!map.getLayer(OSM_RASTER_LAYER)) return;
+  map.setLayoutProperty(
+    OSM_RASTER_LAYER,
+    "visibility",
+    visible ? "visible" : "none",
+  );
 }
 
 function ensureGeoJsonSource(
@@ -175,7 +183,7 @@ export function MapView() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OPENFREEMAP_STYLE,
+      style: BASE_STYLE,
       center: [0, 20],
       zoom: 1.5,
       maxPitch: 0,
@@ -183,21 +191,12 @@ export function MapView() {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
-
-    // Hide basemap as soon as style layers exist (before React state catches up).
-    const hideUntilGeoref = () => {
-      if (!map.isStyleLoaded()) return;
-      const inGeoref = useUiStore.getState().mode === "georef";
-      setBasemapVisible(map, inGeoref);
-    };
-    map.on("styledata", hideUntilGeoref);
     map.once("load", () => {
-      hideUntilGeoref();
+      setBasemapVisible(map, useUiStore.getState().mode === "georef");
       setMapInstance(map);
     });
 
     return () => {
-      map.off("styledata", hideUntilGeoref);
       alignMarkersRef.current.forEach((m) => m.remove());
       alignMarkersRef.current = [];
       map.remove();
@@ -338,10 +337,8 @@ export function MapView() {
 
     apply();
     map.on("style.load", apply);
-    map.once("idle", apply);
     return () => {
       map.off("style.load", apply);
-      map.off("idle", apply);
     };
   }, [mode, mapOpacity, mapInstance]);
 

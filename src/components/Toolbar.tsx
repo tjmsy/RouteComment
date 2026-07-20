@@ -9,9 +9,9 @@ import {
 } from "../lib/projectZip";
 import { PLAN_COLORS, type AppMode } from "../lib/types";
 
-const MODES: { id: AppMode; label: string }[] = [
+/** Primary workspace modes (Georef lives under Event setup). */
+const MODES: { id: Exclude<AppMode, "georef">; label: string }[] = [
   { id: "view", label: "View" },
-  { id: "georef", label: "Georef" },
   { id: "plan", label: "Plan" },
   { id: "comment", label: "Comment" },
 ];
@@ -102,7 +102,7 @@ export function Toolbar() {
   const onSave = async () => {
     try {
       const blob = await saveProjectZip(project, mapImageBlob);
-      const name = (project.name || "project").replace(/[^\w\-]+/g, "_");
+      const name = (project.name || "project").replace(/[^\w-]+/g, "_");
       downloadBlob(blob, `${name}.zip`);
       setStatusMessage("Project saved.");
     } catch {
@@ -137,6 +137,15 @@ export function Toolbar() {
     }
   };
 
+  const enterGeoref = () => {
+    if (!project.mapImage) {
+      setStatusMessage("Load a map image first (Event setup → Map image).");
+      return;
+    }
+    setMode("georef");
+    resetGeorefAlign();
+  };
+
   return (
     <aside className="toolbar">
       <div className="brand">
@@ -144,16 +153,7 @@ export function Toolbar() {
         <p className="tagline">Orienteering review</p>
       </div>
 
-      <label className="field">
-        <span>Project</span>
-        <input
-          type="text"
-          value={project.name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </label>
-
-      <div className="mode-row">
+      <div className="mode-row mode-row-main">
         {MODES.map((m) => (
           <button
             key={m.id}
@@ -166,8 +166,18 @@ export function Toolbar() {
         ))}
       </div>
 
-      <section className="panel">
-        <h2>Files</h2>
+      <details className="panel event-setup" open={mode === "georef"}>
+        <summary>Event setup</summary>
+        <label className="field">
+          <span>Event / project name</span>
+          <input
+            type="text"
+            value={project.name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Local meet 2026"
+          />
+        </label>
+
         <div className="btn-row">
           <button type="button" onClick={() => mapInputRef.current?.click()}>
             Map image
@@ -212,7 +222,31 @@ export function Toolbar() {
             e.target.value = "";
           }}
         />
-      </section>
+
+        <div className="event-georef-block">
+          <button
+            type="button"
+            className={mode === "georef" ? "active-mode-btn" : ""}
+            onClick={enterGeoref}
+          >
+            Georeference map
+          </button>
+          {mode === "georef" && (
+            <>
+              <p className="hint">
+                Two-point align:
+                <br />
+                1) Overlay feature → matching basemap point (move)
+                <br />
+                2) Second overlay feature → basemap point (rotate/scale)
+              </p>
+              <button type="button" onClick={resetGeorefAlign}>
+                Reset align steps
+              </button>
+            </>
+          )}
+        </div>
+      </details>
 
       <section className="panel">
         <h2>Layers</h2>
@@ -257,28 +291,9 @@ export function Toolbar() {
         {project.track.points.length === 0 &&
           project.routePlans.length === 0 &&
           !project.mapImage && (
-            <p className="hint">Load a GPX, map image, or add a plan.</p>
+            <p className="hint">Open Event setup to load a map or GPX.</p>
           )}
       </section>
-
-      {mode === "georef" && (
-        <section className="panel">
-          <h2>Georeference</h2>
-          <p className="hint">
-            Two-point align (streetview-o style):
-            <br />
-            1) Click a feature on the overlay → matching basemap point (move)
-            <br />
-            2) Click a second overlay feature → matching basemap point
-            (rotate/scale)
-            <br />
-            Zoom the map to pick precisely. Repeat to fine-tune.
-          </p>
-          <button type="button" onClick={resetGeorefAlign}>
-            Reset align steps
-          </button>
-        </section>
-      )}
 
       {mode === "comment" && (
         <section className="panel">
@@ -319,7 +334,9 @@ export function Toolbar() {
                 <button
                   type="button"
                   className={
-                    plan.id === activePlan?.id ? "plan-select active" : "plan-select"
+                    plan.id === activePlan?.id
+                      ? "plan-select active"
+                      : "plan-select"
                   }
                   onClick={() => setActiveRoutePlanId(plan.id)}
                 >
@@ -352,7 +369,9 @@ export function Toolbar() {
                   onClick={() => {
                     removeRoutePlan(plan.id);
                     if (activeRoutePlanId === plan.id) {
-                      const next = project.routePlans.find((p) => p.id !== plan.id);
+                      const next = project.routePlans.find(
+                        (p) => p.id !== plan.id,
+                      );
                       setActiveRoutePlanId(next?.id ?? null);
                     }
                   }}

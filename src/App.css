@@ -312,7 +312,7 @@ button.btn-skip {
 .map-view {
   width: 100%;
   height: 100%;
-  background: var(--bg);
+  background: #fff;
 }
 
 .georef-align-marker {

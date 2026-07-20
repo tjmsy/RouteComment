@@ -33,13 +33,56 @@ const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const TERRAIN_SOURCE = "mapterhorn-dem";
 const TERRAIN_PITCH = 45;
 const DEFAULT_MAX_PITCH = 60;
+const MAP_BG = "#ffffff";
 
-/** No basemap tiles — avoids a world-map flash on startup. */
+/** White canvas, no tiles — avoids a world-map flash on startup. */
 const BLANK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {},
-  layers: [],
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": MAP_BG },
+    },
+  ],
 };
+
+function isAppOwnedLayer(id: string): boolean {
+  return (
+    id === MAP_IMAGE_LAYER ||
+    id === TRACK_LAYER ||
+    id === TRACK_ENDS_LAYER ||
+    id === TRACK_RANGE_LAYER ||
+    id === RUNNER_LAYER ||
+    id.startsWith(PLAN_SOURCE_PREFIX)
+  );
+}
+
+/** Toggle OpenFreeMap layers without setStyle (overlays stay intact). */
+function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
+  const style = map.getStyle();
+  if (!style?.layers) return;
+  const vis = visible ? "visible" : "none";
+  for (const layer of style.layers) {
+    if (isAppOwnedLayer(layer.id)) continue;
+    if (layer.type === "background") {
+      if (!visible) {
+        try {
+          map.setPaintProperty(layer.id, "background-color", MAP_BG);
+        } catch {
+          // ignore
+        }
+      }
+      continue;
+    }
+    try {
+      map.setLayoutProperty(layer.id, "visibility", vis);
+    } catch {
+      // ignore
+    }
+  }
+}
 
 function ensureGeoJsonSource(
   map: maplibregl.Map,
@@ -292,32 +335,52 @@ export function MapView() {
     };
   }, [mapImageUrl, mapImageSize, pose, mapOpacity, mode, mapInstance, setPose]);
 
-  // Georef: OpenFreeMap via setStyle. Else: blank style (no basemap flash).
+  // Start blank (white). First georef: setStyle(OpenFreeMap). Later: visibility only.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
 
     const wantBasemap = mode === "georef";
-    const target: "blank" | "openfreemap" = wantBasemap
-      ? "openfreemap"
-      : "blank";
 
-    if (basemapStyleRef.current !== target) {
-      basemapStyleRef.current = target;
-      // setStyle wipes sources — force overlay rebuild without refitting.
+    const applyVisibility = () => {
+      if (!map.isStyleLoaded()) return;
+      if (basemapStyleRef.current === "openfreemap") {
+        setBasemapVisible(map, wantBasemap);
+      }
+      if (map.getLayer(MAP_IMAGE_LAYER)) {
+        map.setPaintProperty(
+          MAP_IMAGE_LAYER,
+          "raster-opacity",
+          wantBasemap ? mapOpacity : 1,
+        );
+      }
+      ensureLayerOrder(map);
+    };
+
+    if (wantBasemap && basemapStyleRef.current !== "openfreemap") {
+      basemapStyleRef.current = "openfreemap";
       appliedImageUrlRef.current = null;
       skipNextImageFitRef.current = true;
-      map.setStyle(wantBasemap ? OPENFREEMAP_STYLE : BLANK_STYLE);
+      const camera = {
+        center: map.getCenter(),
+        zoom: map.getZoom(),
+        bearing: map.getBearing(),
+        pitch: map.getPitch(),
+      };
+      map.setStyle(OPENFREEMAP_STYLE);
+      map.once("style.load", () => {
+        map.jumpTo(camera);
+        setBasemapVisible(map, true);
+        ensureLayerOrder(map);
+      });
       return;
     }
 
-    if (map.isStyleLoaded() && map.getLayer(MAP_IMAGE_LAYER)) {
-      map.setPaintProperty(
-        MAP_IMAGE_LAYER,
-        "raster-opacity",
-        wantBasemap ? mapOpacity : 1,
-      );
-    }
+    applyVisibility();
+    map.on("style.load", applyVisibility);
+    return () => {
+      map.off("style.load", applyVisibility);
+    };
   }, [mode, mapOpacity, mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
@@ -365,6 +428,7 @@ export function MapView() {
     if (!map) return;
 
     const apply = () => {
+      if (!map.isStyleLoaded()) return;
       const pts = trackPoints;
       const lineData: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
@@ -493,6 +557,7 @@ export function MapView() {
     if (!map) return;
 
     const apply = () => {
+      if (!map.isStyleLoaded()) return;
       const existingIds = new Set<string>();
       routePlans.forEach((plan) => {
         const sourceId = `${PLAN_SOURCE_PREFIX}${plan.id}`;
@@ -611,6 +676,7 @@ export function MapView() {
     if (!map) return;
 
     const apply = () => {
+      if (!map.isStyleLoaded()) return;
       const runnerPose = interpolateTrackPose(trackPoints, animationTimeMs);
       const show = trackPoints.length > 0 && runnerPose != null;
 

@@ -30,7 +30,7 @@ export function CommentMarkers({ map }: Props) {
             draggable={mode === "comment"}
             onToggle={() => toggleCommentExpanded(comment.id)}
           />
-        ) : (
+        ) : mode === "comment" ? (
           <FollowRangeMarker
             key={comment.id}
             map={map}
@@ -38,7 +38,7 @@ export function CommentMarkers({ map }: Props) {
             expanded={expandedCommentIds.includes(comment.id)}
             onToggle={() => toggleCommentExpanded(comment.id)}
           />
-        ),
+        ) : null,
       )}
       <FollowBubbles map={map} />
     </>

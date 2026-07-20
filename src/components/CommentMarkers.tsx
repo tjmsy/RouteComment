@@ -256,9 +256,28 @@ function FollowBubble({
   return null;
 }
 
-function formatSec(ms: number | undefined): string {
+function formatHms(ms: number | undefined): string {
   if (ms == null) return "";
-  return (ms / 1000).toFixed(1);
+  const totalSec = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/** Parse hh:mm:ss, mm:ss, or plain seconds. */
+function parseHms(v: string): number | undefined {
+  const t = v.trim();
+  if (t === "") return undefined;
+  const parts = t.split(":");
+  if (parts.length > 3) return undefined;
+  const nums = parts.map((p) => Number(p));
+  if (nums.some((n) => !Number.isFinite(n) || n < 0)) return undefined;
+  let sec = 0;
+  if (nums.length === 3) sec = nums[0] * 3600 + nums[1] * 60 + nums[2];
+  else if (nums.length === 2) sec = nums[0] * 60 + nums[1];
+  else sec = nums[0];
+  return sec * 1000;
 }
 
 function CommentEditorPanel() {
@@ -267,7 +286,6 @@ function CommentEditorPanel() {
   const removeComment = useProjectStore((s) => s.removeComment);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
-  const animationTimeMs = useUiStore((s) => s.animationTimeMs);
 
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
   const comment = comments.find((c) => c.id === activeId) ?? null;
@@ -286,17 +304,11 @@ function CommentEditorPanel() {
       return;
     }
     setDraft(comment.text);
-    setStartDraft(formatSec(comment.timeStartMs));
-    setEndDraft(formatSec(comment.timeEndMs));
+    setStartDraft(formatHms(comment.timeStartMs));
+    setEndDraft(formatHms(comment.timeEndMs));
   }, [comment?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!comment) return null;
-
-  const parseSec = (v: string): number | undefined => {
-    if (v.trim() === "") return undefined;
-    const sec = Number(v);
-    return Number.isFinite(sec) && sec >= 0 ? sec * 1000 : undefined;
-  };
 
   const isFollow = comment.kind === "follow";
 
@@ -334,53 +346,49 @@ function CommentEditorPanel() {
           </p>
           <div className="comment-range-row">
             <label className="comment-time">
-              <span>Start (s)</span>
+              <span>Start</span>
               <input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
+                placeholder="hh:mm:ss"
                 value={startDraft}
                 onChange={(e) => {
                   const v = e.target.value;
                   setStartDraft(v);
-                  updateComment(comment.id, { timeStartMs: parseSec(v) });
+                  const ms = parseHms(v);
+                  if (ms != null) {
+                    updateComment(comment.id, { timeStartMs: ms });
+                  }
+                }}
+                onBlur={() => {
+                  const ms = parseHms(startDraft);
+                  if (ms != null) setStartDraft(formatHms(ms));
+                  else setStartDraft(formatHms(comment.timeStartMs));
                 }}
               />
             </label>
             <label className="comment-time">
-              <span>End (s)</span>
+              <span>End</span>
               <input
                 type="text"
-                inputMode="decimal"
+                inputMode="numeric"
+                placeholder="hh:mm:ss"
                 value={endDraft}
                 onChange={(e) => {
                   const v = e.target.value;
                   setEndDraft(v);
-                  updateComment(comment.id, { timeEndMs: parseSec(v) });
+                  const ms = parseHms(v);
+                  if (ms != null) {
+                    updateComment(comment.id, { timeEndMs: ms });
+                  }
+                }}
+                onBlur={() => {
+                  const ms = parseHms(endDraft);
+                  if (ms != null) setEndDraft(formatHms(ms));
+                  else setEndDraft(formatHms(comment.timeEndMs));
                 }}
               />
             </label>
-          </div>
-          <div className="btn-row">
-            <button
-              type="button"
-              onClick={() => {
-                const ms = animationTimeMs;
-                setStartDraft(formatSec(ms));
-                updateComment(comment.id, { timeStartMs: ms });
-              }}
-            >
-              Start = playhead
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const ms = animationTimeMs;
-                setEndDraft(formatSec(ms));
-                updateComment(comment.id, { timeEndMs: ms });
-              }}
-            >
-              End = playhead
-            </button>
           </div>
         </>
       ) : (

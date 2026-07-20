@@ -144,6 +144,7 @@ export function MapView() {
   const showTrack = useUiStore((s) => s.showTrack);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const headingUp = useUiStore((s) => s.headingUp);
+  const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
   const setGeorefStep = useUiStore((s) => s.setGeorefStep);
@@ -173,6 +174,7 @@ export function MapView() {
       style: OPENFREEMAP_STYLE,
       center: [0, 20],
       zoom: 1.5,
+      maxPitch: 0,
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -324,6 +326,45 @@ export function MapView() {
       map.off("style.load", apply);
     };
   }, [mode, mapOpacity, mapInstance]);
+
+  // Terrain 3D (Mapterhorn DEM; no hillshade)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
+
+    const apply = () => {
+      if (!map.isStyleLoaded()) return;
+
+      if (terrain3d) {
+        if (!map.getSource(TERRAIN_SOURCE)) {
+          map.addSource(TERRAIN_SOURCE, {
+            type: "raster-dem",
+            tiles: ["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"],
+            encoding: "terrarium",
+            tileSize: 512,
+            maxzoom: 12,
+            attribution:
+              '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>',
+          });
+        }
+        map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: 1 });
+        map.setMaxPitch(DEFAULT_MAX_PITCH);
+        map.easeTo({ pitch: TERRAIN_PITCH, duration: 400 });
+      } else {
+        map.setTerrain(null);
+        map.setMaxPitch(0);
+        if (map.getPitch() !== 0) {
+          map.easeTo({ pitch: 0, duration: 400 });
+        }
+      }
+    };
+
+    apply();
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+    };
+  }, [terrain3d, mapInstance]);
 
   // Track
   useEffect(() => {

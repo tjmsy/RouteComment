@@ -19,6 +19,7 @@ type UiState = {
   activeRoutePlanId: string | null;
   showTrack: boolean;
   mapOpacity: number;
+  terrain3d: boolean;
   georefStep: GeorefStep;
   georefPin: LngLat | null;
   georefPendingFrom: LngLat | null;
@@ -37,6 +38,7 @@ type UiState = {
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
+  setTerrain3d: (on: boolean) => void;
   setGeorefStep: (step: GeorefStep) => void;
   setGeorefPin: (pin: LngLat | null) => void;
   setGeorefPendingFrom: (pt: LngLat | null) => void;
@@ -69,6 +71,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   activeRoutePlanId: null,
   showTrack: true,
   mapOpacity: 0.75,
+  terrain3d: false,
   georefStep: 0,
   georefPin: null,
   georefPendingFrom: null,
@@ -125,6 +128,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
+  setTerrain3d: (on) => set({ terrain3d: on }),
   setGeorefStep: (step) =>
     set({ georefStep: step, statusMessage: georefHint(step) }),
   setGeorefPin: (pin) => set({ georefPin: pin }),

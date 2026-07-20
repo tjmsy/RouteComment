@@ -53,6 +53,8 @@ export function Toolbar() {
   const setShowTrack = useUiStore((s) => s.setShowTrack);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const setMapOpacity = useUiStore((s) => s.setMapOpacity);
+  const terrain3d = useUiStore((s) => s.terrain3d);
+  const setTerrain3d = useUiStore((s) => s.setTerrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
   const statusMessage = useUiStore((s) => s.statusMessage);
@@ -289,6 +291,14 @@ export function Toolbar() {
             {plan.name}
           </label>
         ))}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={terrain3d}
+            onChange={(e) => setTerrain3d(e.target.checked)}
+          />
+          Terrain 3D
+        </label>
         {project.track.points.length === 0 &&
           project.routePlans.length === 0 &&
           !project.mapImage && (

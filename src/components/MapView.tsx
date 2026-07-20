@@ -128,6 +128,11 @@ export function MapView() {
   const pendingFitImageRef = useRef(false);
   const headingBearingRef = useRef<number | null>(null);
   const headingRafRef = useRef<number | null>(null);
+  /** While true, skip heading-up camera writes so wheel zoom can animate. */
+  const headingWheelPauseRef = useRef(false);
+  const headingWheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -553,35 +558,61 @@ export function MapView() {
         cancelAnimationFrame(headingRafRef.current);
         headingRafRef.current = null;
       }
+      if (headingWheelTimerRef.current != null) {
+        clearTimeout(headingWheelTimerRef.current);
+        headingWheelTimerRef.current = null;
+      }
+      headingWheelPauseRef.current = false;
       return;
     }
 
+    const onWheel = () => {
+      headingWheelPauseRef.current = true;
+      if (headingWheelTimerRef.current != null) {
+        clearTimeout(headingWheelTimerRef.current);
+      }
+      headingWheelTimerRef.current = setTimeout(() => {
+        headingWheelPauseRef.current = false;
+        headingWheelTimerRef.current = null;
+      }, 200);
+    };
+    map.on("wheel", onWheel);
+
     const tick = () => {
-      const pts = useProjectStore.getState().project.track.points;
-      const t = useUiStore.getState().animationTimeMs;
-      const playing = useUiStore.getState().isPlaying;
-      const runnerPose = interpolateTrackPose(pts, t);
-      if (runnerPose) {
-        const currentBearing =
-          headingBearingRef.current ?? map.getBearing();
-        // Higher alpha while scrubbing so the map snaps to the new heading faster
-        const alpha = playing ? 0.14 : 0.35;
-        const nextBearing = lerpBearing(
-          currentBearing,
-          runnerPose.bearing,
-          alpha,
-        );
-        headingBearingRef.current = nextBearing;
-        map.jumpTo({
-          center: [runnerPose.lng, runnerPose.lat],
-          bearing: nextBearing,
-        });
+      if (!headingWheelPauseRef.current) {
+        const pts = useProjectStore.getState().project.track.points;
+        const t = useUiStore.getState().animationTimeMs;
+        const playing = useUiStore.getState().isPlaying;
+        const runnerPose = interpolateTrackPose(pts, t);
+        if (runnerPose) {
+          const currentBearing =
+            headingBearingRef.current ?? map.getBearing();
+          // Higher alpha while scrubbing so the map snaps to the new heading faster
+          const alpha = playing ? 0.14 : 0.35;
+          const nextBearing = lerpBearing(
+            currentBearing,
+            runnerPose.bearing,
+            alpha,
+          );
+          headingBearingRef.current = nextBearing;
+          // Omit zoom so wheel zoom sticks; pause during wheel so ease isn't cancelled.
+          map.jumpTo({
+            center: [runnerPose.lng, runnerPose.lat],
+            bearing: nextBearing,
+          });
+        }
       }
       headingRafRef.current = requestAnimationFrame(tick);
     };
 
     headingRafRef.current = requestAnimationFrame(tick);
     return () => {
+      map.off("wheel", onWheel);
+      if (headingWheelTimerRef.current != null) {
+        clearTimeout(headingWheelTimerRef.current);
+        headingWheelTimerRef.current = null;
+      }
+      headingWheelPauseRef.current = false;
       if (headingRafRef.current != null) {
         cancelAnimationFrame(headingRafRef.current);
         headingRafRef.current = null;

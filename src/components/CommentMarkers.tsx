@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { Comment } from "../lib/types";
 import { commentActiveAt } from "../lib/types";
@@ -14,6 +14,7 @@ export function CommentMarkers({ map }: Props) {
   const comments = useProjectStore((s) => s.project.comments);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const toggleCommentExpanded = useUiStore((s) => s.toggleCommentExpanded);
+  const mode = useUiStore((s) => s.mode);
 
   if (!map) return null;
 
@@ -26,6 +27,7 @@ export function CommentMarkers({ map }: Props) {
             map={map}
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
+            draggable={mode === "comment"}
             onToggle={() => toggleCommentExpanded(comment.id)}
           />
         ) : (
@@ -39,7 +41,6 @@ export function CommentMarkers({ map }: Props) {
         ),
       )}
       <FollowBubbles map={map} />
-      <CommentEditorPanel />
     </>
   );
 }
@@ -48,11 +49,13 @@ function MapPinMarker({
   map,
   comment,
   expanded,
+  draggable,
   onToggle,
 }: {
   map: maplibregl.Map;
   comment: Comment;
   expanded: boolean;
+  draggable: boolean;
   onToggle: () => void;
 }) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -62,10 +65,9 @@ function MapPinMarker({
   const updateComment = useProjectStore((s) => s.updateComment);
 
   useEffect(() => {
-    // div (not button): <button> breaks MapLibre marker dragging in many browsers
     const el = document.createElement("div");
     el.className = "comment-icon comment-icon-map";
-    el.title = "Map comment (drag to move)";
+    el.title = "Map comment";
     el.textContent = "📍";
     el.setAttribute("role", "button");
     el.tabIndex = 0;
@@ -74,7 +76,7 @@ function MapPinMarker({
     const marker = new maplibregl.Marker({
       element: el,
       anchor: "bottom",
-      draggable: true,
+      draggable,
     })
       .setLngLat([comment.lng, comment.lat])
       .addTo(map);
@@ -117,6 +119,16 @@ function MapPinMarker({
   }, [map, comment.id]);
 
   useEffect(() => {
+    markerRef.current?.setDraggable(draggable);
+    if (elRef.current) {
+      elRef.current.title = draggable
+        ? "Map comment (drag to move)"
+        : "Map comment";
+      elRef.current.classList.toggle("comment-icon-nodrag", !draggable);
+    }
+  }, [draggable]);
+
+  useEffect(() => {
     if (draggingRef.current) return;
     markerRef.current?.setLngLat([comment.lng, comment.lat]);
   }, [comment.lng, comment.lat]);
@@ -128,7 +140,6 @@ function MapPinMarker({
   return null;
 }
 
-/** Small tick at range mid — not the follow bubble (that follows the runner). */
 function FollowRangeMarker({
   map,
   comment,
@@ -146,7 +157,7 @@ function FollowRangeMarker({
   useEffect(() => {
     const el = document.createElement("div");
     el.className = "comment-icon comment-icon-follow";
-    el.title = "Follow comment (range on track)";
+    el.title = "Follow comment — click to show range";
     el.textContent = "⏱";
     el.setAttribute("role", "button");
     el.tabIndex = 0;
@@ -254,175 +265,4 @@ function FollowBubble({
   }, [text]);
 
   return null;
-}
-
-function formatHms(ms: number | undefined): string {
-  if (ms == null) return "";
-  const totalSec = Math.max(0, Math.round(ms / 1000));
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = totalSec % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-/** Parse hh:mm:ss, mm:ss, or plain seconds. */
-function parseHms(v: string): number | undefined {
-  const t = v.trim();
-  if (t === "") return undefined;
-  const parts = t.split(":");
-  if (parts.length > 3) return undefined;
-  const nums = parts.map((p) => Number(p));
-  if (nums.some((n) => !Number.isFinite(n) || n < 0)) return undefined;
-  let sec = 0;
-  if (nums.length === 3) sec = nums[0] * 3600 + nums[1] * 60 + nums[2];
-  else if (nums.length === 2) sec = nums[0] * 60 + nums[1];
-  else sec = nums[0];
-  return sec * 1000;
-}
-
-function CommentEditorPanel() {
-  const comments = useProjectStore((s) => s.project.comments);
-  const updateComment = useProjectStore((s) => s.updateComment);
-  const removeComment = useProjectStore((s) => s.removeComment);
-  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
-  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
-
-  const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
-  const comment = comments.find((c) => c.id === activeId) ?? null;
-
-  const [draft, setDraft] = useState("");
-  const [startDraft, setStartDraft] = useState("");
-  const [endDraft, setEndDraft] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  useEffect(() => {
-    setConfirmDelete(false);
-    if (!comment) {
-      setDraft("");
-      setStartDraft("");
-      setEndDraft("");
-      return;
-    }
-    setDraft(comment.text);
-    setStartDraft(formatHms(comment.timeStartMs));
-    setEndDraft(formatHms(comment.timeEndMs));
-  }, [comment?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (!comment) return null;
-
-  const isFollow = comment.kind === "follow";
-
-  return (
-    <div
-      className="comment-editor-panel"
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="comment-editor-header">
-        <strong>{isFollow ? "Follow comment" : "Map comment"}</strong>
-        <button
-          type="button"
-          className="btn-done"
-          onClick={() => setCommentExpanded(comment.id, false)}
-        >
-          Done
-        </button>
-      </div>
-      <textarea
-        value={draft}
-        rows={4}
-        placeholder="Write a comment…"
-        autoFocus
-        onChange={(e) => {
-          const v = e.target.value;
-          setDraft(v);
-          updateComment(comment.id, { text: v });
-        }}
-      />
-      {isFollow ? (
-        <>
-          <p className="hint">
-            Bubble follows the runner while track time is in this range.
-          </p>
-          <div className="comment-range-row">
-            <label className="comment-time">
-              <span>Start</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="hh:mm:ss"
-                value={startDraft}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStartDraft(v);
-                  const ms = parseHms(v);
-                  if (ms != null) {
-                    updateComment(comment.id, { timeStartMs: ms });
-                  }
-                }}
-                onBlur={() => {
-                  const ms = parseHms(startDraft);
-                  if (ms != null) setStartDraft(formatHms(ms));
-                  else setStartDraft(formatHms(comment.timeStartMs));
-                }}
-              />
-            </label>
-            <label className="comment-time">
-              <span>End</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="hh:mm:ss"
-                value={endDraft}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setEndDraft(v);
-                  const ms = parseHms(v);
-                  if (ms != null) {
-                    updateComment(comment.id, { timeEndMs: ms });
-                  }
-                }}
-                onBlur={() => {
-                  const ms = parseHms(endDraft);
-                  if (ms != null) setEndDraft(formatHms(ms));
-                  else setEndDraft(formatHms(comment.timeEndMs));
-                }}
-              />
-            </label>
-          </div>
-        </>
-      ) : (
-        <p className="hint">Drag the pin on the map to reposition.</p>
-      )}
-
-      <div className="comment-danger-zone">
-        {!confirmDelete ? (
-          <button
-            type="button"
-            className="btn-delete"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Delete comment…
-          </button>
-        ) : (
-          <div className="comment-delete-confirm">
-            <span>Delete permanently?</span>
-            <button
-              type="button"
-              className="btn-delete-confirm"
-              onClick={() => {
-                removeComment(comment.id);
-                setCommentExpanded(comment.id, false);
-              }}
-            >
-              Confirm delete
-            </button>
-            <button type="button" onClick={() => setConfirmDelete(false)}>
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }

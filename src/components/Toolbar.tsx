@@ -1,4 +1,4 @@
-import { useRef } from "react";
+﻿import { useRef } from "react";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 import { parseGpx } from "../lib/gpx";
@@ -8,6 +8,7 @@ import {
   saveProjectZip,
 } from "../lib/projectZip";
 import { PLAN_COLORS, type AppMode } from "../lib/types";
+import { CommentPanel } from "./CommentPanel";
 
 /** Primary workspace modes (Georef lives under Event setup). */
 const MODES: { id: Exclude<AppMode, "georef">; label: string }[] = [
@@ -232,24 +233,22 @@ export function Toolbar() {
             Georeference map
           </button>
           {mode === "georef" && (
-            <>
-              <p className="hint">
-                Two-point align:
-                <br />
-                1) Overlay feature → matching basemap point (move)
-                <br />
-                2) Second overlay feature → basemap point (rotate/scale)
-              </p>
-              <button type="button" onClick={resetGeorefAlign}>
-                Reset align steps
-              </button>
-            </>
+            <p className="hint">
+              Two-point align:
+              <br />
+              1) Overlay feature → matching basemap point (move)
+              <br />
+              2) Second overlay feature → basemap point (rotate/scale)
+              <br />
+              After a full cycle, click overlay again to fine-tune, or leave and
+              re-enter Georeference to start over.
+            </p>
           )}
         </div>
       </details>
 
-      <section className="panel">
-        <h2>Layers</h2>
+      <details className="panel layers-panel" open>
+        <summary>Layers</summary>
         {project.track.points.length > 0 && (
           <label className="check">
             <input
@@ -293,7 +292,7 @@ export function Toolbar() {
           !project.mapImage && (
             <p className="hint">Open Event setup to load a map or GPX.</p>
           )}
-      </section>
+      </details>
 
       {mode === "comment" && (
         <section className="panel">
@@ -321,6 +320,8 @@ export function Toolbar() {
           </p>
         </section>
       )}
+
+      <CommentPanel />
 
       {mode === "plan" && (
         <section className="panel">
@@ -401,6 +402,21 @@ export function Toolbar() {
                 Editing <strong>{activePlan.name}</strong> —{" "}
                 {activePlan.coordinates.length} vertices. Click the map to add.
               </p>
+              <label className="field">
+                <span>Line width ({activePlan.lineWidth ?? 3})</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={activePlan.lineWidth ?? 3}
+                  onChange={(e) =>
+                    updateRoutePlan(activePlan.id, {
+                      lineWidth: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
               <div className="btn-row">
                 <button
                   type="button"

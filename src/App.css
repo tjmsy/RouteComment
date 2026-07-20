@@ -108,7 +108,8 @@ select {
   padding-top: 0.55rem;
 }
 
-.event-setup > summary {
+.event-setup > summary,
+.layers-panel > summary {
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 600;
@@ -119,17 +120,24 @@ select {
   margin: 0 0 0.75rem;
 }
 
-.event-setup > summary::-webkit-details-marker {
+.event-setup > summary::-webkit-details-marker,
+.layers-panel > summary::-webkit-details-marker {
   display: none;
 }
 
-.event-setup > summary::before {
+.event-setup > summary::before,
+.layers-panel > summary::before {
   content: "▸ ";
   color: var(--accent-dim);
 }
 
-.event-setup[open] > summary::before {
+.event-setup[open] > summary::before,
+.layers-panel[open] > summary::before {
   content: "▾ ";
+}
+
+.layers-panel {
+  padding-top: 0.55rem;
 }
 
 .event-setup .field {
@@ -318,6 +326,57 @@ select {
   border: 1px solid var(--panel-edge);
   border-radius: 10px;
   box-shadow: var(--shadow);
+}
+
+.comment-side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-side-panel textarea {
+  width: 100%;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  padding: 0.45rem;
+  resize: vertical;
+  font: inherit;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+}
+
+.comment-side-panel .comment-time {
+  color: var(--muted);
+}
+
+.comment-side-panel .comment-time input {
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  border: 1px solid var(--panel-edge);
+  border-radius: 4px;
+  padding: 0.3rem 0.4rem;
+  width: 100%;
+}
+
+.comment-readonly-text {
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--panel-edge);
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.comment-range-readonly {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.comment-icon-nodrag {
+  cursor: pointer;
 }
 
 .comment-editor-header {

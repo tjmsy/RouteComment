@@ -29,49 +29,17 @@ const RUNNER_SOURCE = "runner-pos";
 const RUNNER_LAYER = "runner-circle";
 
 const INITIAL_WIDTH_FRACTION = 0.55;
-const OSM_RASTER_SOURCE = "osm-raster";
-const OSM_RASTER_LAYER = "osm-raster-layer";
+const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const TERRAIN_SOURCE = "mapterhorn-dem";
 const TERRAIN_PITCH = 45;
 const DEFAULT_MAX_PITCH = 60;
 
-/** Dark canvas + single OSM raster (starts hidden — no world-map flash). */
-const BASE_STYLE: maplibregl.StyleSpecification = {
+/** No basemap tiles — avoids a world-map flash on startup. */
+const BLANK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
-  sources: {
-    [OSM_RASTER_SOURCE]: {
-      type: "raster",
-      tiles: [
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      ],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-      maxzoom: 19,
-    },
-  },
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": "#1a211c" },
-    },
-    {
-      id: OSM_RASTER_LAYER,
-      type: "raster",
-      source: OSM_RASTER_SOURCE,
-      layout: { visibility: "none" },
-    },
-  ],
+  sources: {},
+  layers: [],
 };
-
-function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
-  if (!map.getLayer(OSM_RASTER_LAYER)) return;
-  map.setLayoutProperty(
-    OSM_RASTER_LAYER,
-    "visibility",
-    visible ? "visible" : "none",
-  );
-}
 
 function ensureGeoJsonSource(
   map: maplibregl.Map,
@@ -170,6 +138,10 @@ export function MapView() {
 
   const appliedImageUrlRef = useRef<string | null>(null);
   const pendingFitImageRef = useRef(false);
+  /** Skip fitBounds when re-adding the image after setStyle. */
+  const skipNextImageFitRef = useRef(false);
+  /** Which basemap style is currently loaded. */
+  const basemapStyleRef = useRef<"blank" | "openfreemap">("blank");
   const headingBearingRef = useRef<number | null>(null);
   const headingRafRef = useRef<number | null>(null);
   /** While true, skip heading-up camera writes so wheel zoom can animate. */
@@ -183,7 +155,7 @@ export function MapView() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASE_STYLE,
+      style: BLANK_STYLE,
       center: [0, 20],
       zoom: 1.5,
       maxPitch: 0,
@@ -191,10 +163,8 @@ export function MapView() {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
-    map.once("load", () => {
-      setBasemapVisible(map, useUiStore.getState().mode === "georef");
-      setMapInstance(map);
-    });
+    basemapStyleRef.current = "blank";
+    map.once("load", () => setMapInstance(map));
 
     return () => {
       alignMarkersRef.current.forEach((m) => m.remove());
@@ -246,7 +216,12 @@ export function MapView() {
         if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
         if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
         appliedImageUrlRef.current = mapImageUrl;
-        pendingFitImageRef.current = true;
+        if (skipNextImageFitRef.current) {
+          skipNextImageFitRef.current = false;
+          pendingFitImageRef.current = false;
+        } else {
+          pendingFitImageRef.current = true;
+        }
       }
 
       let currentPose = useProjectStore.getState().project.georef.pose;
@@ -317,29 +292,32 @@ export function MapView() {
     };
   }, [mapImageUrl, mapImageSize, pose, mapOpacity, mode, mapInstance, setPose]);
 
-  // Basemap only during georef; elsewhere show omap (+ tracks/plans) alone
+  // Georef: OpenFreeMap via setStyle. Else: blank style (no basemap flash).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
 
-    const apply = () => {
-      if (!map.isStyleLoaded()) return;
-      setBasemapVisible(map, mode === "georef");
-      if (map.getLayer(MAP_IMAGE_LAYER)) {
-        map.setPaintProperty(
-          MAP_IMAGE_LAYER,
-          "raster-opacity",
-          mode === "georef" ? mapOpacity : 1,
-        );
-      }
-      ensureLayerOrder(map);
-    };
+    const wantBasemap = mode === "georef";
+    const target: "blank" | "openfreemap" = wantBasemap
+      ? "openfreemap"
+      : "blank";
 
-    apply();
-    map.on("style.load", apply);
-    return () => {
-      map.off("style.load", apply);
-    };
+    if (basemapStyleRef.current !== target) {
+      basemapStyleRef.current = target;
+      // setStyle wipes sources — force overlay rebuild without refitting.
+      appliedImageUrlRef.current = null;
+      skipNextImageFitRef.current = true;
+      map.setStyle(wantBasemap ? OPENFREEMAP_STYLE : BLANK_STYLE);
+      return;
+    }
+
+    if (map.isStyleLoaded() && map.getLayer(MAP_IMAGE_LAYER)) {
+      map.setPaintProperty(
+        MAP_IMAGE_LAYER,
+        "raster-opacity",
+        wantBasemap ? mapOpacity : 1,
+      );
+    }
   }, [mode, mapOpacity, mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
@@ -488,6 +466,10 @@ export function MapView() {
 
     if (map.isStyleLoaded()) apply();
     else map.once("load", apply);
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+    };
   }, [trackPoints, showTrack, mapInstance]);
 
   const fittedTrackRef = useRef("");
@@ -617,6 +599,10 @@ export function MapView() {
 
     if (map.isStyleLoaded()) apply();
     else map.once("load", apply);
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+    };
   }, [routePlans, mapInstance]);
 
   // Runner marker
@@ -662,6 +648,10 @@ export function MapView() {
 
     if (map.isStyleLoaded()) apply();
     else map.once("load", apply);
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+    };
   }, [animationTimeMs, trackPoints, mapInstance]);
 
   // Smooth heading-up camera (own RAF so rotation stays continuous)
@@ -812,7 +802,13 @@ export function MapView() {
   );
 
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
     syncTrackRangeHighlight();
+    map.on("style.load", syncTrackRangeHighlight);
+    return () => {
+      map.off("style.load", syncTrackRangeHighlight);
+    };
   }, [
     expandedCommentIds,
     comments,

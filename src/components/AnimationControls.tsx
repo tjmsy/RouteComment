@@ -14,9 +14,11 @@ export function AnimationControls() {
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const isPlaying = useUiStore((s) => s.isPlaying);
   const playbackSpeed = useUiStore((s) => s.playbackSpeed);
+  const headingUp = useUiStore((s) => s.headingUp);
   const setAnimationTimeMs = useUiStore((s) => s.setAnimationTimeMs);
   const setIsPlaying = useUiStore((s) => s.setIsPlaying);
   const setPlaybackSpeed = useUiStore((s) => s.setPlaybackSpeed);
+  const setHeadingUp = useUiStore((s) => s.setHeadingUp);
   const mode = useUiStore((s) => s.mode);
 
   const points = useProjectStore((s) => s.project.track.points);
@@ -56,7 +58,6 @@ export function AnimationControls() {
     };
   }, [isPlaying, duration, playbackSpeed, setAnimationTimeMs, setIsPlaying]);
 
-  // Hide while georef / plan / comment to reduce clutter; still available in view
   if (mode !== "view" || points.length === 0) return null;
 
   return (
@@ -96,6 +97,14 @@ export function AnimationControls() {
           <option value={60}>60×</option>
           <option value={120}>120×</option>
         </select>
+      </label>
+      <label className="heading-up check">
+        <input
+          type="checkbox"
+          checked={headingUp}
+          onChange={(e) => setHeadingUp(e.target.checked)}
+        />
+        Heading up
       </label>
     </div>
   );

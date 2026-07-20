@@ -10,8 +10,9 @@ import {
 } from "../lib/omapSimilarity";
 import { haversineDistance } from "../lib/geo";
 import {
-  interpolateTrackPosition,
-  nearestTrackTimeOffset,
+  interpolateTrackPose,
+  nearestTrackPoint,
+  trackSliceCoordinates,
 } from "../lib/gpx";
 import { CommentMarkers } from "./CommentMarkers";
 
@@ -21,25 +22,14 @@ const TRACK_SOURCE = "gps-track";
 const TRACK_LAYER = "gps-track-line";
 const TRACK_ENDS_SOURCE = "gps-track-ends";
 const TRACK_ENDS_LAYER = "gps-track-ends-circle";
+const TRACK_RANGE_SOURCE = "track-range";
+const TRACK_RANGE_LAYER = "track-range-line";
 const PLAN_SOURCE_PREFIX = "route-plan-";
 const RUNNER_SOURCE = "runner-pos";
 const RUNNER_LAYER = "runner-circle";
 
 const INITIAL_WIDTH_FRACTION = 0.55;
-
-const OSM_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-      maxzoom: 19,
-    },
-  },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
-};
+const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
 function ensureGeoJsonSource(
   map: maplibregl.Map,
@@ -54,7 +44,27 @@ function ensureGeoJsonSource(
   }
 }
 
-/** Bottom → top: omap image, plans, track, ends, runner (OSM stays at bottom). */
+function lerpBearing(from: number, to: number, alpha: number): number {
+  const diff = ((to - from + 540) % 360) - 180;
+  return from + diff * alpha;
+}
+
+function isNearTrack(
+  map: maplibregl.Map,
+  points: { lng: number; lat: number }[],
+  lng: number,
+  lat: number,
+  maxPx = 28,
+): ReturnType<typeof nearestTrackPoint> {
+  const hit = nearestTrackPoint(points, lng, lat);
+  if (!hit) return null;
+  const a = map.project([hit.lng, hit.lat]);
+  const b = map.project([lng, lat]);
+  if (Math.hypot(a.x - b.x, a.y - b.y) > maxPx) return null;
+  return hit;
+}
+
+/** Bottom → top: omap image, plans, track, range, ends, runner */
 function ensureLayerOrder(map: maplibregl.Map) {
   const style = map.getStyle();
   const planLayers =
@@ -66,6 +76,7 @@ function ensureLayerOrder(map: maplibregl.Map) {
     MAP_IMAGE_LAYER,
     ...planLayers,
     TRACK_LAYER,
+    TRACK_RANGE_LAYER,
     TRACK_ENDS_LAYER,
     RUNNER_LAYER,
   ];
@@ -75,7 +86,7 @@ function ensureLayerOrder(map: maplibregl.Map) {
       try {
         map.moveLayer(id);
       } catch {
-        // ignore if layer temporarily missing
+        // ignore
       }
     }
   }
@@ -89,34 +100,44 @@ export function MapView() {
 
   const pose = useProjectStore((s) => s.project.georef.pose);
   const mapImageUrl = useProjectStore((s) => s.mapImageUrl);
+  const mapImageSize = useProjectStore((s) => s.mapImageSize);
   const setPose = useProjectStore((s) => s.setPose);
   const trackPoints = useProjectStore((s) => s.project.track.points);
   const routePlans = useProjectStore((s) => s.project.routePlans);
   const appendPlanCoordinate = useProjectStore((s) => s.appendPlanCoordinate);
+  const addRoutePlan = useProjectStore((s) => s.addRoutePlan);
   const addComment = useProjectStore((s) => s.addComment);
 
   const mode = useUiStore((s) => s.mode);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const showTrack = useUiStore((s) => s.showTrack);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
-  const isPlaying = useUiStore((s) => s.isPlaying);
+  const headingUp = useUiStore((s) => s.headingUp);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
+  const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
   const setGeorefStep = useUiStore((s) => s.setGeorefStep);
   const setGeorefPin = useUiStore((s) => s.setGeorefPin);
   const setGeorefPendingFrom = useUiStore((s) => s.setGeorefPendingFrom);
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const setFollowRangeStartMs = useUiStore((s) => s.setFollowRangeStartMs);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
   const setStatusMessage = useUiStore((s) => s.setStatusMessage);
+
+  const appliedImageUrlRef = useRef<string | null>(null);
+  const pendingFitImageRef = useRef(false);
+  const headingBearingRef = useRef<number | null>(null);
+  const headingRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OSM_STYLE,
-      center: [139.7, 35.68],
-      zoom: 12,
+      style: OPENFREEMAP_STYLE,
+      center: [0, 20],
+      zoom: 1.5,
+      attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
@@ -151,71 +172,95 @@ export function MapView() {
     [],
   );
 
-  // Create initial pose when image loads without one
+  // Sync map image overlay — create pose + source in one pass (avoids first-load miss)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    if (!mapImageUrl || pose) return;
-    const size = useProjectStore.getState().mapImageSize;
-    if (!size) return;
-    setPose(createInitialPose(map, size.width, size.height));
-  }, [mapImageUrl, pose, setPose, mapInstance]);
+    if (!map || !mapInstance) return;
 
-  // Sync overlay image from pose
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
+    const syncImage = () => {
+      if (!map.isStyleLoaded()) return;
 
-    if (!mapImageUrl || !pose) {
-      if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
-      if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
-      return;
-    }
+      if (!mapImageUrl || !mapImageSize) {
+        if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
+        if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
+        appliedImageUrlRef.current = null;
+        pendingFitImageRef.current = false;
+        return;
+      }
 
-    const coordinates = cornersFromPose(pose);
-    const src = map.getSource(MAP_IMAGE_SOURCE) as
-      | maplibregl.ImageSource
-      | undefined;
+      const urlChanged = appliedImageUrlRef.current !== mapImageUrl;
+      if (urlChanged) {
+        if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
+        if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
+        appliedImageUrlRef.current = mapImageUrl;
+        pendingFitImageRef.current = true;
+      }
 
-    if (src) {
-      src.setCoordinates(coordinates);
-      if (map.getLayer(MAP_IMAGE_LAYER)) {
-        map.setPaintProperty(MAP_IMAGE_LAYER, "raster-opacity", mapOpacity);
+      let currentPose = useProjectStore.getState().project.georef.pose;
+      if (!currentPose) {
+        currentPose = createInitialPose(
+          map,
+          mapImageSize.width,
+          mapImageSize.height,
+        );
+        setPose(currentPose);
+      }
+
+      const coordinates = cornersFromPose(currentPose);
+      const src = map.getSource(MAP_IMAGE_SOURCE) as
+        | maplibregl.ImageSource
+        | undefined;
+      if (src) {
+        src.setCoordinates(coordinates);
+        if (map.getLayer(MAP_IMAGE_LAYER)) {
+          map.setPaintProperty(MAP_IMAGE_LAYER, "raster-opacity", mapOpacity);
+        }
+      } else {
+        map.addSource(MAP_IMAGE_SOURCE, {
+          type: "image",
+          url: mapImageUrl,
+          coordinates,
+        });
+        map.addLayer({
+          id: MAP_IMAGE_LAYER,
+          type: "raster",
+          source: MAP_IMAGE_SOURCE,
+          paint: {
+            "raster-opacity": mapOpacity,
+            "raster-fade-duration": 0,
+          },
+        });
       }
       ensureLayerOrder(map);
-      return;
-    }
 
-    map.addSource(MAP_IMAGE_SOURCE, {
-      type: "image",
-      url: mapImageUrl,
-      coordinates,
-    });
-    map.addLayer({
-      id: MAP_IMAGE_LAYER,
-      type: "raster",
-      source: MAP_IMAGE_SOURCE,
-      paint: {
-        "raster-opacity": mapOpacity,
-        "raster-fade-duration": 0,
-      },
-    });
-    ensureLayerOrder(map);
-  }, [mapImageUrl, pose, mapOpacity, mapInstance]);
+      if (pendingFitImageRef.current && currentPose) {
+        pendingFitImageRef.current = false;
+        const corners = cornersFromPose(currentPose);
+        const bounds = new maplibregl.LngLatBounds(corners[0], corners[0]);
+        corners.forEach((c) => bounds.extend(c));
+        map.fitBounds(bounds, { padding: 48, maxZoom: 17, duration: 500 });
+      }
+    };
 
-  // Recreate source when URL changes
-  const prevUrlRef = useRef<string | null>(null);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    if (prevUrlRef.current === mapImageUrl) return;
-    const hadUrl = prevUrlRef.current != null;
-    prevUrlRef.current = mapImageUrl;
-    if (hadUrl) {
-      if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
-      if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
-    }
-  }, [mapImageUrl]);
+    syncImage();
+    map.on("style.load", syncImage);
+    // Retry once after idle in case the style was mid-update on first try
+    const onIdle = () => {
+      if (
+        mapImageUrl &&
+        mapImageSize &&
+        appliedImageUrlRef.current === mapImageUrl &&
+        !map.getSource(MAP_IMAGE_SOURCE)
+      ) {
+        syncImage();
+      }
+    };
+    map.once("idle", onIdle);
+    return () => {
+      map.off("style.load", syncImage);
+      map.off("idle", onIdle);
+    };
+  }, [mapImageUrl, mapImageSize, pose, mapOpacity, mapInstance, setPose]);
 
   // Track
   useEffect(() => {
@@ -348,7 +393,7 @@ export function MapView() {
 
     const apply = () => {
       const existingIds = new Set<string>();
-      routePlans.forEach((plan, idx) => {
+      routePlans.forEach((plan) => {
         const sourceId = `${PLAN_SOURCE_PREFIX}${plan.id}`;
         const layerId = `${sourceId}-line`;
         const pointLayer = `${sourceId}-pts`;
@@ -385,19 +430,21 @@ export function MapView() {
         };
         ensureGeoJsonSource(map, sourceId, data);
 
-        const colors = ["#2563eb", "#7c3aed", "#0891b2", "#ca8a04"];
+        const color = plan.color || "#2563eb";
         if (!map.getLayer(layerId)) {
           map.addLayer({
             id: layerId,
             type: "line",
             source: sourceId,
             paint: {
-              "line-color": colors[idx % colors.length],
+              "line-color": color,
               "line-width": 3,
               "line-dasharray": [2, 1],
               "line-opacity": 0.85,
             },
           });
+        } else {
+          map.setPaintProperty(layerId, "line-color", color);
         }
         map.setLayoutProperty(
           layerId,
@@ -412,12 +459,14 @@ export function MapView() {
             source: sourceId,
             paint: {
               "circle-radius": 4,
-              "circle-color": "#2563eb",
+              "circle-color": color,
               "circle-stroke-width": 1,
               "circle-stroke-color": "#fff",
             },
             filter: ["==", "$type", "Point"],
           });
+        } else {
+          map.setPaintProperty(pointLayer, "circle-color", color);
         }
         map.setLayoutProperty(
           pointLayer,
@@ -449,14 +498,14 @@ export function MapView() {
     else map.once("load", apply);
   }, [routePlans, mapInstance]);
 
-  // Runner — always kept above the map image via ensureLayerOrder
+  // Runner marker
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const apply = () => {
-      const pos = interpolateTrackPosition(trackPoints, animationTimeMs);
-      const show = trackPoints.length > 0 && pos != null;
+      const runnerPose = interpolateTrackPose(trackPoints, animationTimeMs);
+      const show = trackPoints.length > 0 && runnerPose != null;
 
       const data: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
@@ -465,7 +514,10 @@ export function MapView() {
               {
                 type: "Feature",
                 properties: {},
-                geometry: { type: "Point", coordinates: [pos.lng, pos.lat] },
+                geometry: {
+                  type: "Point",
+                  coordinates: [runnerPose.lng, runnerPose.lat],
+                },
               },
             ]
           : [],
@@ -489,7 +541,189 @@ export function MapView() {
 
     if (map.isStyleLoaded()) apply();
     else map.once("load", apply);
-  }, [animationTimeMs, trackPoints, isPlaying, mapInstance]);
+  }, [animationTimeMs, trackPoints, mapInstance]);
+
+  // Smooth heading-up camera (own RAF so rotation stays continuous)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !headingUp || mode !== "view") {
+      if (headingRafRef.current != null) {
+        cancelAnimationFrame(headingRafRef.current);
+        headingRafRef.current = null;
+      }
+      return;
+    }
+
+    const tick = () => {
+      const pts = useProjectStore.getState().project.track.points;
+      const t = useUiStore.getState().animationTimeMs;
+      const playing = useUiStore.getState().isPlaying;
+      const runnerPose = interpolateTrackPose(pts, t);
+      if (runnerPose) {
+        const currentBearing =
+          headingBearingRef.current ?? map.getBearing();
+        // Higher alpha while scrubbing so the map snaps to the new heading faster
+        const alpha = playing ? 0.14 : 0.35;
+        const nextBearing = lerpBearing(
+          currentBearing,
+          runnerPose.bearing,
+          alpha,
+        );
+        headingBearingRef.current = nextBearing;
+        map.jumpTo({
+          center: [runnerPose.lng, runnerPose.lat],
+          bearing: nextBearing,
+        });
+      }
+      headingRafRef.current = requestAnimationFrame(tick);
+    };
+
+    headingRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (headingRafRef.current != null) {
+        cancelAnimationFrame(headingRafRef.current);
+        headingRafRef.current = null;
+      }
+    };
+  }, [headingUp, mode, mapInstance]);
+
+  // Reset north-up when turning heading-up off
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || headingUp) return;
+    headingBearingRef.current = null;
+    map.easeTo({ bearing: 0, duration: 400 });
+  }, [headingUp]);
+
+  // Preview highlight while picking a follow-comment range (2-click on track)
+  const followHoverMsRef = useRef<number | null>(null);
+  const skipFollowClickRef = useRef(false);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
+
+    const updateRangeLayer = (endMs: number | null) => {
+      if (!map.isStyleLoaded()) return;
+      const startMs = useUiStore.getState().followRangeStartMs;
+      const pts = useProjectStore.getState().project.track.points;
+      let coords: [number, number][] = [];
+      if (startMs != null && pts.length > 0) {
+        const end = endMs ?? startMs;
+        coords = trackSliceCoordinates(pts, startMs, end);
+      }
+      const data: GeoJSON.FeatureCollection = {
+        type: "FeatureCollection",
+        features:
+          coords.length >= 2
+            ? [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: { type: "LineString", coordinates: coords },
+                },
+              ]
+            : [],
+      };
+      ensureGeoJsonSource(map, TRACK_RANGE_SOURCE, data);
+      if (!map.getLayer(TRACK_RANGE_LAYER)) {
+        map.addLayer({
+          id: TRACK_RANGE_LAYER,
+          type: "line",
+          source: TRACK_RANGE_SOURCE,
+          paint: {
+            "line-color": "#f59e0b",
+            "line-width": 5,
+            "line-opacity": 0.85,
+          },
+        });
+      }
+      ensureLayerOrder(map);
+    };
+
+    const dragStartMsRef = { current: null as number | null };
+
+    const onMove = (e: maplibregl.MapMouseEvent) => {
+      const ui = useUiStore.getState();
+      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      const startMs = ui.followRangeStartMs ?? dragStartMsRef.current;
+      if (startMs == null) return;
+      const pts = useProjectStore.getState().project.track.points;
+      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
+      if (hit?.timeOffsetMs == null) return;
+      followHoverMsRef.current = hit.timeOffsetMs;
+      // Ensure store start is set while dragging
+      if (ui.followRangeStartMs == null && dragStartMsRef.current != null) {
+        setFollowRangeStartMs(dragStartMsRef.current);
+      }
+      updateRangeLayer(hit.timeOffsetMs);
+    };
+
+    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+      const ui = useUiStore.getState();
+      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      if (ui.followRangeStartMs != null) return;
+      const pts = useProjectStore.getState().project.track.points;
+      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat);
+      if (hit?.timeOffsetMs == null) return;
+      dragStartMsRef.current = hit.timeOffsetMs;
+      followHoverMsRef.current = hit.timeOffsetMs;
+      map.dragPan.disable();
+    };
+
+    const onMouseUp = (e: maplibregl.MapMouseEvent) => {
+      map.dragPan.enable();
+      const dragStart = dragStartMsRef.current;
+      dragStartMsRef.current = null;
+      if (dragStart == null) return;
+
+      const ui = useUiStore.getState();
+      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      const pts = useProjectStore.getState().project.track.points;
+      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
+      if (hit?.timeOffsetMs == null) return;
+      if (Math.abs(hit.timeOffsetMs - dragStart) < 300) {
+        // Treat as click: let click handler set start
+        return;
+      }
+
+      const timeStartMs = Math.min(dragStart, hit.timeOffsetMs);
+      const timeEndMs = Math.max(dragStart, hit.timeOffsetMs);
+      const mid = interpolateTrackPose(pts, (timeStartMs + timeEndMs) / 2);
+      const id = addComment({
+        kind: "follow",
+        lng: mid?.lng ?? hit.lng,
+        lat: mid?.lat ?? hit.lat,
+        text: "",
+        timeStartMs,
+        timeEndMs,
+      });
+      skipFollowClickRef.current = true;
+      setFollowRangeStartMs(null);
+      followHoverMsRef.current = null;
+      updateRangeLayer(null);
+      setCommentExpanded(id, true);
+      setStatusMessage("Follow comment added. Edit text in the panel.");
+    };
+
+    updateRangeLayer(followHoverMsRef.current);
+    map.on("mousemove", onMove);
+    map.on("mousedown", onMouseDown);
+    map.on("mouseup", onMouseUp);
+    return () => {
+      map.dragPan.enable();
+      map.off("mousemove", onMove);
+      map.off("mousedown", onMouseDown);
+      map.off("mouseup", onMouseUp);
+    };
+  }, [
+    followRangeStartMs,
+    trackPoints,
+    mapInstance,
+    addComment,
+    setFollowRangeStartMs,
+    setCommentExpanded,
+    setStatusMessage,
+  ]);
 
   useEffect(() => {
     if (!activeRoutePlanId && routePlans[0]) {
@@ -583,29 +817,77 @@ export function MapView() {
       }
 
       if (currentMode === "plan") {
-        const planId =
+        let planId =
           useUiStore.getState().activeRoutePlanId ??
           useProjectStore.getState().project.routePlans[0]?.id;
-        if (planId) {
-          appendPlanCoordinate(planId, [lngLat.lng, lngLat.lat]);
+        if (!planId) {
+          planId = addRoutePlan();
+          setActiveRoutePlanId(planId);
         }
+        appendPlanCoordinate(planId, [lngLat.lng, lngLat.lat]);
         return;
       }
 
       if (currentMode === "comment") {
+        const tool = useUiStore.getState().commentTool;
         const pts = useProjectStore.getState().project.track.points;
-        const timeOffsetMs = nearestTrackTimeOffset(
+
+        if (tool === "map") {
+          const id = addComment({
+            kind: "map",
+            lng: lngLat.lng,
+            lat: lngLat.lat,
+            text: "",
+          });
+          setCommentExpanded(id, true);
+          return;
+        }
+
+        // follow: pick start then end on the track (2-click; drag handled above)
+        if (skipFollowClickRef.current) {
+          skipFollowClickRef.current = false;
+          return;
+        }
+        if (pts.length === 0) {
+          setStatusMessage("Load a GPS track before adding a follow comment.");
+          return;
+        }
+        const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
+        if (!hit || hit.timeOffsetMs == null) {
+          setStatusMessage("Click near the GPS track to set the range.");
+          return;
+        }
+
+        const pendingStart = useUiStore.getState().followRangeStartMs;
+        if (pendingStart == null) {
+          setFollowRangeStartMs(hit.timeOffsetMs);
+          setStatusMessage(
+            "Range start set. Click the track again to set the end.",
+          );
+          return;
+        }
+
+        const timeStartMs = Math.min(pendingStart, hit.timeOffsetMs);
+        const timeEndMs = Math.max(pendingStart, hit.timeOffsetMs);
+        if (timeEndMs - timeStartMs < 300) {
+          setStatusMessage("End is too close to start — pick farther along the track.");
+          return;
+        }
+        const mid = interpolateTrackPose(
           pts,
-          lngLat.lng,
-          lngLat.lat,
+          (timeStartMs + timeEndMs) / 2,
         );
         const id = addComment({
-          lng: lngLat.lng,
-          lat: lngLat.lat,
+          kind: "follow",
+          lng: mid?.lng ?? hit.lng,
+          lat: mid?.lat ?? hit.lat,
           text: "",
-          timeOffsetMs,
+          timeStartMs,
+          timeEndMs,
         });
+        setFollowRangeStartMs(null);
         setCommentExpanded(id, true);
+        setStatusMessage("Follow comment added. Edit text in the panel.");
       }
     };
 
@@ -616,6 +898,7 @@ export function MapView() {
   }, [
     mapInstance,
     appendPlanCoordinate,
+    addRoutePlan,
     addComment,
     setPose,
     setGeorefStep,
@@ -625,6 +908,8 @@ export function MapView() {
     clearAlignMarkers,
     addAlignMarker,
     setCommentExpanded,
+    setFollowRangeStartMs,
+    setActiveRoutePlanId,
     setStatusMessage,
   ]);
 
@@ -646,25 +931,54 @@ export function MapView() {
   );
 }
 
-/** Build an initial pose centered on the current map viewport. */
+/** Build an initial pose: prefer track center; cap size so world zoom still works. */
 export function createInitialPose(
   map: maplibregl.Map,
   imageWidth: number,
   imageHeight: number,
 ) {
-  const center = map.getCenter();
-  const bounds = map.getBounds();
-  const viewportWidthM = haversineDistance(
-    center.lat,
-    bounds.getWest(),
-    center.lat,
-    bounds.getEast(),
+  const track = useProjectStore.getState().project.track.points;
+  const mapCenter = map.getCenter();
+  let lng = mapCenter.lng;
+  let lat = mapCenter.lat;
+  let viewportWidthM: number;
+
+  if (track.length >= 1) {
+    let minLng = track[0].lng;
+    let maxLng = track[0].lng;
+    let minLat = track[0].lat;
+    let maxLat = track[0].lat;
+    for (const p of track) {
+      minLng = Math.min(minLng, p.lng);
+      maxLng = Math.max(maxLng, p.lng);
+      minLat = Math.min(minLat, p.lat);
+      maxLat = Math.max(maxLat, p.lat);
+    }
+    lng = (minLng + maxLng) / 2;
+    lat = (minLat + maxLat) / 2;
+    viewportWidthM = Math.max(
+      80,
+      haversineDistance(lat, minLng, lat, maxLng) * 1.4,
+    );
+  } else {
+    const bounds = map.getBounds();
+    viewportWidthM = haversineDistance(
+      lat,
+      bounds.getWest(),
+      lat,
+      bounds.getEast(),
+    );
+  }
+
+  // Cap so a world-scale basemap view doesn't create a continent-sized overlay
+  const widthM = Math.min(
+    Math.max(80, viewportWidthM * INITIAL_WIDTH_FRACTION),
+    4000,
   );
-  const widthM = Math.max(50, viewportWidthM * INITIAL_WIDTH_FRACTION);
   const heightM = widthM * (imageHeight / imageWidth);
   return {
-    lng: center.lng,
-    lat: center.lat,
+    lng,
+    lat,
     bearing: 0,
     widthM,
     heightM,

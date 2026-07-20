@@ -107,6 +107,7 @@ export function MapView() {
   const appendPlanCoordinate = useProjectStore((s) => s.appendPlanCoordinate);
   const addRoutePlan = useProjectStore((s) => s.addRoutePlan);
   const addComment = useProjectStore((s) => s.addComment);
+  const updateComment = useProjectStore((s) => s.updateComment);
 
   const mode = useUiStore((s) => s.mode);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
@@ -714,6 +715,52 @@ export function MapView() {
 
     const dragStartMsRef = { current: null as number | null };
 
+    const selectedFollowId = (): string | null => {
+      const ui = useUiStore.getState();
+      const activeId =
+        ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
+      if (!activeId) return null;
+      const c = useProjectStore
+        .getState()
+        .project.comments.find((x) => x.id === activeId);
+      return c?.kind === "follow" ? activeId : null;
+    };
+
+    const applyFollowRange = (
+      timeStartMs: number,
+      timeEndMs: number,
+      pts: ReturnType<
+        typeof useProjectStore.getState
+      >["project"]["track"]["points"],
+      hitLng: number,
+      hitLat: number,
+    ) => {
+      const mid = interpolateTrackPose(pts, (timeStartMs + timeEndMs) / 2);
+      const patch = {
+        lng: mid?.lng ?? hitLng,
+        lat: mid?.lat ?? hitLat,
+        timeStartMs,
+        timeEndMs,
+      };
+      const editingId = selectedFollowId();
+      if (editingId) {
+        updateComment(editingId, patch);
+        setFollowRangeStartMs(null);
+        followHoverMsRef.current = null;
+        setStatusMessage("Follow range updated.");
+        return;
+      }
+      const id = addComment({
+        kind: "follow",
+        text: "",
+        ...patch,
+      });
+      setFollowRangeStartMs(null);
+      followHoverMsRef.current = null;
+      setCommentExpanded(id, true);
+      setStatusMessage("Follow comment added. Edit text in the panel.");
+    };
+
     const onMove = (e: maplibregl.MapMouseEvent) => {
       const ui = useUiStore.getState();
       if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
@@ -758,20 +805,8 @@ export function MapView() {
 
       const timeStartMs = Math.min(dragStart, hit.timeOffsetMs);
       const timeEndMs = Math.max(dragStart, hit.timeOffsetMs);
-      const mid = interpolateTrackPose(pts, (timeStartMs + timeEndMs) / 2);
-      const id = addComment({
-        kind: "follow",
-        lng: mid?.lng ?? hit.lng,
-        lat: mid?.lat ?? hit.lat,
-        text: "",
-        timeStartMs,
-        timeEndMs,
-      });
       skipFollowClickRef.current = true;
-      setFollowRangeStartMs(null);
-      followHoverMsRef.current = null;
-      setCommentExpanded(id, true);
-      setStatusMessage("Follow comment added. Edit text in the panel.");
+      applyFollowRange(timeStartMs, timeEndMs, pts, hit.lng, hit.lat);
     };
 
     map.on("mousemove", onMove);
@@ -786,6 +821,7 @@ export function MapView() {
   }, [
     mapInstance,
     addComment,
+    updateComment,
     setFollowRangeStartMs,
     setCommentExpanded,
     setStatusMessage,
@@ -944,13 +980,29 @@ export function MapView() {
           pts,
           (timeStartMs + timeEndMs) / 2,
         );
-        const id = addComment({
-          kind: "follow",
+        const patch = {
           lng: mid?.lng ?? hit.lng,
           lat: mid?.lat ?? hit.lat,
-          text: "",
           timeStartMs,
           timeEndMs,
+        };
+        const activeId =
+          useUiStore.getState().expandedCommentIds[
+            useUiStore.getState().expandedCommentIds.length - 1
+          ] ?? null;
+        const selected = useProjectStore
+          .getState()
+          .project.comments.find((c) => c.id === activeId);
+        if (selected?.kind === "follow") {
+          updateComment(selected.id, patch);
+          setFollowRangeStartMs(null);
+          setStatusMessage("Follow range updated.");
+          return;
+        }
+        const id = addComment({
+          kind: "follow",
+          text: "",
+          ...patch,
         });
         setFollowRangeStartMs(null);
         setCommentExpanded(id, true);
@@ -967,6 +1019,7 @@ export function MapView() {
     appendPlanCoordinate,
     addRoutePlan,
     addComment,
+    updateComment,
     setPose,
     setGeorefStep,
     setGeorefPin,

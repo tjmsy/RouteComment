@@ -7,7 +7,7 @@ import {
   loadProjectZip,
   saveProjectZip,
 } from "../lib/projectZip";
-import type { AppMode } from "../lib/types";
+import { PLAN_COLORS, type AppMode } from "../lib/types";
 
 const MODES: { id: AppMode; label: string }[] = [
   { id: "view", label: "View" },
@@ -39,6 +39,9 @@ export function Toolbar() {
   const setMapImage = useProjectStore((s) => s.setMapImage);
   const setTrack = useProjectStore((s) => s.setTrack);
   const loadProject = useProjectStore((s) => s.loadProject);
+  const addRoutePlan = useProjectStore((s) => s.addRoutePlan);
+  const removeRoutePlan = useProjectStore((s) => s.removeRoutePlan);
+  const updateRoutePlan = useProjectStore((s) => s.updateRoutePlan);
   const undoPlanCoordinate = useProjectStore((s) => s.undoPlanCoordinate);
   const clearPlanCoordinates = useProjectStore((s) => s.clearPlanCoordinates);
   const togglePlanVisible = useProjectStore((s) => s.togglePlanVisible);
@@ -55,6 +58,8 @@ export function Toolbar() {
   const setStatusMessage = useUiStore((s) => s.setStatusMessage);
   const setAnimationTimeMs = useUiStore((s) => s.setAnimationTimeMs);
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
+  const commentTool = useUiStore((s) => s.commentTool);
+  const setCommentTool = useUiStore((s) => s.setCommentTool);
 
   const activePlan =
     project.routePlans.find((p) => p.id === activeRoutePlanId) ??
@@ -211,35 +216,49 @@ export function Toolbar() {
 
       <section className="panel">
         <h2>Layers</h2>
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={showTrack}
-            onChange={(e) => setShowTrack(e.target.checked)}
-          />
-          GPS track
-        </label>
+        {project.track.points.length > 0 && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={showTrack}
+              onChange={(e) => setShowTrack(e.target.checked)}
+            />
+            GPS track
+          </label>
+        )}
         {project.routePlans.map((plan) => (
-          <label key={plan.id} className="check">
+          <label key={plan.id} className="check plan-layer-row">
             <input
               type="checkbox"
               checked={plan.visible}
               onChange={() => togglePlanVisible(plan.id)}
             />
+            <span
+              className="plan-swatch"
+              style={{ background: plan.color }}
+              aria-hidden
+            />
             {plan.name}
           </label>
         ))}
-        <label className="field">
-          <span>Map opacity</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={mapOpacity}
-            onChange={(e) => setMapOpacity(Number(e.target.value))}
-          />
-        </label>
+        {project.mapImage && (
+          <label className="field">
+            <span>Map opacity</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={mapOpacity}
+              onChange={(e) => setMapOpacity(Number(e.target.value))}
+            />
+          </label>
+        )}
+        {project.track.points.length === 0 &&
+          project.routePlans.length === 0 &&
+          !project.mapImage && (
+            <p className="hint">Load a GPX, map image, or add a plan.</p>
+          )}
       </section>
 
       {mode === "georef" && (
@@ -261,26 +280,124 @@ export function Toolbar() {
         </section>
       )}
 
-      {mode === "plan" && activePlan && (
+      {mode === "comment" && (
         <section className="panel">
-          <h2>Route plan</h2>
-          <p className="hint">
-            Editing {activePlan.name} — {activePlan.coordinates.length} vertices
-          </p>
-          <div className="btn-row">
+          <h2>Comment tool</h2>
+          <div className="mode-row comment-tool-row">
             <button
               type="button"
-              onClick={() => undoPlanCoordinate(activePlan.id)}
+              className={commentTool === "map" ? "active" : ""}
+              onClick={() => setCommentTool("map")}
             >
-              Undo
+              Map pin
             </button>
             <button
               type="button"
-              onClick={() => clearPlanCoordinates(activePlan.id)}
+              className={commentTool === "follow" ? "active" : ""}
+              onClick={() => setCommentTool("follow")}
             >
-              Clear
+              Follow
             </button>
           </div>
+          <p className="hint">
+            {commentTool === "map"
+              ? "Click the map to place a pin. Drag the pin to move it."
+              : "Click or drag along the GPS track to set a time range. The bubble follows the runner in that range."}
+          </p>
+        </section>
+      )}
+
+      {mode === "plan" && (
+        <section className="panel">
+          <h2>Route plans</h2>
+          {project.routePlans.length === 0 && (
+            <p className="hint">No plans yet. Add one to start drawing.</p>
+          )}
+          <ul className="plan-list">
+            {project.routePlans.map((plan) => (
+              <li key={plan.id} className="plan-list-item">
+                <button
+                  type="button"
+                  className={
+                    plan.id === activePlan?.id ? "plan-select active" : "plan-select"
+                  }
+                  onClick={() => setActiveRoutePlanId(plan.id)}
+                >
+                  <span
+                    className="plan-swatch"
+                    style={{ background: plan.color }}
+                  />
+                  <input
+                    type="text"
+                    value={plan.name}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      updateRoutePlan(plan.id, { name: e.target.value })
+                    }
+                  />
+                </button>
+                <input
+                  type="color"
+                  value={plan.color}
+                  title="Color"
+                  list="plan-color-presets"
+                  onChange={(e) =>
+                    updateRoutePlan(plan.id, { color: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  className="plan-remove"
+                  title="Remove plan"
+                  onClick={() => {
+                    removeRoutePlan(plan.id);
+                    if (activeRoutePlanId === plan.id) {
+                      const next = project.routePlans.find((p) => p.id !== plan.id);
+                      setActiveRoutePlanId(next?.id ?? null);
+                    }
+                  }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+          <datalist id="plan-color-presets">
+            {PLAN_COLORS.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+          <button
+            type="button"
+            onClick={() => {
+              const id = addRoutePlan();
+              setActiveRoutePlanId(id);
+            }}
+          >
+            Add plan
+          </button>
+          {activePlan && (
+            <>
+              <p className="hint">
+                Editing <strong>{activePlan.name}</strong> —{" "}
+                {activePlan.coordinates.length} vertices. Click the map to add.
+              </p>
+              <div className="btn-row">
+                <button
+                  type="button"
+                  onClick={() => undoPlanCoordinate(activePlan.id)}
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => clearPlanCoordinates(activePlan.id)}
+                >
+                  Clear
+                </button>
+              </div>
+            </>
+          )}
         </section>
       )}
 

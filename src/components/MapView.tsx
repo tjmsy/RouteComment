@@ -431,6 +431,7 @@ export function MapView() {
         ensureGeoJsonSource(map, sourceId, data);
 
         const color = plan.color || "#2563eb";
+        const lineWidth = plan.lineWidth ?? 3;
         if (!map.getLayer(layerId)) {
           map.addLayer({
             id: layerId,
@@ -438,13 +439,14 @@ export function MapView() {
             source: sourceId,
             paint: {
               "line-color": color,
-              "line-width": 3,
+              "line-width": lineWidth,
               "line-dasharray": [2, 1],
               "line-opacity": 0.85,
             },
           });
         } else {
           map.setPaintProperty(layerId, "line-color", color);
+          map.setPaintProperty(layerId, "line-width", lineWidth);
         }
         map.setLayoutProperty(
           layerId,
@@ -595,22 +597,44 @@ export function MapView() {
     map.easeTo({ bearing: 0, duration: 400 });
   }, [headingUp]);
 
-  // Preview highlight while picking a follow-comment range (2-click on track)
+  // Preview highlight while picking a follow-comment range, or selected follow range
   const followHoverMsRef = useRef<number | null>(null);
   const skipFollowClickRef = useRef(false);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapInstance) return;
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const comments = useProjectStore((s) => s.project.comments);
 
-    const updateRangeLayer = (endMs: number | null) => {
-      if (!map.isStyleLoaded()) return;
-      const startMs = useUiStore.getState().followRangeStartMs;
+  const syncTrackRangeHighlight = useCallback(
+    (endMs: number | null = null) => {
+      const map = mapRef.current;
+      if (!map || !map.isStyleLoaded()) return;
+
+      const ui = useUiStore.getState();
       const pts = useProjectStore.getState().project.track.points;
       let coords: [number, number][] = [];
-      if (startMs != null && pts.length > 0) {
-        const end = endMs ?? startMs;
-        coords = trackSliceCoordinates(pts, startMs, end);
+
+      if (ui.followRangeStartMs != null && pts.length > 0) {
+        const end = endMs ?? followHoverMsRef.current ?? ui.followRangeStartMs;
+        coords = trackSliceCoordinates(pts, ui.followRangeStartMs, end);
+      } else {
+        const activeId =
+          ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
+        const selected = useProjectStore
+          .getState()
+          .project.comments.find((c) => c.id === activeId);
+        if (
+          selected?.kind === "follow" &&
+          selected.timeStartMs != null &&
+          selected.timeEndMs != null &&
+          pts.length > 0
+        ) {
+          coords = trackSliceCoordinates(
+            pts,
+            selected.timeStartMs,
+            selected.timeEndMs,
+          );
+        }
       }
+
       const data: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features:
@@ -638,7 +662,24 @@ export function MapView() {
         });
       }
       ensureLayerOrder(map);
-    };
+    },
+    [],
+  );
+
+  useEffect(() => {
+    syncTrackRangeHighlight();
+  }, [
+    expandedCommentIds,
+    comments,
+    followRangeStartMs,
+    trackPoints,
+    mapInstance,
+    syncTrackRangeHighlight,
+  ]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
 
     const dragStartMsRef = { current: null as number | null };
 
@@ -651,11 +692,10 @@ export function MapView() {
       const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
       if (hit?.timeOffsetMs == null) return;
       followHoverMsRef.current = hit.timeOffsetMs;
-      // Ensure store start is set while dragging
       if (ui.followRangeStartMs == null && dragStartMsRef.current != null) {
         setFollowRangeStartMs(dragStartMsRef.current);
       }
-      updateRangeLayer(hit.timeOffsetMs);
+      syncTrackRangeHighlight(hit.timeOffsetMs);
     };
 
     const onMouseDown = (e: maplibregl.MapMouseEvent) => {
@@ -682,7 +722,6 @@ export function MapView() {
       const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
       if (hit?.timeOffsetMs == null) return;
       if (Math.abs(hit.timeOffsetMs - dragStart) < 300) {
-        // Treat as click: let click handler set start
         return;
       }
 
@@ -700,12 +739,10 @@ export function MapView() {
       skipFollowClickRef.current = true;
       setFollowRangeStartMs(null);
       followHoverMsRef.current = null;
-      updateRangeLayer(null);
       setCommentExpanded(id, true);
       setStatusMessage("Follow comment added. Edit text in the panel.");
     };
 
-    updateRangeLayer(followHoverMsRef.current);
     map.on("mousemove", onMove);
     map.on("mousedown", onMouseDown);
     map.on("mouseup", onMouseUp);
@@ -716,13 +753,12 @@ export function MapView() {
       map.off("mouseup", onMouseUp);
     };
   }, [
-    followRangeStartMs,
-    trackPoints,
     mapInstance,
     addComment,
     setFollowRangeStartMs,
     setCommentExpanded,
     setStatusMessage,
+    syncTrackRangeHighlight,
   ]);
 
   useEffect(() => {

@@ -56,20 +56,20 @@ function MapPinMarker({
   onToggle: () => void;
 }) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
-  const elRef = useRef<HTMLButtonElement | null>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const updateComment = useProjectStore((s) => s.updateComment);
 
   useEffect(() => {
-    const el = document.createElement("button");
-    el.type = "button";
+    // div (not button): <button> breaks MapLibre marker dragging in many browsers
+    const el = document.createElement("div");
     el.className = "comment-icon comment-icon-map";
     el.title = "Map comment (drag to move)";
     el.textContent = "📍";
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
     elRef.current = el;
-
-    const stop = (e: Event) => e.stopPropagation();
-    el.addEventListener("mousedown", stop);
-    el.addEventListener("pointerdown", stop);
 
     const marker = new maplibregl.Marker({
       element: el,
@@ -79,13 +79,36 @@ function MapPinMarker({
       .setLngLat([comment.lng, comment.lat])
       .addTo(map);
 
+    marker.on("dragstart", () => {
+      draggingRef.current = true;
+      suppressClickRef.current = false;
+      map.dragPan.disable();
+    });
+    marker.on("drag", () => {
+      suppressClickRef.current = true;
+    });
     marker.on("dragend", () => {
+      map.dragPan.enable();
+      draggingRef.current = false;
       const ll = marker.getLngLat();
       updateComment(comment.id, { lng: ll.lng, lat: ll.lat });
     });
 
+    const onClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      onToggle();
+    };
+    el.addEventListener("click", onClick);
+
     markerRef.current = marker;
     return () => {
+      el.removeEventListener("click", onClick);
+      map.dragPan.enable();
       marker.remove();
       markerRef.current = null;
       elRef.current = null;
@@ -94,22 +117,13 @@ function MapPinMarker({
   }, [map, comment.id]);
 
   useEffect(() => {
+    if (draggingRef.current) return;
     markerRef.current?.setLngLat([comment.lng, comment.lat]);
   }, [comment.lng, comment.lat]);
 
   useEffect(() => {
     elRef.current?.classList.toggle("expanded", expanded);
   }, [expanded]);
-
-  useEffect(() => {
-    const el = elRef.current;
-    if (!el) return;
-    el.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onToggle();
-    };
-  }, [onToggle]);
 
   return null;
 }
@@ -127,25 +141,31 @@ function FollowRangeMarker({
   onToggle: () => void;
 }) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
-  const elRef = useRef<HTMLButtonElement | null>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const el = document.createElement("button");
-    el.type = "button";
+    const el = document.createElement("div");
     el.className = "comment-icon comment-icon-follow";
     el.title = "Follow comment (range on track)";
     el.textContent = "⏱";
+    el.setAttribute("role", "button");
+    el.tabIndex = 0;
     elRef.current = el;
-
-    const stop = (e: Event) => e.stopPropagation();
-    el.addEventListener("mousedown", stop);
-    el.addEventListener("pointerdown", stop);
 
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
       .setLngLat([comment.lng, comment.lat])
       .addTo(map);
     markerRef.current = marker;
+
+    const onClick = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggle();
+    };
+    el.addEventListener("click", onClick);
+
     return () => {
+      el.removeEventListener("click", onClick);
       marker.remove();
       markerRef.current = null;
       elRef.current = null;
@@ -160,16 +180,6 @@ function FollowRangeMarker({
   useEffect(() => {
     elRef.current?.classList.toggle("expanded", expanded);
   }, [expanded]);
-
-  useEffect(() => {
-    const el = elRef.current;
-    if (!el) return;
-    el.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onToggle();
-    };
-  }, [onToggle]);
 
   return null;
 }

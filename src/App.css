@@ -576,11 +576,20 @@ select {
   border-radius: 50%;
   background: #243028;
   color: var(--accent);
-  cursor: pointer;
+  cursor: grab;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   font-size: 14px;
   line-height: 1;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+
+.comment-icon:active {
+  cursor: grabbing;
 }
 
 .comment-icon.expanded {
@@ -594,11 +603,13 @@ select {
 
 .comment-icon-map {
   font-size: 16px;
+  cursor: grab;
 }
 
 .comment-icon-follow {
   font-size: 14px;
   background: #0f766e;
+  cursor: pointer;
 }
 
 .comment-icon-follow.expanded {

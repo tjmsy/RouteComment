@@ -347,6 +347,9 @@ select {
 
 .comment-side-panel .comment-time {
   color: var(--muted);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.75rem;
 }
 
 .comment-side-panel .comment-time input {
@@ -356,6 +359,7 @@ select {
   border-radius: 4px;
   padding: 0.3rem 0.4rem;
   width: 100%;
+  font-variant-numeric: tabular-nums;
 }
 
 .comment-readonly-text {

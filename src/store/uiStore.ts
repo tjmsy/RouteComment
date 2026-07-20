@@ -96,20 +96,14 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   toggleCommentExpanded: (id) => {
     const cur = get().expandedCommentIds;
+    // Single selection: toggle off if already selected, otherwise switch to this id
     set({
-      expandedCommentIds: cur.includes(id)
-        ? cur.filter((x) => x !== id)
-        : [...cur, id],
+      expandedCommentIds: cur.length === 1 && cur[0] === id ? [] : [id],
     });
   },
 
   setCommentExpanded: (id, expanded) => {
-    const cur = get().expandedCommentIds;
-    if (expanded && !cur.includes(id)) {
-      set({ expandedCommentIds: [...cur, id] });
-    } else if (!expanded && cur.includes(id)) {
-      set({ expandedCommentIds: cur.filter((x) => x !== id) });
-    }
+    set({ expandedCommentIds: expanded ? [id] : [] });
   },
 
   clearExpandedComments: () => set({ expandedCommentIds: [] }),

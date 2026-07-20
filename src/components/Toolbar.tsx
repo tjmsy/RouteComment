@@ -233,16 +233,31 @@ export function Toolbar() {
             Georeference map
           </button>
           {mode === "georef" && (
-            <p className="hint">
-              Two-point align:
-              <br />
-              1) Overlay feature → matching basemap point (move)
-              <br />
-              2) Second overlay feature → basemap point (rotate/scale)
-              <br />
-              After a full cycle, click overlay again to fine-tune, or leave and
-              re-enter Georeference to start over.
-            </p>
+            <>
+              <p className="hint">
+                Two-point align:
+                <br />
+                1) Overlay feature → matching basemap point (move)
+                <br />
+                2) Second overlay feature → basemap point (rotate/scale)
+                <br />
+                After a full cycle, click overlay again to fine-tune, or leave and
+                re-enter Georeference to start over.
+              </p>
+              {project.mapImage && (
+                <label className="field">
+                  <span>Map opacity</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={mapOpacity}
+                    onChange={(e) => setMapOpacity(Number(e.target.value))}
+                  />
+                </label>
+              )}
+            </>
           )}
         </div>
       </details>
@@ -274,19 +289,6 @@ export function Toolbar() {
             {plan.name}
           </label>
         ))}
-        {project.mapImage && (
-          <label className="field">
-            <span>Map opacity</span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={mapOpacity}
-              onChange={(e) => setMapOpacity(Number(e.target.value))}
-            />
-          </label>
-        )}
         {project.track.points.length === 0 &&
           project.routePlans.length === 0 &&
           !project.mapImage && (

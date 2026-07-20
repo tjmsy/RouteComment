@@ -30,6 +30,36 @@ const RUNNER_LAYER = "runner-circle";
 
 const INITIAL_WIDTH_FRACTION = 0.55;
 const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const TERRAIN_SOURCE = "mapterhorn-dem";
+const TERRAIN_PITCH = 45;
+const DEFAULT_MAX_PITCH = 60;
+
+function isAppOwnedLayer(id: string): boolean {
+  return (
+    id === MAP_IMAGE_LAYER ||
+    id === TRACK_LAYER ||
+    id === TRACK_ENDS_LAYER ||
+    id === TRACK_RANGE_LAYER ||
+    id === RUNNER_LAYER ||
+    id.startsWith(PLAN_SOURCE_PREFIX)
+  );
+}
+
+/** Show/hide OpenFreeMap (and other style) layers; keep app overlays + background. */
+function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
+  const style = map.getStyle();
+  if (!style?.layers) return;
+  const vis = visible ? "visible" : "none";
+  for (const layer of style.layers) {
+    if (isAppOwnedLayer(layer.id)) continue;
+    if (layer.type === "background") continue;
+    try {
+      map.setLayoutProperty(layer.id, "visibility", vis);
+    } catch {
+      // ignore
+    }
+  }
+}
 
 function ensureGeoJsonSource(
   map: maplibregl.Map,
@@ -213,13 +243,15 @@ export function MapView() {
       }
 
       const coordinates = cornersFromPose(currentPose);
+      const opacity =
+        useUiStore.getState().mode === "georef" ? mapOpacity : 1;
       const src = map.getSource(MAP_IMAGE_SOURCE) as
         | maplibregl.ImageSource
         | undefined;
       if (src) {
         src.setCoordinates(coordinates);
         if (map.getLayer(MAP_IMAGE_LAYER)) {
-          map.setPaintProperty(MAP_IMAGE_LAYER, "raster-opacity", mapOpacity);
+          map.setPaintProperty(MAP_IMAGE_LAYER, "raster-opacity", opacity);
         }
       } else {
         map.addSource(MAP_IMAGE_SOURCE, {
@@ -232,7 +264,7 @@ export function MapView() {
           type: "raster",
           source: MAP_IMAGE_SOURCE,
           paint: {
-            "raster-opacity": mapOpacity,
+            "raster-opacity": opacity,
             "raster-fade-duration": 0,
           },
         });
@@ -266,7 +298,32 @@ export function MapView() {
       map.off("style.load", syncImage);
       map.off("idle", onIdle);
     };
-  }, [mapImageUrl, mapImageSize, pose, mapOpacity, mapInstance, setPose]);
+  }, [mapImageUrl, mapImageSize, pose, mapOpacity, mode, mapInstance, setPose]);
+
+  // Basemap only during georef; elsewhere show omap (+ tracks/plans) alone
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
+
+    const apply = () => {
+      if (!map.isStyleLoaded()) return;
+      setBasemapVisible(map, mode === "georef");
+      if (map.getLayer(MAP_IMAGE_LAYER)) {
+        map.setPaintProperty(
+          MAP_IMAGE_LAYER,
+          "raster-opacity",
+          mode === "georef" ? mapOpacity : 1,
+        );
+      }
+      ensureLayerOrder(map);
+    };
+
+    apply();
+    map.on("style.load", apply);
+    return () => {
+      map.off("style.load", apply);
+    };
+  }, [mode, mapOpacity, mapInstance]);
 
   // Track
   useEffect(() => {

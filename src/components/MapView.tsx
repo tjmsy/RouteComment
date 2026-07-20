@@ -45,20 +45,24 @@ function isAppOwnedLayer(id: string): boolean {
   );
 }
 
-/** Show/hide OpenFreeMap (and other style) layers; keep app overlays + background. */
+/** Show/hide OpenFreeMap (and other style) layers; keep app overlays only. */
 function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
   const style = map.getStyle();
   if (!style?.layers) return;
   const vis = visible ? "visible" : "none";
   for (const layer of style.layers) {
     if (isAppOwnedLayer(layer.id)) continue;
-    if (layer.type === "background") continue;
     try {
       map.setLayoutProperty(layer.id, "visibility", vis);
     } catch {
       // ignore
     }
   }
+  // Solid app background when basemap is off (avoids flash of world map).
+  const canvas = map.getCanvas();
+  canvas.style.background = visible ? "" : "#1a211c";
+  const container = map.getContainer();
+  container.style.background = visible ? "" : "#1a211c";
 }
 
 function ensureGeoJsonSource(
@@ -179,9 +183,21 @@ export function MapView() {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
-    map.once("load", () => setMapInstance(map));
+
+    // Hide basemap as soon as style layers exist (before React state catches up).
+    const hideUntilGeoref = () => {
+      if (!map.isStyleLoaded()) return;
+      const inGeoref = useUiStore.getState().mode === "georef";
+      setBasemapVisible(map, inGeoref);
+    };
+    map.on("styledata", hideUntilGeoref);
+    map.once("load", () => {
+      hideUntilGeoref();
+      setMapInstance(map);
+    });
 
     return () => {
+      map.off("styledata", hideUntilGeoref);
       alignMarkersRef.current.forEach((m) => m.remove());
       alignMarkersRef.current = [];
       map.remove();
@@ -322,8 +338,10 @@ export function MapView() {
 
     apply();
     map.on("style.load", apply);
+    map.once("idle", apply);
     return () => {
       map.off("style.load", apply);
+      map.off("idle", apply);
     };
   }, [mode, mapOpacity, mapInstance]);
 

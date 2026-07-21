@@ -560,7 +560,7 @@ export function MapView() {
       [trackPoints[0].lng, trackPoints[0].lat],
     );
     trackPoints.forEach((p) => bounds.extend([p.lng, p.lat]));
-    map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+    map.fitBounds(bounds, { padding: 60, maxZoom: 16, animate: false });
   }, [trackPoints]);
 
   // Route plans

@@ -371,16 +371,24 @@ export function MapView() {
   const hasContent = trackPoints.length > 0 || mapImageUrl != null;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapInstance || !map.isStyleLoaded()) return;
-    setBasemapVisible(map, hasContent, originalBgRef.current);
-    if (map.getLayer(MAP_IMAGE_LAYER)) {
-      map.setPaintProperty(
-        MAP_IMAGE_LAYER,
-        "raster-opacity",
-        mode === "georef" ? mapOpacity : 1,
-      );
-    }
-    ensureLayerOrder(map);
+    if (!map || !mapInstance) return;
+    const apply = () => {
+      if (!map.isStyleLoaded()) return;
+      setBasemapVisible(map, hasContent, originalBgRef.current);
+      if (map.getLayer(MAP_IMAGE_LAYER)) {
+        map.setPaintProperty(
+          MAP_IMAGE_LAYER,
+          "raster-opacity",
+          mode === "georef" ? mapOpacity : 1,
+        );
+      }
+      ensureLayerOrder(map);
+    };
+    apply();
+    map.on("idle", apply);
+    return () => {
+      map.off("idle", apply);
+    };
   }, [hasContent, mode, mapOpacity, mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
@@ -528,11 +536,15 @@ export function MapView() {
       ensureLayerOrder(map);
     };
 
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
+    // apply() is idempotent and guards on isStyleLoaded; re-run on idle so a
+    // transient "style not loaded" (e.g. tiles loading after fitBounds) still
+    // adds the track — this fixes the track not showing on the first GPX load.
+    apply();
     map.on("style.load", apply);
+    map.on("idle", apply);
     return () => {
       map.off("style.load", apply);
+      map.off("idle", apply);
     };
   }, [trackPoints, showTrack, mapInstance]);
 
@@ -662,11 +674,12 @@ export function MapView() {
       ensureLayerOrder(map);
     };
 
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
+    apply();
     map.on("style.load", apply);
+    map.on("idle", apply);
     return () => {
       map.off("style.load", apply);
+      map.off("idle", apply);
     };
   }, [routePlans, mapInstance]);
 
@@ -712,11 +725,12 @@ export function MapView() {
       ensureLayerOrder(map);
     };
 
-    if (map.isStyleLoaded()) apply();
-    else map.once("load", apply);
+    apply();
     map.on("style.load", apply);
+    map.on("idle", apply);
     return () => {
       map.off("style.load", apply);
+      map.off("idle", apply);
     };
   }, [animationTimeMs, trackPoints, mapInstance]);
 

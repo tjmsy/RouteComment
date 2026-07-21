@@ -35,19 +35,6 @@ const TERRAIN_PITCH = 45;
 const DEFAULT_MAX_PITCH = 60;
 const MAP_BG = "#ffffff";
 
-/** White canvas, no tiles — avoids a world-map flash on startup. */
-const BLANK_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {},
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": MAP_BG },
-    },
-  ],
-};
-
 function isAppOwnedLayer(id: string): boolean {
   return (
     id === MAP_IMAGE_LAYER ||
@@ -59,20 +46,44 @@ function isAppOwnedLayer(id: string): boolean {
   );
 }
 
-/** Toggle OpenFreeMap layers without setStyle (overlays stay intact). */
-function setBasemapVisible(map: maplibregl.Map, visible: boolean) {
+/** Remember each background layer's original color so we can restore it. */
+function captureBackgroundColors(
+  map: maplibregl.Map,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const style = map.getStyle();
+  style?.layers?.forEach((layer) => {
+    if (layer.type === "background") {
+      const paint = (layer as { paint?: Record<string, unknown> }).paint;
+      out[layer.id] = paint?.["background-color"] ?? MAP_BG;
+    }
+  });
+  return out;
+}
+
+/**
+ * Toggle OpenFreeMap layers via visibility (never setStyle, so app overlays
+ * stay intact). When hidden, the basemap background is tinted white.
+ */
+function setBasemapVisible(
+  map: maplibregl.Map,
+  visible: boolean,
+  originalBg: Record<string, unknown>,
+) {
   const style = map.getStyle();
   if (!style?.layers) return;
   const vis = visible ? "visible" : "none";
   for (const layer of style.layers) {
     if (isAppOwnedLayer(layer.id)) continue;
     if (layer.type === "background") {
-      if (!visible) {
-        try {
-          map.setPaintProperty(layer.id, "background-color", MAP_BG);
-        } catch {
-          // ignore
-        }
+      try {
+        map.setPaintProperty(
+          layer.id,
+          "background-color",
+          visible ? (originalBg[layer.id] ?? MAP_BG) : MAP_BG,
+        );
+      } catch {
+        // ignore
       }
       continue;
     }
@@ -181,10 +192,8 @@ export function MapView() {
 
   const appliedImageUrlRef = useRef<string | null>(null);
   const pendingFitImageRef = useRef(false);
-  /** Skip fitBounds when re-adding the image after setStyle. */
-  const skipNextImageFitRef = useRef(false);
-  /** Which basemap style is currently loaded. */
-  const basemapStyleRef = useRef<"blank" | "openfreemap">("blank");
+  /** Original OpenFreeMap background colors, captured on first load. */
+  const originalBgRef = useRef<Record<string, unknown>>({});
   const headingBearingRef = useRef<number | null>(null);
   const headingRafRef = useRef<number | null>(null);
   /** While true, skip heading-up camera writes so wheel zoom can animate. */
@@ -198,7 +207,7 @@ export function MapView() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BLANK_STYLE,
+      style: OPENFREEMAP_STYLE,
       center: [0, 20],
       zoom: 1.5,
       maxPitch: 0,
@@ -206,8 +215,16 @@ export function MapView() {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
-    basemapStyleRef.current = "blank";
-    map.once("load", () => setMapInstance(map));
+    map.once("load", () => {
+      // Capture OFM background, then start white until content is loaded so the
+      // meaningless low-zoom world map never shows.
+      originalBgRef.current = captureBackgroundColors(map);
+      const hasContent =
+        useProjectStore.getState().project.track.points.length > 0 ||
+        useProjectStore.getState().mapImageUrl != null;
+      setBasemapVisible(map, hasContent, originalBgRef.current);
+      setMapInstance(map);
+    });
 
     return () => {
       alignMarkersRef.current.forEach((m) => m.remove());
@@ -259,12 +276,7 @@ export function MapView() {
         if (map.getLayer(MAP_IMAGE_LAYER)) map.removeLayer(MAP_IMAGE_LAYER);
         if (map.getSource(MAP_IMAGE_SOURCE)) map.removeSource(MAP_IMAGE_SOURCE);
         appliedImageUrlRef.current = mapImageUrl;
-        if (skipNextImageFitRef.current) {
-          skipNextImageFitRef.current = false;
-          pendingFitImageRef.current = false;
-        } else {
-          pendingFitImageRef.current = true;
-        }
+        pendingFitImageRef.current = true;
       }
 
       let currentPose = useProjectStore.getState().project.georef.pose;
@@ -335,53 +347,22 @@ export function MapView() {
     };
   }, [mapImageUrl, mapImageSize, pose, mapOpacity, mode, mapInstance, setPose]);
 
-  // Start blank (white). First georef: setStyle(OpenFreeMap). Later: visibility only.
+  // Show OpenFreeMap once there's real content (GPX/map). The overlays always
+  // sit on top; the map image is dimmed only during georef.
+  const hasContent = trackPoints.length > 0 || mapImageUrl != null;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !mapInstance) return;
-
-    const wantBasemap = mode === "georef";
-
-    const applyVisibility = () => {
-      if (!map.isStyleLoaded()) return;
-      if (basemapStyleRef.current === "openfreemap") {
-        setBasemapVisible(map, wantBasemap);
-      }
-      if (map.getLayer(MAP_IMAGE_LAYER)) {
-        map.setPaintProperty(
-          MAP_IMAGE_LAYER,
-          "raster-opacity",
-          wantBasemap ? mapOpacity : 1,
-        );
-      }
-      ensureLayerOrder(map);
-    };
-
-    if (wantBasemap && basemapStyleRef.current !== "openfreemap") {
-      basemapStyleRef.current = "openfreemap";
-      appliedImageUrlRef.current = null;
-      skipNextImageFitRef.current = true;
-      const camera = {
-        center: map.getCenter(),
-        zoom: map.getZoom(),
-        bearing: map.getBearing(),
-        pitch: map.getPitch(),
-      };
-      map.setStyle(OPENFREEMAP_STYLE);
-      map.once("style.load", () => {
-        map.jumpTo(camera);
-        setBasemapVisible(map, true);
-        ensureLayerOrder(map);
-      });
-      return;
+    if (!map || !mapInstance || !map.isStyleLoaded()) return;
+    setBasemapVisible(map, hasContent, originalBgRef.current);
+    if (map.getLayer(MAP_IMAGE_LAYER)) {
+      map.setPaintProperty(
+        MAP_IMAGE_LAYER,
+        "raster-opacity",
+        mode === "georef" ? mapOpacity : 1,
+      );
     }
-
-    applyVisibility();
-    map.on("style.load", applyVisibility);
-    return () => {
-      map.off("style.load", applyVisibility);
-    };
-  }, [mode, mapOpacity, mapInstance]);
+    ensureLayerOrder(map);
+  }, [hasContent, mode, mapOpacity, mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
   useEffect(() => {

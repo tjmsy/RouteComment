@@ -1,6 +1,7 @@
 import { MapView } from "./components/MapView";
 import { Toolbar } from "./components/Toolbar";
 import { AnimationControls } from "./components/AnimationControls";
+import { DanmakuOverlay } from "./components/DanmakuOverlay";
 import "./App.css";
 
 export default function App() {
@@ -9,6 +10,7 @@ export default function App() {
       <Toolbar />
       <main className="main">
         <MapView />
+        <DanmakuOverlay />
         <AnimationControls />
       </main>
     </div>

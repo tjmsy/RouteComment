@@ -15,13 +15,12 @@ import {
   trackSliceCoordinates,
 } from "../lib/gpx";
 import { CommentMarkers } from "./CommentMarkers";
+import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
 
 const MAP_IMAGE_SOURCE = "omap-image";
 const MAP_IMAGE_LAYER = "omap-raster";
 const TRACK_SOURCE = "gps-track";
 const TRACK_LAYER = "gps-track-line";
-const TRACK_ENDS_SOURCE = "gps-track-ends";
-const TRACK_ENDS_LAYER = "gps-track-ends-circle";
 const TRACK_RANGE_SOURCE = "track-range";
 const TRACK_RANGE_LAYER = "track-range-line";
 const PLAN_SOURCE_PREFIX = "route-plan-";
@@ -39,7 +38,6 @@ function isAppOwnedLayer(id: string): boolean {
   return (
     id === MAP_IMAGE_LAYER ||
     id === TRACK_LAYER ||
-    id === TRACK_ENDS_LAYER ||
     id === TRACK_RANGE_LAYER ||
     id === RUNNER_LAYER ||
     id.startsWith(PLAN_SOURCE_PREFIX)
@@ -128,7 +126,7 @@ function isNearTrack(
   return hit;
 }
 
-/** Bottom → top: omap image, plans, track, range, ends, runner */
+/** Bottom → top: omap image, plans, track, range, runner */
 function ensureLayerOrder(map: maplibregl.Map) {
   const style = map.getStyle();
   const planLayers =
@@ -141,7 +139,6 @@ function ensureLayerOrder(map: maplibregl.Map) {
     ...planLayers,
     TRACK_LAYER,
     TRACK_RANGE_LAYER,
-    TRACK_ENDS_LAYER,
     RUNNER_LAYER,
   ];
 
@@ -477,65 +474,6 @@ export function MapView() {
           TRACK_LAYER,
           "visibility",
           showTrack && pts.length >= 2 ? "visible" : "none",
-        );
-      }
-
-      const ends: GeoJSON.FeatureCollection = {
-        type: "FeatureCollection",
-        features:
-          pts.length >= 1 && showTrack
-            ? [
-                {
-                  type: "Feature",
-                  properties: { role: "start" },
-                  geometry: {
-                    type: "Point",
-                    coordinates: [pts[0].lng, pts[0].lat],
-                  },
-                },
-                ...(pts.length >= 2
-                  ? [
-                      {
-                        type: "Feature" as const,
-                        properties: { role: "end" },
-                        geometry: {
-                          type: "Point" as const,
-                          coordinates: [
-                            pts[pts.length - 1].lng,
-                            pts[pts.length - 1].lat,
-                          ],
-                        },
-                      },
-                    ]
-                  : []),
-              ]
-            : [],
-      };
-      ensureGeoJsonSource(map, TRACK_ENDS_SOURCE, ends);
-      if (!map.getLayer(TRACK_ENDS_LAYER)) {
-        map.addLayer({
-          id: TRACK_ENDS_LAYER,
-          type: "circle",
-          source: TRACK_ENDS_SOURCE,
-          paint: {
-            "circle-radius": 7,
-            "circle-color": [
-              "match",
-              ["get", "role"],
-              "start",
-              "#22c55e",
-              "#e11d48",
-            ],
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#fff",
-          },
-        });
-      }
-      if (map.getLayer(TRACK_ENDS_LAYER)) {
-        map.setLayoutProperty(
-          TRACK_ENDS_LAYER,
-          "visibility",
-          showTrack && pts.length >= 1 ? "visible" : "none",
         );
       }
       ensureLayerOrder(map);
@@ -1129,12 +1067,21 @@ export function MapView() {
         const tool = useUiStore.getState().commentTool;
         const pts = useProjectStore.getState().project.track.points;
 
+        if (tool === "danmaku") {
+          setStatusMessage(
+            "Use “Add danmaku at current time” in the toolbar (set playback time in View first).",
+          );
+          return;
+        }
+
         if (tool === "map") {
           const id = addComment({
             kind: "map",
             lng: lngLat.lng,
             lat: lngLat.lat,
             text: "",
+            popupWidth: DEFAULT_POPUP_WIDTH,
+            popupHeight: DEFAULT_POPUP_HEIGHT,
           });
           setCommentExpanded(id, true);
           return;

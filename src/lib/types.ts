@@ -30,8 +30,15 @@ export type RoutePlan = {
   lineWidth: number;
 };
 
-/** map = pinned on map; follow = bubble follows runner in a track-time range */
-export type CommentKind = "map" | "follow";
+/**
+ * map = pinned on map;
+ * follow = bubble follows runner in a track-time range;
+ * danmaku = niconico-style scroll once at timeStartMs
+ */
+export type CommentKind = "map" | "follow" | "danmaku";
+
+export const DEFAULT_POPUP_WIDTH = 220;
+export const DEFAULT_POPUP_HEIGHT = 140;
 
 export type Comment = {
   id: string;
@@ -39,10 +46,15 @@ export type Comment = {
   lng: number;
   lat: number;
   text: string;
-  /** Inclusive start of the track-time range for follow comments (ms). */
+  /** Inclusive start of the track-time range for follow comments (ms).
+   * For danmaku: trigger time (fires once when playback crosses this). */
   timeStartMs?: number;
   /** Inclusive end of the track-time range for follow comments (ms). */
   timeEndMs?: number;
+  /** Map-pin popup width in CSS pixels (persisted per comment). */
+  popupWidth?: number;
+  /** Map-pin popup height in CSS pixels (persisted per comment). */
+  popupHeight?: number;
 };
 
 export type ProjectData = {
@@ -84,6 +96,11 @@ export function createEmptyProject(name = "Untitled"): ProjectData {
   };
 }
 
+function clampPopupSize(n: number | undefined, fallback: number): number {
+  if (typeof n !== "number" || !Number.isFinite(n)) return fallback;
+  return Math.min(480, Math.max(120, Math.round(n)));
+}
+
 /** Normalize legacy comments that only had timeOffsetMs / no kind. */
 export function normalizeComment(
   raw: Partial<Comment> & { timeOffsetMs?: number },
@@ -96,19 +113,30 @@ export function normalizeComment(
     timeEndMs = timeStartMs + 5000;
   }
   const kind: CommentKind =
-    raw.kind === "follow" || raw.kind === "map"
+    raw.kind === "follow" || raw.kind === "map" || raw.kind === "danmaku"
       ? raw.kind
       : timeStartMs != null
         ? "follow"
         : "map";
+  const popupWidth =
+    kind === "map"
+      ? clampPopupSize(raw.popupWidth, DEFAULT_POPUP_WIDTH)
+      : undefined;
+  const popupHeight =
+    kind === "map"
+      ? clampPopupSize(raw.popupHeight, DEFAULT_POPUP_HEIGHT)
+      : undefined;
   return {
     id: raw.id ?? crypto.randomUUID(),
     kind,
     lng: raw.lng ?? 0,
     lat: raw.lat ?? 0,
     text: raw.text ?? "",
-    timeStartMs: kind === "follow" ? timeStartMs : undefined,
+    timeStartMs:
+      kind === "follow" || kind === "danmaku" ? (timeStartMs ?? 0) : undefined,
     timeEndMs: kind === "follow" ? timeEndMs : undefined,
+    popupWidth,
+    popupHeight,
   };
 }
 

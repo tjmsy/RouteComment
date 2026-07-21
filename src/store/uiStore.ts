@@ -13,7 +13,7 @@ type UiState = {
   isPlaying: boolean;
   playbackSpeed: number;
   headingUp: boolean;
-  commentTool: "map" | "follow";
+  commentTool: "map" | "follow" | "danmaku";
   /** Follow-range pick: waiting for start click, or end click after startMs. */
   followRangeStartMs: number | null;
   activeRoutePlanId: string | null;
@@ -38,7 +38,7 @@ type UiState = {
   setIsPlaying: (playing: boolean) => void;
   setPlaybackSpeed: (speed: number) => void;
   setHeadingUp: (on: boolean) => void;
-  setCommentTool: (tool: "map" | "follow") => void;
+  setCommentTool: (tool: "map" | "follow" | "danmaku") => void;
   setFollowRangeStartMs: (ms: number | null) => void;
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
@@ -121,7 +121,9 @@ export const useUiStore = create<UiState>((set, get) => ({
             : mode === "comment"
               ? get().commentTool === "follow"
                 ? "Click the GPS track to set the range start"
-                : "Click the map to place a comment"
+                : get().commentTool === "danmaku"
+                  ? "Click Add danmaku at the current playback time"
+                  : "Click the map to place a comment"
               : "",
     });
   },
@@ -151,7 +153,9 @@ export const useUiStore = create<UiState>((set, get) => ({
       statusMessage:
         tool === "follow"
           ? "Click the GPS track to set the range start, then the end"
-          : "Click the map to place a pin comment",
+          : tool === "danmaku"
+            ? "Use Add danmaku to place a scrolling comment at the current playback time"
+            : "Click the map to place a pin comment",
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),

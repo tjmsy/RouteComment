@@ -72,6 +72,9 @@ export function Toolbar() {
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
+  const animationTimeMs = useUiStore((s) => s.animationTimeMs);
+  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const addComment = useProjectStore((s) => s.addComment);
 
   const setupComplete = setupGpxDone && setupMapDone;
 
@@ -439,12 +442,48 @@ export function Toolbar() {
             >
               Follow
             </button>
+            <button
+              type="button"
+              className={commentTool === "danmaku" ? "active" : ""}
+              onClick={() => setCommentTool("danmaku")}
+            >
+              Danmaku
+            </button>
           </div>
           <p className="hint">
             {commentTool === "map"
-              ? "Click the map to place a pin. Drag the pin to move it."
-              : "Click or drag along the GPS track to set a time range. The bubble follows the runner in that range."}
+              ? "Click the map to place a bubble. Drag the icon to move it; click to open the popup."
+              : commentTool === "follow"
+                ? "Click or drag along the GPS track to set a time range. The bubble follows the runner in that range."
+                : "Adds a scrolling comment that fires once at the current playback time (set time in View mode first)."}
           </p>
+          {commentTool === "danmaku" && (
+            <button
+              type="button"
+              className="btn-add-danmaku"
+              onClick={() => {
+                if (project.track.points.length === 0) {
+                  setStatusMessage(
+                    "Load a GPS track before adding a danmaku comment.",
+                  );
+                  return;
+                }
+                const id = addComment({
+                  kind: "danmaku",
+                  lng: 0,
+                  lat: 0,
+                  text: "",
+                  timeStartMs: animationTimeMs,
+                });
+                setCommentExpanded(id, true);
+                setStatusMessage(
+                  "Danmaku added at the current playback time. Edit text in the panel.",
+                );
+              }}
+            >
+              Add danmaku at current time
+            </button>
+          )}
         </section>
       )}
 

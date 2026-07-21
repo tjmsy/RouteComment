@@ -26,6 +26,12 @@ function parseHms(v: string): number | undefined {
   return sec * 1000;
 }
 
+function kindLabel(kind: string): string {
+  if (kind === "follow") return "Follow comment";
+  if (kind === "danmaku") return "Danmaku comment";
+  return "Map comment";
+}
+
 /**
  * Selected comment in the side panel.
  * Comment mode: editable. View mode: read-only.
@@ -64,11 +70,13 @@ export function CommentPanel() {
   if (mode !== "comment" && mode !== "view") return null;
 
   const isFollow = comment.kind === "follow";
+  const isDanmaku = comment.kind === "danmaku";
+  const isMap = comment.kind === "map";
 
   return (
     <section className="panel comment-side-panel">
       <div className="comment-editor-header">
-        <strong>{isFollow ? "Follow comment" : "Map comment"}</strong>
+        <strong>{kindLabel(comment.kind)}</strong>
         <button
           type="button"
           className="btn-done"
@@ -83,7 +91,7 @@ export function CommentPanel() {
           value={draft}
           rows={4}
           placeholder="Write a comment…"
-          autoFocus
+          autoFocus={!isMap}
           onChange={(e) => {
             const v = e.target.value;
             setDraft(v);
@@ -153,8 +161,50 @@ export function CommentPanel() {
         </>
       )}
 
-      {!editable && !isFollow && (
-        <p className="hint">Switch to Comment mode to edit or move the pin.</p>
+      {isDanmaku && (
+        <>
+          {editable ? (
+            <label className="comment-time">
+              <span>Trigger time</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="hh:mm:ss"
+                value={startDraft}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setStartDraft(v);
+                  const ms = parseHms(v);
+                  if (ms != null) {
+                    updateComment(comment.id, { timeStartMs: ms });
+                  }
+                }}
+                onBlur={() => {
+                  const ms = parseHms(startDraft);
+                  if (ms != null) setStartDraft(formatHms(ms));
+                  else setStartDraft(formatHms(comment.timeStartMs));
+                }}
+              />
+            </label>
+          ) : (
+            <p className="hint comment-range-readonly">
+              At {formatHms(comment.timeStartMs)}
+            </p>
+          )}
+        </>
+      )}
+
+      {!editable && isMap && (
+        <p className="hint">
+          Click the bubble icon on the map to open the popup. Switch to Comment
+          mode to edit or move the pin.
+        </p>
+      )}
+
+      {!editable && isDanmaku && (
+        <p className="hint">
+          Scrolls right-to-left once when playback reaches the trigger time.
+        </p>
       )}
 
       {editable && (
@@ -190,4 +240,3 @@ export function CommentPanel() {
     </section>
   );
 }
-

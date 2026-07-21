@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import type { Comment } from "../lib/types";
-import { commentActiveAt } from "../lib/types";
+import {
+  commentActiveAt,
+  DEFAULT_POPUP_HEIGHT,
+  DEFAULT_POPUP_WIDTH,
+} from "../lib/types";
 import { interpolateTrackPosition } from "../lib/gpx";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
@@ -28,9 +32,10 @@ export function CommentMarkers({ map }: Props) {
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
             draggable={mode === "comment"}
+            editable={mode === "comment"}
             onToggle={() => toggleCommentExpanded(comment.id)}
           />
-        ) : mode === "comment" ? (
+        ) : comment.kind === "follow" && mode === "comment" ? (
           <FollowRangeMarker
             key={comment.id}
             map={map}
@@ -45,36 +50,87 @@ export function CommentMarkers({ map }: Props) {
   );
 }
 
+const BUBBLE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-6.2L8 21.5V17H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm2 4v2h8V8H6zm0 4v2h5v-2H6z"/></svg>`;
+
 function MapPinMarker({
   map,
   comment,
   expanded,
   draggable,
+  editable,
   onToggle,
 }: {
   map: maplibregl.Map;
   comment: Comment;
   expanded: boolean;
   draggable: boolean;
+  editable: boolean;
   onToggle: () => void;
 }) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
-  const elRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const iconRef = useRef<HTMLButtonElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLElement | null>(null);
   const draggingRef = useRef(false);
   const suppressClickRef = useRef(false);
   const updateComment = useProjectStore((s) => s.updateComment);
 
   useEffect(() => {
-    const el = document.createElement("div");
-    el.className = "comment-icon comment-icon-map";
-    el.title = "Map comment";
-    el.textContent = "📍";
-    el.setAttribute("role", "button");
-    el.tabIndex = 0;
-    elRef.current = el;
+    const host = document.createElement("div");
+    host.className = "comment-marker-host";
+
+    const icon = document.createElement("button");
+    icon.type = "button";
+    icon.className = "comment-icon comment-icon-map";
+    icon.title = "Map comment";
+    icon.innerHTML = BUBBLE_ICON_SVG;
+    icon.setAttribute("aria-label", "Map comment");
+
+    const popup = document.createElement("div");
+    popup.className = "comment-map-popup";
+    popup.style.width = `${comment.popupWidth ?? DEFAULT_POPUP_WIDTH}px`;
+    popup.style.height = `${comment.popupHeight ?? DEFAULT_POPUP_HEIGHT}px`;
+
+    const body = document.createElement(editable ? "textarea" : "div");
+    body.className = editable
+      ? "comment-map-popup-body comment-map-popup-edit"
+      : "comment-map-popup-body comment-map-popup-readonly";
+    if (editable) {
+      const ta = body as HTMLTextAreaElement;
+      ta.value = comment.text;
+      ta.placeholder = "Write a comment…";
+      ta.addEventListener("input", () => {
+        updateComment(comment.id, { text: ta.value });
+      });
+      ta.addEventListener("click", (e) => e.stopPropagation());
+      ta.addEventListener("mousedown", (e) => e.stopPropagation());
+    } else {
+      body.textContent = comment.text.trim() ? comment.text : "(No text)";
+    }
+
+    const handle = document.createElement("div");
+    handle.className = "comment-map-popup-resize";
+    handle.title = "Drag to resize";
+
+    popup.appendChild(body);
+    popup.appendChild(handle);
+    host.appendChild(icon);
+    host.appendChild(popup);
+
+    popup.addEventListener("mousedown", (e) => e.stopPropagation());
+    popup.addEventListener("pointerdown", (e) => {
+      if (e.target !== handle) e.stopPropagation();
+    });
+    popup.addEventListener("click", (e) => e.stopPropagation());
+
+    hostRef.current = host;
+    iconRef.current = icon;
+    popupRef.current = popup;
+    bodyRef.current = body;
 
     const marker = new maplibregl.Marker({
-      element: el,
+      element: host,
       anchor: "bottom",
       draggable,
     })
@@ -105,26 +161,82 @@ function MapPinMarker({
       }
       onToggle();
     };
-    el.addEventListener("click", onClick);
+    icon.addEventListener("click", onClick);
+
+    let resizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startW = DEFAULT_POPUP_WIDTH;
+    let startH = DEFAULT_POPUP_HEIGHT;
+
+    const onResizeMove = (e: PointerEvent) => {
+      if (!resizing || !popupRef.current) return;
+      const nextW = Math.min(
+        480,
+        Math.max(120, startW + (e.clientX - startX)),
+      );
+      const nextH = Math.min(
+        480,
+        Math.max(120, startH + (e.clientY - startY)),
+      );
+      popupRef.current.style.width = `${nextW}px`;
+      popupRef.current.style.height = `${nextH}px`;
+    };
+
+    const onResizeUp = (e: PointerEvent) => {
+      if (!resizing || !popupRef.current) return;
+      resizing = false;
+      handle.releasePointerCapture(e.pointerId);
+      const nextW = Math.round(popupRef.current.offsetWidth);
+      const nextH = Math.round(popupRef.current.offsetHeight);
+      updateComment(comment.id, {
+        popupWidth: nextW,
+        popupHeight: nextH,
+      });
+      window.removeEventListener("pointermove", onResizeMove);
+      window.removeEventListener("pointerup", onResizeUp);
+    };
+
+    const onResizeDown = (e: PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!popupRef.current) return;
+      resizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startW = popupRef.current.offsetWidth;
+      startH = popupRef.current.offsetHeight;
+      handle.setPointerCapture(e.pointerId);
+      window.addEventListener("pointermove", onResizeMove);
+      window.addEventListener("pointerup", onResizeUp);
+    };
+    handle.addEventListener("pointerdown", onResizeDown);
 
     markerRef.current = marker;
     return () => {
-      el.removeEventListener("click", onClick);
+      icon.removeEventListener("click", onClick);
+      handle.removeEventListener("pointerdown", onResizeDown);
+      window.removeEventListener("pointermove", onResizeMove);
+      window.removeEventListener("pointerup", onResizeUp);
       map.dragPan.enable();
       marker.remove();
       markerRef.current = null;
-      elRef.current = null;
+      hostRef.current = null;
+      iconRef.current = null;
+      popupRef.current = null;
+      bodyRef.current = null;
     };
+    // Recreate when id or editability changes; text/size synced below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, comment.id]);
+  }, [map, comment.id, editable]);
 
   useEffect(() => {
     markerRef.current?.setDraggable(draggable);
-    if (elRef.current) {
-      elRef.current.title = draggable
+    if (iconRef.current) {
+      iconRef.current.title = draggable
         ? "Map comment (drag to move)"
         : "Map comment";
-      elRef.current.classList.toggle("comment-icon-nodrag", !draggable);
+      iconRef.current.classList.toggle("comment-icon-nodrag", !draggable);
     }
   }, [draggable]);
 
@@ -134,8 +246,25 @@ function MapPinMarker({
   }, [comment.lng, comment.lat]);
 
   useEffect(() => {
-    elRef.current?.classList.toggle("expanded", expanded);
+    iconRef.current?.classList.toggle("expanded", expanded);
+    popupRef.current?.classList.toggle("open", expanded);
   }, [expanded]);
+
+  useEffect(() => {
+    if (!popupRef.current) return;
+    popupRef.current.style.width = `${comment.popupWidth ?? DEFAULT_POPUP_WIDTH}px`;
+    popupRef.current.style.height = `${comment.popupHeight ?? DEFAULT_POPUP_HEIGHT}px`;
+  }, [comment.popupWidth, comment.popupHeight]);
+
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    if (body instanceof HTMLTextAreaElement) {
+      if (document.activeElement !== body) body.value = comment.text;
+    } else {
+      body.textContent = comment.text.trim() ? comment.text : "(No text)";
+    }
+  }, [comment.text]);
 
   return null;
 }

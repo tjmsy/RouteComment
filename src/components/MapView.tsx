@@ -215,10 +215,28 @@ export function MapView() {
     });
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     mapRef.current = map;
+
+    // Hide the basemap as soon as the style is parsed (before the first paint)
+    // so the meaningless low-zoom world map never flashes on startup.
+    const hideUntilContent = () => {
+      if (!map.style || map.getStyle()?.layers == null) return;
+      if (Object.keys(originalBgRef.current).length === 0) {
+        originalBgRef.current = captureBackgroundColors(map);
+      }
+      const hasContent =
+        useProjectStore.getState().project.track.points.length > 0 ||
+        useProjectStore.getState().mapImageUrl != null;
+      if (!hasContent) {
+        setBasemapVisible(map, false, originalBgRef.current);
+      }
+    };
+    map.on("styledata", hideUntilContent);
+
     map.once("load", () => {
-      // Capture OFM background, then start white until content is loaded so the
-      // meaningless low-zoom world map never shows.
-      originalBgRef.current = captureBackgroundColors(map);
+      map.off("styledata", hideUntilContent);
+      if (Object.keys(originalBgRef.current).length === 0) {
+        originalBgRef.current = captureBackgroundColors(map);
+      }
       const hasContent =
         useProjectStore.getState().project.track.points.length > 0 ||
         useProjectStore.getState().mapImageUrl != null;
@@ -227,6 +245,7 @@ export function MapView() {
     });
 
     return () => {
+      map.off("styledata", hideUntilContent);
       alignMarkersRef.current.forEach((m) => m.remove());
       alignMarkersRef.current = [];
       map.remove();

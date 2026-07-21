@@ -404,14 +404,16 @@ export function Toolbar() {
             {plan.name}
           </label>
         ))}
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={terrain3d}
-            onChange={(e) => setTerrain3d(e.target.checked)}
-          />
-          Terrain 3D
-        </label>
+        {project.track.points.length > 0 && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={terrain3d}
+              onChange={(e) => setTerrain3d(e.target.checked)}
+            />
+            Terrain 3D
+          </label>
+        )}
         {project.track.points.length === 0 &&
           project.routePlans.length === 0 &&
           !project.mapImage && (

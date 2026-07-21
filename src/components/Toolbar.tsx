@@ -51,6 +51,8 @@ export function Toolbar() {
   const setMode = useUiStore((s) => s.setMode);
   const showTrack = useUiStore((s) => s.showTrack);
   const setShowTrack = useUiStore((s) => s.setShowTrack);
+  const showBasemap = useUiStore((s) => s.showBasemap);
+  const setShowBasemap = useUiStore((s) => s.setShowBasemap);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const setMapOpacity = useUiStore((s) => s.setMapOpacity);
   const terrain3d = useUiStore((s) => s.terrain3d);
@@ -367,6 +369,16 @@ export function Toolbar() {
 
       <details className="panel layers-panel" open>
         <summary>Layers</summary>
+        {(project.track.points.length > 0 || project.mapImage) && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={showBasemap}
+              onChange={(e) => setShowBasemap(e.target.checked)}
+            />
+            Basemap
+          </label>
+        )}
         {project.track.points.length > 0 && (
           <label className="check">
             <input

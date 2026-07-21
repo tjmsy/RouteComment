@@ -18,6 +18,7 @@ type UiState = {
   followRangeStartMs: number | null;
   activeRoutePlanId: string | null;
   showTrack: boolean;
+  showBasemap: boolean;
   mapOpacity: number;
   terrain3d: boolean;
   /** GPX loaded or skipped during onboarding. */
@@ -41,6 +42,7 @@ type UiState = {
   setFollowRangeStartMs: (ms: number | null) => void;
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
+  setShowBasemap: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
   setTerrain3d: (on: boolean) => void;
   markSetupGpxDone: () => void;
@@ -79,6 +81,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   followRangeStartMs: null,
   activeRoutePlanId: null,
   showTrack: true,
+  showBasemap: true,
   mapOpacity: 0.75,
   terrain3d: false,
   setupGpxDone: false,
@@ -153,6 +156,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
+  setShowBasemap: (show) => set({ showBasemap: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
   setTerrain3d: (on) => set({ terrain3d: on }),
   markSetupGpxDone: () =>

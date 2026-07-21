@@ -176,6 +176,7 @@ export function MapView() {
   const mode = useUiStore((s) => s.mode);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const showTrack = useUiStore((s) => s.showTrack);
+  const showBasemap = useUiStore((s) => s.showBasemap);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const headingUp = useUiStore((s) => s.headingUp);
   const terrain3d = useUiStore((s) => s.terrain3d);
@@ -240,7 +241,11 @@ export function MapView() {
       const hasContent =
         useProjectStore.getState().project.track.points.length > 0 ||
         useProjectStore.getState().mapImageUrl != null;
-      setBasemapVisible(map, hasContent, originalBgRef.current);
+      setBasemapVisible(
+        map,
+        hasContent && useUiStore.getState().showBasemap,
+        originalBgRef.current,
+      );
       setMapInstance(map);
     });
 
@@ -374,7 +379,7 @@ export function MapView() {
     if (!map || !mapInstance) return;
     const apply = () => {
       if (!map.isStyleLoaded()) return;
-      setBasemapVisible(map, hasContent, originalBgRef.current);
+      setBasemapVisible(map, hasContent && showBasemap, originalBgRef.current);
       if (map.getLayer(MAP_IMAGE_LAYER)) {
         map.setPaintProperty(
           MAP_IMAGE_LAYER,
@@ -389,7 +394,7 @@ export function MapView() {
     return () => {
       map.off("idle", apply);
     };
-  }, [hasContent, mode, mapOpacity, mapInstance]);
+  }, [hasContent, showBasemap, mode, mapOpacity, mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
   useEffect(() => {

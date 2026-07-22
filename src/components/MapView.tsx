@@ -216,6 +216,8 @@ export function MapView() {
   const headingWheelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  /** While true, skip heading-up camera writes so pitch/rotate drag can stick. */
+  const headingDragPauseRef = useRef(false);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -739,6 +741,7 @@ export function MapView() {
         headingWheelTimerRef.current = null;
       }
       headingWheelPauseRef.current = false;
+      headingDragPauseRef.current = false;
       return;
     }
 
@@ -752,10 +755,21 @@ export function MapView() {
         headingWheelTimerRef.current = null;
       }, 200);
     };
+    const onDragCameraStart = () => {
+      headingDragPauseRef.current = true;
+    };
+    const onDragCameraEnd = () => {
+      headingDragPauseRef.current = false;
+    };
     map.on("wheel", onWheel);
+    // Right-drag pitch/rotate fights continuous jumpTo; pause while dragging.
+    map.on("pitchstart", onDragCameraStart);
+    map.on("pitchend", onDragCameraEnd);
+    map.on("rotatestart", onDragCameraStart);
+    map.on("rotateend", onDragCameraEnd);
 
     const tick = () => {
-      if (!headingWheelPauseRef.current) {
+      if (!headingWheelPauseRef.current && !headingDragPauseRef.current) {
         const pts = useProjectStore.getState().project.track.points;
         const t = useUiStore.getState().animationTimeMs;
         const playing = useUiStore.getState().isPlaying;
@@ -771,7 +785,7 @@ export function MapView() {
             alpha,
           );
           headingBearingRef.current = nextBearing;
-          // Omit zoom so wheel zoom sticks; pause during wheel so ease isn't cancelled.
+          // Omit zoom/pitch so wheel zoom and terrain pitch stick.
           map.jumpTo({
             center: [runnerPose.lng, runnerPose.lat],
             bearing: nextBearing,
@@ -784,11 +798,16 @@ export function MapView() {
     headingRafRef.current = requestAnimationFrame(tick);
     return () => {
       map.off("wheel", onWheel);
+      map.off("pitchstart", onDragCameraStart);
+      map.off("pitchend", onDragCameraEnd);
+      map.off("rotatestart", onDragCameraStart);
+      map.off("rotateend", onDragCameraEnd);
       if (headingWheelTimerRef.current != null) {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;
       }
       headingWheelPauseRef.current = false;
+      headingDragPauseRef.current = false;
       if (headingRafRef.current != null) {
         cancelAnimationFrame(headingRafRef.current);
         headingRafRef.current = null;

@@ -52,7 +52,7 @@ const CHART_ROWS: ChartRow[] = [
   },
   {
     kind: "speed",
-    label: "Speed",
+    label: "Pace",
     color: "#a3e635",
     getValue: (s) =>
       s.paceMinPerKm != null ? clampPace(s.paceMinPerKm) : undefined,

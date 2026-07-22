@@ -120,7 +120,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   expandedCommentIds: [],
   animationTimeMs: 0,
   isPlaying: false,
-  playbackSpeed: 1,
+  playbackSpeed: 30,
   headingUp: false,
   commentTool: "map",
   followRangeStartMs: null,

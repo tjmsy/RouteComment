@@ -178,11 +178,17 @@ select {
   padding: 0.4rem 0.5rem;
   border: 1px solid var(--panel-edge);
   border-radius: 6px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--panel);
   color: var(--text);
+  color-scheme: dark;
   font-size: 0.85rem;
   text-transform: none;
   letter-spacing: normal;
+}
+
+.playback-panel .field select option {
+  background: var(--panel);
+  color: var(--text);
 }
 
 .event-setup .field {
@@ -969,7 +975,8 @@ button.btn-skip {
 }
 
 .animation-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 1rem;
@@ -987,7 +994,6 @@ button.btn-skip {
   color: #1a211c;
   font-weight: 600;
   cursor: pointer;
-  flex-shrink: 0;
 }
 
 .animation-bar button:disabled {
@@ -996,15 +1002,17 @@ button.btn-skip {
 }
 
 .animation-bar input[type="range"] {
-  flex: 1;
+  width: 100%;
   min-width: 120px;
 }
 
 .time-label {
   font-size: 0.8rem;
   color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .comment-marker {

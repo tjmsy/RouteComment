@@ -755,21 +755,51 @@ export function MapView() {
         headingWheelTimerRef.current = null;
       }, 200);
     };
-    const onDragCameraStart = () => {
-      headingDragPauseRef.current = true;
+
+    // jumpTo() calls handlers.stop(), which resets an in-progress pitch/rotate
+    // drag. Pause on the gesture mousedown/touch — before the next RAF tick —
+    // so right-drag pitch can work with Terrain 3D. Do not use pitchstart /
+    // rotatestart: jumpTo itself fires those when bearing changes.
+    const isPitchRotateMouse = (oe: MouseEvent) =>
+      oe.button === 2 || (oe.button === 0 && oe.ctrlKey);
+
+    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+      if (isPitchRotateMouse(e.originalEvent)) {
+        headingDragPauseRef.current = true;
+      }
     };
-    const onDragCameraEnd = () => {
+    const endMouseDragPause = () => {
+      if (!headingDragPauseRef.current) return;
       headingDragPauseRef.current = false;
+      headingBearingRef.current = map.getBearing();
     };
+    const onTouchStart = (e: maplibregl.MapTouchEvent) => {
+      if (e.points.length >= 2) {
+        headingDragPauseRef.current = true;
+      }
+    };
+    const onTouchEnd = (e: maplibregl.MapTouchEvent) => {
+      if (e.points.length >= 2) return;
+      if (!headingDragPauseRef.current) return;
+      headingDragPauseRef.current = false;
+      headingBearingRef.current = map.getBearing();
+    };
+
     map.on("wheel", onWheel);
-    // Right-drag pitch/rotate fights continuous jumpTo; pause while dragging.
-    map.on("pitchstart", onDragCameraStart);
-    map.on("pitchend", onDragCameraEnd);
-    map.on("rotatestart", onDragCameraStart);
-    map.on("rotateend", onDragCameraEnd);
+    map.on("mousedown", onMouseDown);
+    map.on("mouseup", endMouseDragPause);
+    map.on("touchstart", onTouchStart);
+    map.on("touchend", onTouchEnd);
+    map.on("touchcancel", onTouchEnd);
+    // Release may happen outside the canvas.
+    window.addEventListener("mouseup", endMouseDragPause);
 
     const tick = () => {
-      if (!headingWheelPauseRef.current && !headingDragPauseRef.current) {
+      const dragBusy =
+        headingDragPauseRef.current ||
+        map.dragRotate.isActive() ||
+        map.touchPitch.isActive();
+      if (!headingWheelPauseRef.current && !dragBusy) {
         const pts = useProjectStore.getState().project.track.points;
         const t = useUiStore.getState().animationTimeMs;
         const playing = useUiStore.getState().isPlaying;
@@ -798,10 +828,12 @@ export function MapView() {
     headingRafRef.current = requestAnimationFrame(tick);
     return () => {
       map.off("wheel", onWheel);
-      map.off("pitchstart", onDragCameraStart);
-      map.off("pitchend", onDragCameraEnd);
-      map.off("rotatestart", onDragCameraStart);
-      map.off("rotateend", onDragCameraEnd);
+      map.off("mousedown", onMouseDown);
+      map.off("mouseup", endMouseDragPause);
+      map.off("touchstart", onTouchStart);
+      map.off("touchend", onTouchEnd);
+      map.off("touchcancel", onTouchEnd);
+      window.removeEventListener("mouseup", endMouseDragPause);
       if (headingWheelTimerRef.current != null) {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;

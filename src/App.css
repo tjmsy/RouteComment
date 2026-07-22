@@ -1209,10 +1209,10 @@ button.btn-skip {
 
 .profile-charts-body {
   position: relative;
-  padding: 0 0.5rem 0.35rem;
+  padding: 0 0.5rem;
   cursor: crosshair;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   flex: 1;
 }
 
@@ -1233,7 +1233,7 @@ button.btn-skip {
 }
 
 .profile-chart-row {
-  margin-bottom: 0.15rem;
+  margin-bottom: 2px;
 }
 
 .profile-chart-row:last-child {

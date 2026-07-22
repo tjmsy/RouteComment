@@ -62,6 +62,8 @@ const PROFILE_HEADER_MIN_H = 36;
 const PROFILE_MIN_HEIGHT = 60;
 const PROFILE_MAX_HEIGHT_RATIO = 0.5;
 const MIN_CHART_HEIGHT = 40;
+/** Matches `.profile-chart-row` margin-bottom. */
+const CHART_ROW_GAP_PX = 2;
 
 function clampProfileHeight(h: number): number {
   const max = Math.floor(window.innerHeight * PROFILE_MAX_HEIGHT_RATIO);
@@ -251,6 +253,8 @@ export function TrackProfileCharts() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [elevationPoints, setElevationPoints] = useState(points);
   const [demLoading, setDemLoading] = useState(false);
+  /** Content-box height of the charts body (excludes padding). */
+  const [bodyContentH, setBodyContentH] = useState(0);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const plotHostsRef = useRef<Partial<Record<ChartKind, HTMLDivElement>>>({});
@@ -319,12 +323,18 @@ export function TrackProfileCharts() {
 
   const chartHeight = useMemo(() => {
     if (expandedRows.length === 0) return 0;
-    const available = profilePanelHeightPx - PROFILE_HEADER_MIN_H - 8;
-    return Math.max(
-      MIN_CHART_HEIGHT,
-      Math.floor(available / expandedRows.length),
-    );
-  }, [profilePanelHeightPx, expandedRows.length]);
+    // Prefer measured body content height so chrome (handle/header/padding)
+    // cannot push charts past the panel and force a scrollbar.
+    const n = expandedRows.length;
+    const gaps = Math.max(0, n - 1) * CHART_ROW_GAP_PX;
+    const measured = bodyContentH > 0 ? bodyContentH - gaps : 0;
+    if (measured > 0) {
+      return Math.max(MIN_CHART_HEIGHT, Math.floor(measured / n));
+    }
+    const fallback =
+      profilePanelHeightPx - PROFILE_HEADER_MIN_H - 14 - gaps;
+    return Math.max(MIN_CHART_HEIGHT, Math.floor(fallback / n));
+  }, [profilePanelHeightPx, expandedRows.length, bodyContentH]);
 
   const hideTooltip = useCallback(() => {
     const tooltip = tooltipRef.current;
@@ -354,13 +364,20 @@ export function TrackProfileCharts() {
             return val != null ? row.formatValue(val) : null;
           })
           .filter((v): v is string => v != null);
-        tooltip.style.display = "block";
-        tooltip.style.left = `${clientX - bodyRect.left}px`;
         tooltip.textContent = [
           formatProfileTime(sample.timeMs),
           formatDistanceKm(sample.distanceM),
           ...metricParts,
         ].join(" · ");
+        tooltip.style.display = "block";
+        // Center on cursor, then clamp so the tooltip stays inside the panel.
+        const pad = 4;
+        const half = tooltip.offsetWidth / 2;
+        const x = clientX - bodyRect.left;
+        const minX = half + pad;
+        const maxX = bodyRect.width - half - pad;
+        const left = maxX >= minX ? Math.min(maxX, Math.max(minX, x)) : bodyRect.width / 2;
+        tooltip.style.left = `${left}px`;
       }
     },
     [profile, rows, setAnimationTimeMs, setIsPlaying],
@@ -531,17 +548,35 @@ export function TrackProfileCharts() {
     [],
   );
 
-  useEffect(() => {
-    if (panelCollapsed) return;
+  useLayoutEffect(() => {
+    if (panelCollapsed) {
+      setBodyContentH(0);
+      return;
+    }
     const el = bodyRef.current;
     if (!el) return;
 
+    const measure = () => {
+      const style = getComputedStyle(el);
+      const padY =
+        (parseFloat(style.paddingTop) || 0) +
+        (parseFloat(style.paddingBottom) || 0);
+      const next = Math.max(0, Math.floor(el.clientHeight - padY));
+      setBodyContentH((prev) => (prev === next ? prev : next));
+    };
+
+    measure();
     const ro = new ResizeObserver(() => {
+      measure();
       const charts = chartsRef.current;
-      const width = plotHostsRef.current[expandedRows[0]?.kind]?.clientWidth ?? 0;
+      const width =
+        plotHostsRef.current[expandedRows[0]?.kind]?.clientWidth ?? 0;
       if (charts.length > 0 && width >= 20) {
         for (const { plot } of charts) {
-          plot.setSize({ width, height: plot.height });
+          // Height is driven by chartHeight → buildCharts; only sync width here.
+          if (plot.width !== width) {
+            plot.setSize({ width, height: plot.height });
+          }
         }
         return;
       }

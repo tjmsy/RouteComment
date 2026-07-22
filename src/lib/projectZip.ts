@@ -118,8 +118,12 @@ function guessImageName(blob: Blob): string {
 function trackToGpx(data: ProjectData): string {
   const pts = data.track.points
     .map((p) => {
+      const ele =
+        typeof p.ele === "number" && Number.isFinite(p.ele)
+          ? `<ele>${p.ele}</ele>`
+          : "";
       const time = p.time ? `<time>${escapeXml(p.time)}</time>` : "";
-      return `<trkpt lat="${p.lat}" lon="${p.lng}">${time}</trkpt>`;
+      return `<trkpt lat="${p.lat}" lon="${p.lng}">${ele}${time}</trkpt>`;
     })
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>

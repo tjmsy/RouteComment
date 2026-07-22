@@ -7,6 +7,10 @@ export type TrackPoint = {
   lat: number;
   time?: string;
   timeOffsetMs?: number;
+  /** Meters above sea level (GPX <ele> or DEM). */
+  ele?: number;
+  /** Beats per minute (GPX extensions). */
+  heartRate?: number;
 };
 
 export const PLAN_COLORS = [

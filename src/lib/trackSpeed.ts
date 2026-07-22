@@ -26,7 +26,7 @@ function segmentTimeMs(a: TrackPoint, b: TrackPoint): number | null {
 }
 
 /** Instantaneous speed (m/s) for each segment between consecutive points. */
-function rawSegmentSpeedsMps(points: TrackPoint[]): (number | null)[] {
+export function rawSegmentSpeedsMps(points: TrackPoint[]): (number | null)[] {
   const speeds: (number | null)[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i];
@@ -54,7 +54,7 @@ function segmentMidTimeMs(points: TrackPoint[], i: number): number {
 }
 
 /** Time-windowed moving average of segment speeds. */
-function smoothSpeeds(
+export function smoothSegmentSpeeds(
   raw: (number | null)[],
   points: TrackPoint[],
   windowMs = SMOOTH_WINDOW_MS,
@@ -139,7 +139,7 @@ export function buildSpeedColoredTrackFeatures(
   if (!hasRealTimestamps(points) || points.length < 2) return null;
 
   const raw = rawSegmentSpeedsMps(points);
-  const smoothed = smoothSpeeds(raw, points);
+  const smoothed = smoothSegmentSpeeds(raw, points);
   const valid = smoothed.filter((v) => v > 0).sort((a, b) => a - b);
   if (valid.length === 0) return null;
 

@@ -27,6 +27,10 @@ type UiState = {
   showBasemap: boolean;
   mapOpacity: number;
   terrain3d: boolean;
+  /** Profile charts panel (elevation / HR / speed). */
+  showProfileCharts: boolean;
+  /** DEM elevation fetch status for profile charts. */
+  elevationStatus: "idle" | "loading" | "done" | "failed";
   /** GPX loaded or skipped during onboarding. */
   setupGpxDone: boolean;
   /** Map image loaded or skipped during onboarding. */
@@ -55,6 +59,8 @@ type UiState = {
   setShowBasemap: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
   setTerrain3d: (on: boolean) => void;
+  setShowProfileCharts: (on: boolean) => void;
+  setElevationStatus: (status: UiState["elevationStatus"]) => void;
   markSetupGpxDone: () => void;
   markSetupMapDone: () => void;
   skipSetupGpx: () => void;
@@ -110,6 +116,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   showBasemap: true,
   mapOpacity: 0.75,
   terrain3d: false,
+  showProfileCharts: true,
+  elevationStatus: "idle",
   setupGpxDone: false,
   setupMapDone: false,
   georefStep: 0,
@@ -231,6 +239,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   setShowBasemap: (show) => set({ showBasemap: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
   setTerrain3d: (on) => set({ terrain3d: on }),
+  setShowProfileCharts: (on) => set({ showProfileCharts: on }),
+  setElevationStatus: (status) => set({ elevationStatus: status }),
   markSetupGpxDone: () =>
     set({
       setupGpxDone: true,

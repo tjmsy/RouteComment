@@ -16,7 +16,12 @@ type GeoJsonFeatureCollection = {
   features: GeoJsonFeature[];
 };
 
-function coordTime(properties: Record<string, unknown> | undefined, index: number): string | undefined {
+const GPXTPX_NS = "http://www.garmin.com/xmlschemas/TrackPointExtension/v1";
+
+function coordTime(
+  properties: Record<string, unknown> | undefined,
+  index: number,
+): string | undefined {
   if (!properties) return undefined;
   const coordTimes = properties.coordinateProperties as
     | { times?: string[] }
@@ -26,10 +31,42 @@ function coordTime(properties: Record<string, unknown> | undefined, index: numbe
   return undefined;
 }
 
+/** Parse per-trkpt heart rate from GPX TrackPointExtension (togeojson omits per-coordinate HR). */
+function parseHeartRatesFromDom(doc: Document): (number | undefined)[] {
+  const rates: (number | undefined)[] = [];
+  const trkpts = doc.getElementsByTagNameNS(
+    "http://www.topografix.com/GPX/1/1",
+    "trkpt",
+  );
+  for (let i = 0; i < trkpts.length; i++) {
+    const pt = trkpts[i];
+    let hr: number | undefined;
+    const ext = pt.getElementsByTagNameNS(GPXTPX_NS, "TrackPointExtension")[0];
+    if (ext) {
+      const hrEl = ext.getElementsByTagNameNS(GPXTPX_NS, "hr")[0];
+      if (hrEl?.textContent) {
+        const n = Number(hrEl.textContent.trim());
+        if (Number.isFinite(n)) hr = n;
+      }
+    }
+    if (hr == null) {
+      const hrEls = pt.getElementsByTagNameNS(GPXTPX_NS, "hr");
+      if (hrEls.length > 0 && hrEls[0].textContent) {
+        const n = Number(hrEls[0].textContent.trim());
+        if (Number.isFinite(n)) hr = n;
+      }
+    }
+    rates.push(hr);
+  }
+  return rates;
+}
+
 export function parseGpx(text: string): TrackPoint[] {
   const doc = new DOMParser().parseFromString(text, "text/xml");
+  const heartRates = parseHeartRatesFromDom(doc);
   const geojson = gpx(doc) as GeoJsonFeatureCollection;
   const points: TrackPoint[] = [];
+  let hrIdx = 0;
 
   for (const feature of geojson.features ?? []) {
     const geom = feature.geometry;
@@ -38,10 +75,14 @@ export function parseGpx(text: string): TrackPoint[] {
     if (geom.type === "LineString") {
       const coords = geom.coordinates as number[][];
       coords.forEach((c, i) => {
+        const hr = heartRates[hrIdx];
+        hrIdx++;
         points.push({
           lng: c[0],
           lat: c[1],
           time: coordTime(feature.properties, i),
+          ele: c.length >= 3 && Number.isFinite(c[2]) ? c[2] : undefined,
+          heartRate: hr,
         });
       });
     } else if (geom.type === "MultiLineString") {
@@ -49,10 +90,14 @@ export function parseGpx(text: string): TrackPoint[] {
       let idx = 0;
       for (const line of lines) {
         for (const c of line) {
+          const hr = heartRates[hrIdx];
+          hrIdx++;
           points.push({
             lng: c[0],
             lat: c[1],
             time: coordTime(feature.properties, idx),
+            ele: c.length >= 3 && Number.isFinite(c[2]) ? c[2] : undefined,
+            heartRate: hr,
           });
           idx++;
         }
@@ -160,6 +205,67 @@ export function interpolateTrackPose(
     lat: last.lat,
     bearing: bearingOf(timed[timed.length - 2], last),
   };
+}
+
+/** Linearly interpolate a numeric track field at a given time. */
+export function interpolateValueAtTime(
+  points: TrackPoint[],
+  timeMs: number,
+  key: "ele" | "heartRate",
+): number | null {
+  if (points.length === 0) return null;
+
+  const timed = points.map((p, i) => ({
+    ...p,
+    timeOffsetMs: p.timeOffsetMs ?? i * 1000,
+  }));
+
+  const hasValue = (p: TrackPoint) => {
+    const v = p[key];
+    return typeof v === "number" && Number.isFinite(v);
+  };
+
+  if (!timed.some(hasValue)) return null;
+
+  const first = timed[0];
+  const last = timed[timed.length - 1];
+  const t0First = first.timeOffsetMs ?? 0;
+  const t0Last = last.timeOffsetMs ?? 0;
+
+  if (timeMs <= t0First) {
+    if (hasValue(first)) return first[key]!;
+    for (const p of timed) {
+      if (hasValue(p)) return p[key]!;
+    }
+    return null;
+  }
+  if (timeMs >= t0Last) {
+    if (hasValue(last)) return last[key]!;
+    for (let i = timed.length - 1; i >= 0; i--) {
+      if (hasValue(timed[i])) return timed[i][key]!;
+    }
+    return null;
+  }
+
+  for (let i = 0; i < timed.length - 1; i++) {
+    const a = timed[i];
+    const b = timed[i + 1];
+    const ta = a.timeOffsetMs ?? 0;
+    const tb = b.timeOffsetMs ?? ta + 1;
+    if (timeMs < ta || timeMs > tb) continue;
+
+    const va = hasValue(a) ? a[key]! : null;
+    const vb = hasValue(b) ? b[key]! : null;
+
+    if (va != null && vb != null) {
+      const u = tb === ta ? 0 : (timeMs - ta) / (tb - ta);
+      return va + (vb - va) * u;
+    }
+    if (va != null) return va;
+    if (vb != null) return vb;
+  }
+
+  return null;
 }
 
 export function trackDurationMs(points: TrackPoint[]): number {

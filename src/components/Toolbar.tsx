@@ -64,6 +64,9 @@ export function Toolbar() {
   const setMapOpacity = useUiStore((s) => s.setMapOpacity);
   const terrain3d = useUiStore((s) => s.terrain3d);
   const setTerrain3d = useUiStore((s) => s.setTerrain3d);
+  const showProfileCharts = useUiStore((s) => s.showProfileCharts);
+  const setShowProfileCharts = useUiStore((s) => s.setShowProfileCharts);
+  const elevationStatus = useUiStore((s) => s.elevationStatus);
   const playbackSpeed = useUiStore((s) => s.playbackSpeed);
   const setPlaybackSpeed = useUiStore((s) => s.setPlaybackSpeed);
   const headingUp = useUiStore((s) => s.headingUp);
@@ -490,6 +493,19 @@ export function Toolbar() {
                   onChange={(e) => setTrackLineWidth(Number(e.target.value))}
                 />
               </label>
+            )}
+            {project.track.points.length > 0 && (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={showProfileCharts}
+                  onChange={(e) => setShowProfileCharts(e.target.checked)}
+                />
+                Profile charts
+              </label>
+            )}
+            {elevationStatus === "failed" && (
+              <p className="hint">Elevation fetch failed.</p>
             )}
             {project.routePlans.map((plan) => (
               <label key={plan.id} className="check plan-layer-row">

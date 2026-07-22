@@ -193,6 +193,8 @@ export function MapView() {
   const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
+  const showProfileCharts = useUiStore((s) => s.showProfileCharts);
+  const isPlaying = useUiStore((s) => s.isPlaying);
   const setGeorefStep = useUiStore((s) => s.setGeorefStep);
   const setGeorefPin = useUiStore((s) => s.setGeorefPin);
   const setGeorefPendingFrom = useUiStore((s) => s.setGeorefPendingFrom);
@@ -1021,6 +1023,28 @@ export function MapView() {
     setStatusMessage,
     syncTrackRangeHighlight,
   ]);
+
+  // Profile chart sync: hover near track in view mode scrubs playback time
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
+
+    const onProfileMove = (e: maplibregl.MapMouseEvent) => {
+      const ui = useUiStore.getState();
+      if (ui.mode !== "view" || ui.isPlaying || !ui.showProfileCharts) return;
+      const pts = useProjectStore.getState().project.track.points;
+      if (pts.length === 0) return;
+      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat);
+      if (hit?.timeOffsetMs == null) return;
+      ui.setIsPlaying(false);
+      ui.setAnimationTimeMs(hit.timeOffsetMs);
+    };
+
+    map.on("mousemove", onProfileMove);
+    return () => {
+      map.off("mousemove", onProfileMove);
+    };
+  }, [mapInstance, showProfileCharts, isPlaying]);
 
   useEffect(() => {
     if (!activeRoutePlanId && routePlans[0]) {

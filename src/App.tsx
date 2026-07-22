@@ -2,6 +2,7 @@ import { MapView } from "./components/MapView";
 import { Toolbar } from "./components/Toolbar";
 import { AnimationControls } from "./components/AnimationControls";
 import { DanmakuOverlay } from "./components/DanmakuOverlay";
+import { TrackProfileCharts } from "./components/TrackProfileCharts";
 import "./App.css";
 
 export default function App() {
@@ -9,8 +10,11 @@ export default function App() {
     <div className="app">
       <Toolbar />
       <main className="main">
-        <MapView />
-        <DanmakuOverlay />
+        <div className="main-map">
+          <MapView />
+          <DanmakuOverlay />
+        </div>
+        <TrackProfileCharts />
         <AnimationControls />
       </main>
     </div>

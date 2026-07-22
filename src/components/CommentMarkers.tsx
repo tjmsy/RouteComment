@@ -19,6 +19,8 @@ export function CommentMarkers({ map }: Props) {
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const toggleCommentExpanded = useUiStore((s) => s.toggleCommentExpanded);
   const mode = useUiStore((s) => s.mode);
+  const editTool = useUiStore((s) => s.editTool);
+  const commentEditing = mode === "edit" && editTool === "comment";
 
   if (!map) return null;
 
@@ -31,11 +33,11 @@ export function CommentMarkers({ map }: Props) {
             map={map}
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
-            draggable={mode === "comment"}
-            editable={mode === "comment"}
+            draggable={commentEditing}
+            editable={commentEditing}
             onToggle={() => toggleCommentExpanded(comment.id)}
           />
-        ) : comment.kind === "follow" && mode === "comment" ? (
+        ) : comment.kind === "follow" && commentEditing ? (
           <FollowRangeMarker
             key={comment.id}
             map={map}

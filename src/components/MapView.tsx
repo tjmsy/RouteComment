@@ -182,6 +182,7 @@ export function MapView() {
   const updateComment = useProjectStore((s) => s.updateComment);
 
   const mode = useUiStore((s) => s.mode);
+  const editTool = useUiStore((s) => s.editTool);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const showTrack = useUiStore((s) => s.showTrack);
   const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
@@ -940,7 +941,12 @@ export function MapView() {
 
     const onMove = (e: maplibregl.MapMouseEvent) => {
       const ui = useUiStore.getState();
-      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      if (
+        ui.mode !== "edit" ||
+        ui.editTool !== "comment" ||
+        ui.commentTool !== "follow"
+      )
+        return;
       const startMs = ui.followRangeStartMs ?? dragStartMsRef.current;
       if (startMs == null) return;
       const pts = useProjectStore.getState().project.track.points;
@@ -955,7 +961,12 @@ export function MapView() {
 
     const onMouseDown = (e: maplibregl.MapMouseEvent) => {
       const ui = useUiStore.getState();
-      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      if (
+        ui.mode !== "edit" ||
+        ui.editTool !== "comment" ||
+        ui.commentTool !== "follow"
+      )
+        return;
       if (ui.followRangeStartMs != null) return;
       const pts = useProjectStore.getState().project.track.points;
       const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat);
@@ -972,7 +983,12 @@ export function MapView() {
       if (dragStart == null) return;
 
       const ui = useUiStore.getState();
-      if (ui.mode !== "comment" || ui.commentTool !== "follow") return;
+      if (
+        ui.mode !== "edit" ||
+        ui.editTool !== "comment" ||
+        ui.commentTool !== "follow"
+      )
+        return;
       const pts = useProjectStore.getState().project.track.points;
       const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
       if (hit?.timeOffsetMs == null) return;
@@ -1030,7 +1046,9 @@ export function MapView() {
 
     const onClick = (e: maplibregl.MapMouseEvent) => {
       const lngLat = { lng: e.lngLat.lng, lat: e.lngLat.lat };
-      const currentMode = useUiStore.getState().mode;
+      const ui = useUiStore.getState();
+      const currentMode = ui.mode;
+      const currentEditTool = ui.editTool;
 
       if (currentMode === "georef") {
         const currentPose = useProjectStore.getState().project.georef.pose;
@@ -1096,7 +1114,7 @@ export function MapView() {
         return;
       }
 
-      if (currentMode === "plan") {
+      if (currentMode === "edit" && currentEditTool === "plan") {
         let planId =
           useUiStore.getState().activeRoutePlanId ??
           useProjectStore.getState().project.routePlans[0]?.id;
@@ -1108,7 +1126,7 @@ export function MapView() {
         return;
       }
 
-      if (currentMode === "comment") {
+      if (currentMode === "edit" && currentEditTool === "comment") {
         const tool = useUiStore.getState().commentTool;
         const pts = useProjectStore.getState().project.track.points;
 
@@ -1224,10 +1242,11 @@ export function MapView() {
     if (!map) return;
     const canvas = map.getCanvas();
     canvas.style.cursor =
-      mode === "plan" || mode === "comment" || mode === "georef"
+      mode === "georef" ||
+      (mode === "edit" && (editTool === "plan" || editTool === "comment"))
         ? "crosshair"
         : "";
-  }, [mode]);
+  }, [mode, editTool]);
 
   const showSpeedScale =
     showTrack && speedColoredTrack != null && trackPoints.length >= 2;

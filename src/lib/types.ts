@@ -69,7 +69,10 @@ export type ProjectData = {
   comments: Comment[];
 };
 
-export type AppMode = "view" | "georef" | "plan" | "comment";
+export type AppMode = "view" | "georef" | "edit";
+
+/** Sub-tool while AppMode is "edit" (or Setup during georef). */
+export type EditTool = "setup" | "plan" | "comment";
 
 export type ImageSourceCoordinates = [
   [number, number],

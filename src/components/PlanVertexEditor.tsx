@@ -32,6 +32,7 @@ const EMPTY_COORDS: [number, number][] = [];
  */
 export function PlanVertexEditor({ map }: Props) {
   const mode = useUiStore((s) => s.mode);
+  const editTool = useUiStore((s) => s.editTool);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const routePlans = useProjectStore((s) => s.project.routePlans);
   const updatePlanCoordinate = useProjectStore((s) => s.updatePlanCoordinate);
@@ -50,7 +51,7 @@ export function PlanVertexEditor({ map }: Props) {
   removeRef.current = removePlanCoordinate;
 
   const activePlan =
-    mode === "plan" && activeRoutePlanId
+    mode === "edit" && editTool === "plan" && activeRoutePlanId
       ? routePlans.find((p) => p.id === activeRoutePlanId)
       : undefined;
   const editable = !!map && !!activePlan && activePlan.visible;

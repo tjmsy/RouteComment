@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AppMode } from "../lib/types";
+import type { AppMode, EditTool } from "../lib/types";
 
 /** Two-point fine-tune steps (streetview-o style). */
 export type GeorefStep = 0 | 1 | 2 | 3;
@@ -8,6 +8,8 @@ type LngLat = { lng: number; lat: number };
 
 type UiState = {
   mode: AppMode;
+  editTool: EditTool;
+  toolbarCollapsed: boolean;
   expandedCommentIds: string[];
   animationTimeMs: number;
   isPlaying: boolean;
@@ -35,6 +37,8 @@ type UiState = {
   statusMessage: string;
 
   setMode: (mode: AppMode) => void;
+  setEditTool: (tool: EditTool) => void;
+  setToolbarCollapsed: (collapsed: boolean) => void;
   toggleCommentExpanded: (id: string) => void;
   setCommentExpanded: (id: string, expanded: boolean) => void;
   clearExpandedComments: () => void;
@@ -76,8 +80,22 @@ const georefHint = (step: GeorefStep): string => {
   }
 };
 
+const editToolHint = (
+  tool: EditTool,
+  commentTool: "map" | "follow" | "danmaku",
+): string => {
+  if (tool === "setup") return "";
+  if (tool === "plan") return "Click the map to draw the route plan";
+  if (commentTool === "follow") return "Click the GPS track to set the range start";
+  if (commentTool === "danmaku")
+    return "Click Add danmaku at the current playback time";
+  return "Click the map to place a comment";
+};
+
 export const useUiStore = create<UiState>((set, get) => ({
-  mode: "view",
+  mode: "edit",
+  editTool: "setup",
+  toolbarCollapsed: false,
   expandedCommentIds: [],
   animationTimeMs: 0,
   isPlaying: false,
@@ -101,21 +119,33 @@ export const useUiStore = create<UiState>((set, get) => ({
     "Start with GPX so the map jumps to the competition area, then add the map image.",
 
   setMode: (mode) => {
-    const { setupGpxDone, setupMapDone } = get();
+    const { setupGpxDone, setupMapDone, editTool, commentTool } = get();
     const setupComplete = setupGpxDone && setupMapDone;
-    if (
-      !setupComplete &&
-      (mode === "view" || mode === "plan" || mode === "comment")
-    ) {
+    if (!setupComplete && (mode === "view" || mode === "edit")) {
+      if (mode === "view") {
+        set({
+          statusMessage: !setupGpxDone
+            ? "Finish Setup: load GPX (or Skip), then map image (or Skip)."
+            : "Finish Setup: add a map image (or Skip) to continue.",
+        });
+        return;
+      }
+      // Allow edit during onboarding, but keep Setup tool.
       set({
-        statusMessage: !setupGpxDone
-          ? "Finish Event setup: load GPX (or Skip), then map image (or Skip)."
-          : "Finish Event setup: add a map image (or Skip) to continue.",
+        mode: "edit",
+        editTool: "setup",
+        isPlaying: false,
+        georefStep: 0,
+        georefPin: null,
+        georefPendingFrom: null,
+        followRangeStartMs: null,
+        statusMessage: get().statusMessage,
       });
       return;
     }
     set({
       mode,
+      editTool: mode === "georef" ? "setup" : editTool,
       isPlaying: mode === "georef" ? false : get().isPlaying,
       georefStep: 0,
       georefPin: null,
@@ -124,17 +154,37 @@ export const useUiStore = create<UiState>((set, get) => ({
       statusMessage:
         mode === "georef"
           ? georefHint(0)
-          : mode === "plan"
-            ? "Click the map to draw the route plan"
-            : mode === "comment"
-              ? get().commentTool === "follow"
-                ? "Click the GPS track to set the range start"
-                : get().commentTool === "danmaku"
-                  ? "Click Add danmaku at the current playback time"
-                  : "Click the map to place a comment"
-              : "",
+          : mode === "edit"
+            ? editToolHint(editTool, commentTool)
+            : "",
     });
   },
+
+  setEditTool: (tool) => {
+    const { setupGpxDone, setupMapDone, mode, commentTool } = get();
+    const setupComplete = setupGpxDone && setupMapDone;
+    if (!setupComplete && tool !== "setup") {
+      set({
+        statusMessage: !setupGpxDone
+          ? "Finish Setup: load GPX (or Skip), then map image (or Skip)."
+          : "Finish Setup: add a map image (or Skip) to continue.",
+      });
+      return;
+    }
+    const leaveGeoref = mode === "georef";
+    set({
+      mode: leaveGeoref || mode === "view" ? "edit" : mode,
+      editTool: tool,
+      isPlaying: leaveGeoref ? false : get().isPlaying,
+      georefStep: 0,
+      georefPin: null,
+      georefPendingFrom: null,
+      followRangeStartMs: null,
+      statusMessage: editToolHint(tool, commentTool),
+    });
+  },
+
+  setToolbarCollapsed: (collapsed) => set({ toolbarCollapsed: collapsed }),
 
   toggleCommentExpanded: (id) => {
     const cur = get().expandedCommentIds;
@@ -191,7 +241,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       setupMapDone: true,
       mode: "view",
-      statusMessage: "Setup complete. You can add a map image later in Event setup.",
+      statusMessage: "Setup complete. You can add a map image later in Edit → Setup.",
     }),
   completeSetup: () =>
     set({

@@ -38,6 +38,7 @@ function kindLabel(kind: string): string {
  */
 export function CommentPanel() {
   const mode = useUiStore((s) => s.mode);
+  const editTool = useUiStore((s) => s.editTool);
   const comments = useProjectStore((s) => s.project.comments);
   const updateComment = useProjectStore((s) => s.updateComment);
   const removeComment = useProjectStore((s) => s.removeComment);
@@ -46,7 +47,7 @@ export function CommentPanel() {
 
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
   const comment = comments.find((c) => c.id === activeId) ?? null;
-  const editable = mode === "comment";
+  const editable = mode === "edit" && editTool === "comment";
 
   const [draft, setDraft] = useState("");
   const [startDraft, setStartDraft] = useState("");
@@ -67,7 +68,11 @@ export function CommentPanel() {
   }, [comment?.id, comment?.text, comment?.timeStartMs, comment?.timeEndMs]);
 
   if (!comment) return null;
-  if (mode !== "comment" && mode !== "view") return null;
+  if (
+    mode !== "view" &&
+    !(mode === "edit" && editTool === "comment")
+  )
+    return null;
 
   const isFollow = comment.kind === "follow";
   const isDanmaku = comment.kind === "danmaku";

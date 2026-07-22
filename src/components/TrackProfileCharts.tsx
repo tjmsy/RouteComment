@@ -14,15 +14,17 @@ import {
 } from "../lib/trackProfile";
 import type { Comment } from "../lib/types";
 import { commentActiveAt } from "../lib/types";
-
-type ChartKind = "ele" | "hr" | "speed";
+import {
+  formatYLabel,
+  uniformYAxisSize,
+  yRangeForKind,
+  type ChartKind,
+} from "../lib/chartScales";
 
 type ChartRow = {
   kind: ChartKind;
   label: string;
-  unit: string;
   color: string;
-  height: number;
   getValue: (s: ProfileSample) => number | undefined;
   formatValue: (v: number) => string;
 };
@@ -31,31 +33,36 @@ const CHART_ROWS: ChartRow[] = [
   {
     kind: "ele",
     label: "Elevation",
-    unit: "m",
     color: "#38bdf8",
-    height: 80,
     getValue: (s) => s.ele,
     formatValue: (v) => `${v.toFixed(0)} m`,
   },
   {
     kind: "hr",
     label: "Heart rate",
-    unit: "bpm",
     color: "#f472b6",
-    height: 60,
     getValue: (s) => s.heartRate,
     formatValue: (v) => `${Math.round(v)} bpm`,
   },
   {
     kind: "speed",
     label: "Speed",
-    unit: "km/h",
     color: "#a3e635",
-    height: 60,
     getValue: (s) => s.speedKmh,
     formatValue: (v) => `${v.toFixed(1)} km/h`,
   },
 ];
+
+const PROFILE_HEADER_H = 32;
+const ROW_TOGGLE_H = 22;
+const PROFILE_MIN_HEIGHT = 60;
+const PROFILE_MAX_HEIGHT_RATIO = 0.5;
+const MIN_CHART_HEIGHT = 40;
+
+function clampProfileHeight(h: number): number {
+  const max = Math.floor(window.innerHeight * PROFILE_MAX_HEIGHT_RATIO);
+  return Math.min(max, Math.max(PROFILE_MIN_HEIGHT, Math.round(h)));
+}
 
 function playheadPlugin(getTimeSec: () => number): uPlot.Plugin {
   return {
@@ -146,20 +153,29 @@ export function TrackProfileCharts() {
   const showProfileCharts = useUiStore((s) => s.showProfileCharts);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const profilePanelHeightPx = useUiStore((s) => s.profilePanelHeightPx);
+  const profileChartCollapsed = useUiStore((s) => s.profileChartCollapsed);
   const setAnimationTimeMs = useUiStore((s) => s.setAnimationTimeMs);
   const setIsPlaying = useUiStore((s) => s.setIsPlaying);
   const setElevationStatus = useUiStore((s) => s.setElevationStatus);
+  const setProfilePanelHeightPx = useUiStore((s) => s.setProfilePanelHeightPx);
+  const toggleProfileChartCollapsed = useUiStore(
+    (s) => s.toggleProfileChartCollapsed,
+  );
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [elevationPoints, setElevationPoints] = useState(points);
   const [demLoading, setDemLoading] = useState(false);
+  const [plotHosts, setPlotHosts] = useState<
+    Partial<Record<ChartKind, HTMLDivElement>>
+  >({});
 
   const bodyRef = useRef<HTMLDivElement>(null);
-  const chartsMountRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<ChartInstance[]>([]);
   const playheadSecRef = useRef(animationTimeMs / 1000);
   const rangesRef = useRef<{ startSec: number; endSec: number }[]>([]);
   const draggingRef = useRef(false);
+  const resizeDragRef = useRef<{ startY: number; startH: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   playheadSecRef.current = animationTimeMs / 1000;
@@ -211,55 +227,95 @@ export function TrackProfileCharts() {
 
   const rows = useMemo(() => visibleRows(profile), [profile]);
 
+  const expandedRows = useMemo(
+    () => rows.filter((r) => !profileChartCollapsed[r.kind]),
+    [rows, profileChartCollapsed],
+  );
+
+  const bodyHeight = profilePanelHeightPx - PROFILE_HEADER_H;
+  const chartHeight = useMemo(() => {
+    if (expandedRows.length === 0) return 0;
+    const available =
+      bodyHeight - rows.length * ROW_TOGGLE_H - 8;
+    return Math.max(
+      MIN_CHART_HEIGHT,
+      Math.floor(available / expandedRows.length),
+    );
+  }, [bodyHeight, expandedRows.length, rows.length]);
+
+  const setPlotHost = useCallback(
+    (kind: ChartKind, el: HTMLDivElement | null) => {
+      setPlotHosts((prev) => {
+        if (el) {
+          if (prev[kind] === el) return prev;
+          return { ...prev, [kind]: el };
+        }
+        if (!(kind in prev)) return prev;
+        const next = { ...prev };
+        delete next[kind];
+        return next;
+      });
+    },
+    [],
+  );
+
   const destroyCharts = useCallback(() => {
     for (const { plot } of chartsRef.current) {
       plot.destroy();
     }
     chartsRef.current = [];
-    chartsMountRef.current?.replaceChildren();
   }, []);
 
   const buildCharts = useCallback(() => {
-    const mount = chartsMountRef.current;
-    if (!mount || collapsed || rows.length === 0 || profile.samples.length === 0) {
+    if (
+      panelCollapsed ||
+      rows.length === 0 ||
+      profile.samples.length === 0 ||
+      expandedRows.length === 0 ||
+      chartHeight < MIN_CHART_HEIGHT
+    ) {
+      destroyCharts();
       return;
     }
 
-    const width = mount.clientWidth;
+    const hostsReady = expandedRows.every((r) => plotHosts[r.kind]);
+    if (!hostsReady) return;
+
+    const firstHost = plotHosts[expandedRows[0].kind];
+    const width = firstHost?.clientWidth ?? 0;
     if (width < 20) return;
 
     destroyCharts();
 
     const times = profile.samples.map((s) => s.timeMs / 1000);
+
+    const rowRanges = expandedRows.map((row) => {
+      const nums = profile.samples
+        .map((s) => row.getValue(s))
+        .filter((v): v is number => v != null && Number.isFinite(v));
+      return { kind: row.kind, ...yRangeForKind(row.kind, nums) };
+    });
+    const yAxisSize = uniformYAxisSize(rowRanges);
+
     const instances: ChartInstance[] = [];
 
-    rows.forEach((row, rowIdx) => {
+    expandedRows.forEach((row, rowIdx) => {
+      const plotHost = plotHosts[row.kind];
+      if (!plotHost) return;
+
       const values = profile.samples.map((s) => row.getValue(s) ?? null);
-
-      const rowEl = document.createElement("div");
-      rowEl.className = "profile-chart-row";
-
-      const label = document.createElement("span");
-      label.className = "profile-chart-label";
-      label.textContent = row.label;
-      rowEl.appendChild(label);
-
-      const plotHost = document.createElement("div");
-      plotHost.className = "profile-chart-plot";
-      rowEl.appendChild(plotHost);
-      mount.appendChild(rowEl);
-
-      const isLast = rowIdx === rows.length - 1;
+      const yRange = rowRanges[rowIdx];
+      const isLast = rowIdx === expandedRows.length - 1;
 
       const opts: uPlot.Options = {
         width,
-        height: row.height,
+        height: chartHeight,
         pxAlign: 1,
         cursor: { show: false },
         legend: { show: false },
         scales: {
           x: { time: false },
-          y: { auto: true },
+          y: { min: yRange.min, max: yRange.max },
         },
         axes: [
           {
@@ -276,9 +332,11 @@ export function TrackProfileCharts() {
             stroke: "#9aab9e",
             grid: { show: true, stroke: "rgba(154,171,158,0.1)" },
             ticks: { show: false },
-            size: 42,
+            size: yAxisSize,
             font: "10px DM Sans, system-ui, sans-serif",
             gap: 4,
+            values: (_u, splits) =>
+              splits.map((v) => formatYLabel(row.kind, v)),
           },
         ],
         series: [
@@ -302,27 +360,31 @@ export function TrackProfileCharts() {
     });
 
     chartsRef.current = instances;
-  }, [collapsed, destroyCharts, profile, rows]);
+  }, [
+    panelCollapsed,
+    destroyCharts,
+    profile,
+    rows.length,
+    expandedRows,
+    plotHosts,
+    chartHeight,
+  ]);
 
   useEffect(() => {
-    if (collapsed) {
-      destroyCharts();
-      return;
-    }
     buildCharts();
-  }, [collapsed, buildCharts, destroyCharts]);
+  }, [buildCharts]);
 
   useEffect(() => {
-    if (collapsed) return;
-    const mount = chartsMountRef.current;
-    if (!mount) return;
+    if (panelCollapsed) return;
+    const el = bodyRef.current;
+    if (!el) return;
 
     const ro = new ResizeObserver(() => {
       buildCharts();
     });
-    ro.observe(mount);
+    ro.observe(el);
     return () => ro.disconnect();
-  }, [collapsed, buildCharts]);
+  }, [panelCollapsed, buildCharts]);
 
   const scrubToClientX = useCallback(
     (clientX: number) => {
@@ -343,17 +405,19 @@ export function TrackProfileCharts() {
       const body = bodyRef.current;
       if (tooltip && sample && body) {
         const bodyRect = body.getBoundingClientRect();
-        const row = rows[0];
-        const val = row?.getValue(sample);
+        const metricParts = rows
+          .map((row) => {
+            const val = row.getValue(sample);
+            return val != null ? row.formatValue(val) : null;
+          })
+          .filter((v): v is string => v != null);
         tooltip.style.display = "block";
         tooltip.style.left = `${clientX - bodyRect.left}px`;
         tooltip.textContent = [
           formatProfileTime(sample.timeMs),
           formatDistanceKm(sample.distanceM),
-          val != null && row ? row.formatValue(val) : "",
-        ]
-          .filter(Boolean)
-          .join(" · ");
+          ...metricParts,
+        ].join(" · ");
       }
     },
     [profile, rows, setAnimationTimeMs, setIsPlaying],
@@ -367,7 +431,7 @@ export function TrackProfileCharts() {
 
   useEffect(() => {
     const el = bodyRef.current;
-    if (!el || collapsed) return;
+    if (!el || panelCollapsed) return;
 
     const onMove = (e: PointerEvent) => {
       if (!el.contains(e.target as Node)) return;
@@ -409,9 +473,37 @@ export function TrackProfileCharts() {
       el.removeEventListener("pointerup", onUp);
       el.removeEventListener("pointerleave", onLeave);
     };
-  }, [scrubToClientX, collapsed, rows.length]);
+  }, [scrubToClientX, panelCollapsed, rows.length]);
+
+  useEffect(() => {
+    const onResizeMove = (e: PointerEvent) => {
+      const drag = resizeDragRef.current;
+      if (!drag) return;
+      const delta = drag.startY - e.clientY;
+      setProfilePanelHeightPx(clampProfileHeight(drag.startH + delta));
+    };
+
+    const onResizeUp = () => {
+      resizeDragRef.current = null;
+    };
+
+    window.addEventListener("pointermove", onResizeMove);
+    window.addEventListener("pointerup", onResizeUp);
+    return () => {
+      window.removeEventListener("pointermove", onResizeMove);
+      window.removeEventListener("pointerup", onResizeUp);
+    };
+  }, [setProfilePanelHeightPx]);
 
   useEffect(() => () => destroyCharts(), [destroyCharts]);
+
+  const onResizeHandleDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    resizeDragRef.current = {
+      startY: e.clientY,
+      startH: profilePanelHeightPx,
+    };
+  };
 
   if (mode !== "view" || points.length === 0 || !showProfileCharts) return null;
   if (rows.length === 0 && !demLoading) return null;
@@ -421,15 +513,25 @@ export function TrackProfileCharts() {
   );
 
   return (
-    <div className={`profile-charts${collapsed ? " profile-charts--collapsed" : ""}`}>
+    <div
+      className={`profile-charts${panelCollapsed ? " profile-charts--collapsed" : ""}`}
+      style={{ height: panelCollapsed ? undefined : profilePanelHeightPx }}
+    >
+      <div
+        className="profile-charts-resize-handle"
+        onPointerDown={onResizeHandleDown}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize profile panel"
+      />
       <div className="profile-charts-header">
         <button
           type="button"
           className="profile-charts-toggle"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-expanded={!collapsed}
+          onClick={() => setPanelCollapsed((c) => !c)}
+          aria-expanded={!panelCollapsed}
         >
-          {collapsed ? "▸" : "▾"} Profile
+          {panelCollapsed ? "▸" : "▾"} Profile
         </button>
         {demLoading && (
           <span className="profile-charts-status">Loading elevation…</span>
@@ -445,9 +547,34 @@ export function TrackProfileCharts() {
           </span>
         )}
       </div>
-      {!collapsed && (
-        <div className="profile-charts-body" ref={bodyRef}>
-          <div ref={chartsMountRef} className="profile-charts-mount" />
+      {!panelCollapsed && (
+        <div
+          className="profile-charts-body"
+          ref={bodyRef}
+          style={{ height: bodyHeight }}
+        >
+          {rows.map((row) => {
+            const rowCollapsed = profileChartCollapsed[row.kind];
+            return (
+              <div key={row.kind} className="profile-chart-row">
+                <button
+                  type="button"
+                  className="profile-chart-row-toggle"
+                  onClick={() => toggleProfileChartCollapsed(row.kind)}
+                  aria-expanded={!rowCollapsed}
+                >
+                  {rowCollapsed ? "▸" : "▾"} {row.label}
+                </button>
+                {!rowCollapsed && (
+                  <div
+                    className="profile-chart-plot"
+                    style={{ height: chartHeight }}
+                    ref={(el) => setPlotHost(row.kind, el)}
+                  />
+                )}
+              </div>
+            );
+          })}
           {rows.length === 0 && demLoading && (
             <p className="profile-charts-empty">Waiting for elevation data…</p>
           )}

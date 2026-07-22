@@ -217,6 +217,22 @@ export function MapView() {
   );
   /** While true, skip heading-up camera writes so pitch/rotate drag can stick. */
   const headingDragPauseRef = useRef(false);
+  /** While true, skip heading-up camera writes so terrain pitch easeTo can finish. */
+  const headingEasePauseRef = useRef(false);
+  const headingEaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  const pauseHeadingForCameraEase = useCallback((durationMs: number) => {
+    headingEasePauseRef.current = true;
+    if (headingEaseTimerRef.current != null) {
+      clearTimeout(headingEaseTimerRef.current);
+    }
+    headingEaseTimerRef.current = setTimeout(() => {
+      headingEasePauseRef.current = false;
+      headingEaseTimerRef.current = null;
+    }, durationMs + 50);
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -416,8 +432,13 @@ export function MapView() {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
 
+    const PITCH_EASE_MS = 400;
+
     const apply = () => {
       if (!map.isStyleLoaded()) return;
+
+      const ui = useUiStore.getState();
+      const headingActive = ui.headingUp && ui.mode === "view";
 
       if (terrain3d) {
         if (!map.getSource(TERRAIN_SOURCE)) {
@@ -433,12 +454,16 @@ export function MapView() {
         }
         map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: 1 });
         map.setMaxPitch(DEFAULT_MAX_PITCH);
-        map.easeTo({ pitch: TERRAIN_PITCH, duration: 400 });
+        // Heading-up jumpTo() calls stop() every frame and cancels easeTo;
+        // pause follow briefly so the pitch transition can complete.
+        if (headingActive) pauseHeadingForCameraEase(PITCH_EASE_MS);
+        map.easeTo({ pitch: TERRAIN_PITCH, duration: PITCH_EASE_MS });
       } else {
         map.setTerrain(null);
         map.setMaxPitch(0);
         if (map.getPitch() !== 0) {
-          map.easeTo({ pitch: 0, duration: 400 });
+          if (headingActive) pauseHeadingForCameraEase(PITCH_EASE_MS);
+          map.easeTo({ pitch: 0, duration: PITCH_EASE_MS });
         }
       }
     };
@@ -448,7 +473,7 @@ export function MapView() {
     return () => {
       map.off("style.load", apply);
     };
-  }, [terrain3d, mapInstance]);
+  }, [terrain3d, mapInstance, pauseHeadingForCameraEase]);
 
   const speedColoredTrack = useMemo(() => {
     if (!colorTrackBySpeed || trackPoints.length < 2) return null;
@@ -747,8 +772,13 @@ export function MapView() {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;
       }
+      if (headingEaseTimerRef.current != null) {
+        clearTimeout(headingEaseTimerRef.current);
+        headingEaseTimerRef.current = null;
+      }
       headingWheelPauseRef.current = false;
       headingDragPauseRef.current = false;
+      headingEasePauseRef.current = false;
       return;
     }
 
@@ -806,7 +836,11 @@ export function MapView() {
         headingDragPauseRef.current ||
         map.dragRotate.isActive() ||
         map.touchPitch.isActive();
-      if (!headingWheelPauseRef.current && !dragBusy) {
+      if (
+        !headingWheelPauseRef.current &&
+        !headingEasePauseRef.current &&
+        !dragBusy
+      ) {
         const pts = useProjectStore.getState().project.track.points;
         const t = useUiStore.getState().animationTimeMs;
         const playing = useUiStore.getState().isPlaying;
@@ -845,8 +879,13 @@ export function MapView() {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;
       }
+      if (headingEaseTimerRef.current != null) {
+        clearTimeout(headingEaseTimerRef.current);
+        headingEaseTimerRef.current = null;
+      }
       headingWheelPauseRef.current = false;
       headingDragPauseRef.current = false;
+      headingEasePauseRef.current = false;
       if (headingRafRef.current != null) {
         cancelAnimationFrame(headingRafRef.current);
         headingRafRef.current = null;

@@ -39,6 +39,17 @@ type ProjectState = {
   removeRoutePlan: (id: string) => void;
   updateRoutePlan: (id: string, patch: Partial<RoutePlan>) => void;
   appendPlanCoordinate: (planId: string, coord: [number, number]) => void;
+  updatePlanCoordinate: (
+    planId: string,
+    index: number,
+    coord: [number, number],
+  ) => void;
+  insertPlanCoordinate: (
+    planId: string,
+    index: number,
+    coord: [number, number],
+  ) => void;
+  removePlanCoordinate: (planId: string, index: number) => void;
   undoPlanCoordinate: (planId: string) => void;
   clearPlanCoordinates: (planId: string) => void;
   togglePlanVisible: (planId: string) => void;
@@ -118,10 +129,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   addRoutePlan: () => {
     const id = crypto.randomUUID();
     set((s) => {
-      const n = s.project.routePlans.length;
       const plan: RoutePlan = {
         id,
-        name: `Plan ${String.fromCharCode(65 + n)}`,
+        name: "Plan",
         coordinates: [],
         visible: true,
         color: nextPlanColor(s.project.routePlans),
@@ -164,6 +174,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             ? { ...p, coordinates: [...p.coordinates, coord] }
             : p,
         ),
+      },
+    })),
+
+  updatePlanCoordinate: (planId, index, coord) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        routePlans: s.project.routePlans.map((p) => {
+          if (p.id !== planId) return p;
+          if (index < 0 || index >= p.coordinates.length) return p;
+          const coordinates = p.coordinates.slice();
+          coordinates[index] = coord;
+          return { ...p, coordinates };
+        }),
+      },
+    })),
+
+  insertPlanCoordinate: (planId, index, coord) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        routePlans: s.project.routePlans.map((p) => {
+          if (p.id !== planId) return p;
+          const i = Math.max(0, Math.min(index, p.coordinates.length));
+          const coordinates = p.coordinates.slice();
+          coordinates.splice(i, 0, coord);
+          return { ...p, coordinates };
+        }),
+      },
+    })),
+
+  removePlanCoordinate: (planId, index) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        routePlans: s.project.routePlans.map((p) => {
+          if (p.id !== planId) return p;
+          if (index < 0 || index >= p.coordinates.length) return p;
+          return {
+            ...p,
+            coordinates: p.coordinates.filter((_, i) => i !== index),
+          };
+        }),
       },
     })),
 

@@ -18,6 +18,10 @@ type UiState = {
   followRangeStartMs: number | null;
   activeRoutePlanId: string | null;
   showTrack: boolean;
+  /** Color GPS track by segment speed (red=slow, blue=fast). */
+  colorTrackBySpeed: boolean;
+  /** GPS track line width in pixels. */
+  trackLineWidth: number;
   showBasemap: boolean;
   mapOpacity: number;
   terrain3d: boolean;
@@ -42,6 +46,8 @@ type UiState = {
   setFollowRangeStartMs: (ms: number | null) => void;
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
+  setColorTrackBySpeed: (on: boolean) => void;
+  setTrackLineWidth: (width: number) => void;
   setShowBasemap: (show: boolean) => void;
   setMapOpacity: (opacity: number) => void;
   setTerrain3d: (on: boolean) => void;
@@ -81,6 +87,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   followRangeStartMs: null,
   activeRoutePlanId: null,
   showTrack: true,
+  colorTrackBySpeed: true,
+  trackLineWidth: 5,
   showBasemap: true,
   mapOpacity: 0.75,
   terrain3d: false,
@@ -160,6 +168,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
+  setColorTrackBySpeed: (on) => set({ colorTrackBySpeed: on }),
+  setTrackLineWidth: (width) => set({ trackLineWidth: width }),
   setShowBasemap: (show) => set({ showBasemap: show }),
   setMapOpacity: (opacity) => set({ mapOpacity: opacity }),
   setTerrain3d: (on) => set({ terrain3d: on }),

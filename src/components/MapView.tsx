@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useProjectStore } from "../store/projectStore";
@@ -14,15 +14,24 @@ import {
   nearestTrackPoint,
   trackSliceCoordinates,
 } from "../lib/gpx";
+import {
+  buildSpeedColoredTrackFeatures,
+  formatSpeedKmh,
+} from "../lib/trackSpeed";
 import { CommentMarkers } from "./CommentMarkers";
+import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
+
+const TRACK_SOLID_COLOR = "#e11d48";
 
 const MAP_IMAGE_SOURCE = "omap-image";
 const MAP_IMAGE_LAYER = "omap-raster";
 const TRACK_SOURCE = "gps-track";
+const TRACK_HALO_LAYER = "gps-track-halo";
 const TRACK_LAYER = "gps-track-line";
 const TRACK_RANGE_SOURCE = "track-range";
 const TRACK_RANGE_LAYER = "track-range-line";
+const TRACK_HALO_EXTRA_WIDTH = 3;
 const PLAN_SOURCE_PREFIX = "route-plan-";
 const RUNNER_SOURCE = "runner-pos";
 const RUNNER_LAYER = "runner-circle";
@@ -37,6 +46,7 @@ const MAP_BG = "#ffffff";
 function isAppOwnedLayer(id: string): boolean {
   return (
     id === MAP_IMAGE_LAYER ||
+    id === TRACK_HALO_LAYER ||
     id === TRACK_LAYER ||
     id === TRACK_RANGE_LAYER ||
     id === RUNNER_LAYER ||
@@ -126,7 +136,7 @@ function isNearTrack(
   return hit;
 }
 
-/** Bottom → top: omap image, plans, track, range, runner */
+/** Bottom → top: omap image, plans, track halo, track, range, runner */
 function ensureLayerOrder(map: maplibregl.Map) {
   const style = map.getStyle();
   const planLayers =
@@ -137,6 +147,7 @@ function ensureLayerOrder(map: maplibregl.Map) {
   const bottomToTop = [
     MAP_IMAGE_LAYER,
     ...planLayers,
+    TRACK_HALO_LAYER,
     TRACK_LAYER,
     TRACK_RANGE_LAYER,
     RUNNER_LAYER,
@@ -173,6 +184,8 @@ export function MapView() {
   const mode = useUiStore((s) => s.mode);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const showTrack = useUiStore((s) => s.showTrack);
+  const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
+  const trackLineWidth = useUiStore((s) => s.trackLineWidth);
   const showBasemap = useUiStore((s) => s.showBasemap);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const headingUp = useUiStore((s) => s.headingUp);
@@ -432,6 +445,11 @@ export function MapView() {
     };
   }, [terrain3d, mapInstance]);
 
+  const speedColoredTrack = useMemo(() => {
+    if (!colorTrackBySpeed || trackPoints.length < 2) return null;
+    return buildSpeedColoredTrackFeatures(trackPoints);
+  }, [colorTrackBySpeed, trackPoints]);
+
   // Track
   useEffect(() => {
     const map = mapRef.current;
@@ -440,11 +458,15 @@ export function MapView() {
     const apply = () => {
       if (!map.isStyleLoaded()) return;
       const pts = trackPoints;
+      const visible = showTrack && pts.length >= 2;
+      const useSpeedColors = visible && speedColoredTrack != null;
       const lineData: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
-        features:
-          pts.length >= 2 && showTrack
-            ? [
+        features: !visible
+          ? []
+          : useSpeedColors
+            ? speedColoredTrack.features
+            : [
                 {
                   type: "Feature",
                   properties: {},
@@ -453,28 +475,51 @@ export function MapView() {
                     coordinates: pts.map((p) => [p.lng, p.lat]),
                   },
                 },
-              ]
-            : [],
+              ],
       };
+      const lineColor: string | maplibregl.ExpressionSpecification =
+        useSpeedColors ? ["get", "color"] : TRACK_SOLID_COLOR;
+      const haloWidth = trackLineWidth + TRACK_HALO_EXTRA_WIDTH;
+      const visibility = visible ? "visible" : "none";
+
       ensureGeoJsonSource(map, TRACK_SOURCE, lineData);
+
+      if (!map.getLayer(TRACK_HALO_LAYER) && pts.length >= 2) {
+        map.addLayer({
+          id: TRACK_HALO_LAYER,
+          type: "line",
+          source: TRACK_SOURCE,
+          paint: {
+            "line-color": "#ffffff",
+            "line-width": haloWidth,
+            "line-opacity": 0.85,
+          },
+        });
+      } else if (map.getLayer(TRACK_HALO_LAYER)) {
+        map.setPaintProperty(TRACK_HALO_LAYER, "line-width", haloWidth);
+      }
+
       if (!map.getLayer(TRACK_LAYER) && pts.length >= 2) {
         map.addLayer({
           id: TRACK_LAYER,
           type: "line",
           source: TRACK_SOURCE,
           paint: {
-            "line-color": "#e11d48",
-            "line-width": 3,
+            "line-color": lineColor,
+            "line-width": trackLineWidth,
             "line-opacity": 0.9,
           },
         });
+      } else if (map.getLayer(TRACK_LAYER)) {
+        map.setPaintProperty(TRACK_LAYER, "line-color", lineColor);
+        map.setPaintProperty(TRACK_LAYER, "line-width", trackLineWidth);
+      }
+
+      if (map.getLayer(TRACK_HALO_LAYER)) {
+        map.setLayoutProperty(TRACK_HALO_LAYER, "visibility", visibility);
       }
       if (map.getLayer(TRACK_LAYER)) {
-        map.setLayoutProperty(
-          TRACK_LAYER,
-          "visibility",
-          showTrack && pts.length >= 2 ? "visible" : "none",
-        );
+        map.setLayoutProperty(TRACK_LAYER, "visibility", visibility);
       }
       ensureLayerOrder(map);
     };
@@ -489,7 +534,7 @@ export function MapView() {
       map.off("style.load", apply);
       map.off("idle", apply);
     };
-  }, [trackPoints, showTrack, mapInstance]);
+  }, [trackPoints, showTrack, speedColoredTrack, trackLineWidth, mapInstance]);
 
   const fittedTrackRef = useRef("");
   useEffect(() => {
@@ -1184,10 +1229,72 @@ export function MapView() {
         : "";
   }, [mode]);
 
+  const showSpeedScale =
+    showTrack && speedColoredTrack != null && trackPoints.length >= 2;
+  const legendPlans = routePlans.filter((p) => p.visible);
+  const showTrackInLegend = showTrack && trackPoints.length >= 2;
+  const showLayerLegend = showTrackInLegend || legendPlans.length > 0;
+
   return (
     <>
       <div ref={containerRef} className="map-view" />
+      {showLayerLegend && (
+        <div
+          className="map-legend map-legend--layers"
+          aria-label="Map layer legend"
+        >
+          {showTrackInLegend && (
+            <div className="map-legend-row">
+              <span
+                className={
+                  showSpeedScale
+                    ? "map-legend-swatch map-legend-swatch--speed"
+                    : "map-legend-swatch"
+                }
+                style={
+                  showSpeedScale
+                    ? undefined
+                    : { backgroundColor: TRACK_SOLID_COLOR }
+                }
+                aria-hidden
+              />
+              <span className="map-legend-label">GPS track</span>
+            </div>
+          )}
+          {legendPlans.map((plan) => (
+            <div key={plan.id} className="map-legend-row">
+              <span
+                className="map-legend-dash"
+                style={{ color: plan.color || "#2563eb" }}
+                aria-hidden
+              />
+              <span className="map-legend-label" title={plan.name}>
+                {plan.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {showSpeedScale && speedColoredTrack && (
+        <div
+          className="map-legend map-legend--speed"
+          aria-label="Track speed scale"
+        >
+          <span className="map-legend-speed-label">
+            Slow
+            <br />
+            {formatSpeedKmh(speedColoredTrack.minSpeedMps)}
+          </span>
+          <div className="map-legend-speed-bar" />
+          <span className="map-legend-speed-label">
+            Fast
+            <br />
+            {formatSpeedKmh(speedColoredTrack.maxSpeedMps)}
+          </span>
+        </div>
+      )}
       <CommentMarkers map={mapInstance} />
+      <PlanVertexEditor map={mapInstance} />
     </>
   );
 }

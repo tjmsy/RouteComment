@@ -51,6 +51,10 @@ export function Toolbar() {
   const setMode = useUiStore((s) => s.setMode);
   const showTrack = useUiStore((s) => s.showTrack);
   const setShowTrack = useUiStore((s) => s.setShowTrack);
+  const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
+  const setColorTrackBySpeed = useUiStore((s) => s.setColorTrackBySpeed);
+  const trackLineWidth = useUiStore((s) => s.trackLineWidth);
+  const setTrackLineWidth = useUiStore((s) => s.setTrackLineWidth);
   const showBasemap = useUiStore((s) => s.showBasemap);
   const setShowBasemap = useUiStore((s) => s.setShowBasemap);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
@@ -392,6 +396,29 @@ export function Toolbar() {
             GPS track
           </label>
         )}
+        {project.track.points.length > 0 && showTrack && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={colorTrackBySpeed}
+              onChange={(e) => setColorTrackBySpeed(e.target.checked)}
+            />
+            Color by speed
+          </label>
+        )}
+        {project.track.points.length > 0 && showTrack && (
+          <label className="field">
+            <span>Track width ({trackLineWidth})</span>
+            <input
+              type="range"
+              min={1}
+              max={12}
+              step={1}
+              value={trackLineWidth}
+              onChange={(e) => setTrackLineWidth(Number(e.target.value))}
+            />
+          </label>
+        )}
         {project.routePlans.map((plan) => (
           <label key={plan.id} className="check plan-layer-row">
             <input
@@ -566,7 +593,9 @@ export function Toolbar() {
             <>
               <p className="hint">
                 Editing <strong>{activePlan.name}</strong> —{" "}
-                {activePlan.coordinates.length} vertices. Click the map to add.
+                {activePlan.coordinates.length} vertices. Click the map to add
+                at the end. Drag vertices to move, drag midpoints to insert,
+                double-click a vertex to delete.
               </p>
               <label className="field">
                 <span>Line width ({activePlan.lineWidth ?? 3})</span>

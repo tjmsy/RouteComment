@@ -152,7 +152,7 @@ export function normalizeRoutePlan(
       : 3;
   return {
     id: raw.id ?? crypto.randomUUID(),
-    name: raw.name ?? `Plan ${String.fromCharCode(65 + index)}`,
+    name: raw.name ?? "Plan",
     coordinates: raw.coordinates ?? [],
     visible: raw.visible !== false,
     color: raw.color ?? PLAN_COLORS[index % PLAN_COLORS.length],

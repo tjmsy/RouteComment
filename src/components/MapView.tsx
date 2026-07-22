@@ -394,20 +394,33 @@ export function MapView() {
     if (!map || !mapInstance) return;
     const apply = () => {
       if (!map.isStyleLoaded()) return;
-      setBasemapVisible(map, hasContent && showBasemap, originalBgRef.current);
+      // Read from the store so a delayed once('idle') retry cannot apply a
+      // stale showBasemap from a previous effect closure (same Play race as
+      // the GPS track toggle).
+      const ui = useUiStore.getState();
+      setBasemapVisible(
+        map,
+        hasContent && ui.showBasemap,
+        originalBgRef.current,
+      );
       if (map.getLayer(MAP_IMAGE_LAYER)) {
         map.setPaintProperty(
           MAP_IMAGE_LAYER,
           "raster-opacity",
-          mode === "georef" ? mapOpacity : 1,
+          ui.mode === "georef" ? ui.mapOpacity : 1,
         );
       }
       ensureLayerOrder(map);
     };
     apply();
-    map.on("idle", apply);
+    map.on("style.load", apply);
+    const onIdleOnce = () => apply();
+    if (!map.isStyleLoaded()) {
+      map.once("idle", onIdleOnce);
+    }
     return () => {
-      map.off("idle", apply);
+      map.off("style.load", apply);
+      map.off("idle", onIdleOnce);
     };
   }, [hasContent, showBasemap, mode, mapOpacity, mapInstance]);
 

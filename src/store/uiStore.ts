@@ -1,10 +1,19 @@
 import { create } from "zustand";
+import type { ChartKind } from "../lib/chartScales";
 import type { AppMode, EditTool } from "../lib/types";
 
 /** Two-point fine-tune steps (streetview-o style). */
 export type GeorefStep = 0 | 1 | 2 | 3;
 
 type LngLat = { lng: number; lat: number };
+
+export type ProfileChartCollapsed = Record<ChartKind, boolean>;
+
+const DEFAULT_PROFILE_CHART_COLLAPSED: ProfileChartCollapsed = {
+  ele: false,
+  hr: false,
+  speed: false,
+};
 
 type UiState = {
   mode: AppMode;
@@ -31,6 +40,10 @@ type UiState = {
   showProfileCharts: boolean;
   /** DEM elevation fetch status for profile charts. */
   elevationStatus: "idle" | "loading" | "done" | "failed";
+  /** Total height of the profile charts panel (px). */
+  profilePanelHeightPx: number;
+  /** Per-series collapse state for profile charts. */
+  profileChartCollapsed: ProfileChartCollapsed;
   /** GPX loaded or skipped during onboarding. */
   setupGpxDone: boolean;
   /** Map image loaded or skipped during onboarding. */
@@ -61,6 +74,8 @@ type UiState = {
   setTerrain3d: (on: boolean) => void;
   setShowProfileCharts: (on: boolean) => void;
   setElevationStatus: (status: UiState["elevationStatus"]) => void;
+  setProfilePanelHeightPx: (height: number) => void;
+  toggleProfileChartCollapsed: (kind: ChartKind) => void;
   markSetupGpxDone: () => void;
   markSetupMapDone: () => void;
   skipSetupGpx: () => void;
@@ -118,6 +133,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   terrain3d: false,
   showProfileCharts: true,
   elevationStatus: "idle",
+  profilePanelHeightPx: 200,
+  profileChartCollapsed: { ...DEFAULT_PROFILE_CHART_COLLAPSED },
   setupGpxDone: false,
   setupMapDone: false,
   georefStep: 0,
@@ -241,6 +258,14 @@ export const useUiStore = create<UiState>((set, get) => ({
   setTerrain3d: (on) => set({ terrain3d: on }),
   setShowProfileCharts: (on) => set({ showProfileCharts: on }),
   setElevationStatus: (status) => set({ elevationStatus: status }),
+  setProfilePanelHeightPx: (height) => set({ profilePanelHeightPx: height }),
+  toggleProfileChartCollapsed: (kind) =>
+    set((s) => ({
+      profileChartCollapsed: {
+        ...s.profileChartCollapsed,
+        [kind]: !s.profileChartCollapsed[kind],
+      },
+    })),
   markSetupGpxDone: () =>
     set({
       setupGpxDone: true,

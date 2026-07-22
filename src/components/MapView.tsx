@@ -189,7 +189,6 @@ export function MapView() {
   const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
   const trackLineWidth = useUiStore((s) => s.trackLineWidth);
   const showBasemap = useUiStore((s) => s.showBasemap);
-  const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const headingUp = useUiStore((s) => s.headingUp);
   const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
@@ -530,15 +529,18 @@ export function MapView() {
       ensureLayerOrder(map);
     };
 
-    // apply() is idempotent and guards on isStyleLoaded; re-run on idle so a
-    // transient "style not loaded" (e.g. tiles loading after fitBounds) still
-    // adds the track — this fixes the track not showing on the first GPX load.
+    // apply() is idempotent and guards on isStyleLoaded. Prefer style.load over a
+    // permanent idle listener: during Play the runner marker updates every frame and
+    // would fire idle continuously, racing stale track apply closures against toggles.
     apply();
     map.on("style.load", apply);
-    map.on("idle", apply);
+    const onIdleOnce = () => apply();
+    if (!map.isStyleLoaded()) {
+      map.once("idle", onIdleOnce);
+    }
     return () => {
       map.off("style.load", apply);
-      map.off("idle", apply);
+      map.off("idle", onIdleOnce);
     };
   }, [trackPoints, showTrack, speedColoredTrack, trackLineWidth, mapInstance]);
 
@@ -677,15 +679,18 @@ export function MapView() {
     };
   }, [routePlans, mapInstance]);
 
-  // Runner marker
+  // Runner marker — keep listeners stable; scrub time via store subscribe so Play
+  // does not rebind idle/style handlers every animation frame.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !mapInstance) return;
 
     const apply = () => {
       if (!map.isStyleLoaded()) return;
-      const runnerPose = interpolateTrackPose(trackPoints, animationTimeMs);
-      const show = trackPoints.length > 0 && runnerPose != null;
+      const pts = useProjectStore.getState().project.track.points;
+      const t = useUiStore.getState().animationTimeMs;
+      const runnerPose = interpolateTrackPose(pts, t);
+      const show = pts.length > 0 && runnerPose != null;
 
       const data: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
@@ -715,18 +720,20 @@ export function MapView() {
             "circle-stroke-color": "#fff",
           },
         });
+        ensureLayerOrder(map);
       }
-      ensureLayerOrder(map);
     };
 
     apply();
     map.on("style.load", apply);
-    map.on("idle", apply);
+    const unsub = useUiStore.subscribe((s, prev) => {
+      if (s.animationTimeMs !== prev.animationTimeMs) apply();
+    });
     return () => {
       map.off("style.load", apply);
-      map.off("idle", apply);
+      unsub();
     };
-  }, [animationTimeMs, trackPoints, mapInstance]);
+  }, [trackPoints, mapInstance]);
 
   // Smooth heading-up camera (own RAF so rotation stays continuous)
   useEffect(() => {

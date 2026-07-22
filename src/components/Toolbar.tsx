@@ -86,7 +86,6 @@ export function Toolbar() {
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
-  const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const addComment = useProjectStore((s) => s.addComment);
 
@@ -614,7 +613,7 @@ export function Toolbar() {
                       lng: 0,
                       lat: 0,
                       text: "",
-                      timeStartMs: animationTimeMs,
+                      timeStartMs: useUiStore.getState().animationTimeMs,
                     });
                     setCommentExpanded(id, true);
                     setStatusMessage(

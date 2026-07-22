@@ -1,0 +1,37 @@
+---
+description: Commit after each logical unit of work; do not batch unrelated changes
+alwaysApply: true
+---
+
+# Git commits
+
+Create a git commit after each completed unit of work, not only at the end of a long session.
+
+## When to commit
+
+- After a feature slice, bug fix, or refactor that builds and makes sense on its own
+- After each step in a multi-step plan (unless the user asks to squash later)
+- Before starting an unrelated task
+
+## When not to commit
+
+- Do not commit unless the user asked, or completing a plan step that explicitly includes a commit
+- Do not commit broken builds, secrets, or unrelated drive-by edits
+- Do not push unless the user asks
+
+## Commit message style
+
+- 1–2 sentences; focus on **why**, not a file list
+- Use the repo’s existing tone (English is fine for this project)
+- Examples:
+  - `Fix profile chart infinite render loop from plot host refs.`
+  - `Improve profile chart Y-axis scaling with percentile ranges.`
+
+## Workflow
+
+1. Finish one logical change and verify it builds when practical
+2. `git add` only relevant files
+3. Commit with a clear message
+4. Continue to the next task
+
+If a plan lists multiple commits, follow that split instead of squashing everything into one commit.

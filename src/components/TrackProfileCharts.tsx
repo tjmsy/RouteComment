@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useProjectStore } from "../store/projectStore";
@@ -166,11 +166,9 @@ export function TrackProfileCharts() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [elevationPoints, setElevationPoints] = useState(points);
   const [demLoading, setDemLoading] = useState(false);
-  const [plotHosts, setPlotHosts] = useState<
-    Partial<Record<ChartKind, HTMLDivElement>>
-  >({});
 
   const bodyRef = useRef<HTMLDivElement>(null);
+  const plotHostsRef = useRef<Partial<Record<ChartKind, HTMLDivElement>>>({});
   const chartsRef = useRef<ChartInstance[]>([]);
   const playheadSecRef = useRef(animationTimeMs / 1000);
   const rangesRef = useRef<{ startSec: number; endSec: number }[]>([]);
@@ -243,21 +241,10 @@ export function TrackProfileCharts() {
     );
   }, [bodyHeight, expandedRows.length, rows.length]);
 
-  const setPlotHost = useCallback(
-    (kind: ChartKind, el: HTMLDivElement | null) => {
-      setPlotHosts((prev) => {
-        if (el) {
-          if (prev[kind] === el) return prev;
-          return { ...prev, [kind]: el };
-        }
-        if (!(kind in prev)) return prev;
-        const next = { ...prev };
-        delete next[kind];
-        return next;
-      });
-    },
-    [],
-  );
+  const bindPlotHost = useCallback((kind: ChartKind, el: HTMLDivElement | null) => {
+    if (el) plotHostsRef.current[kind] = el;
+    else delete plotHostsRef.current[kind];
+  }, []);
 
   const destroyCharts = useCallback(() => {
     for (const { plot } of chartsRef.current) {
@@ -278,10 +265,11 @@ export function TrackProfileCharts() {
       return;
     }
 
-    const hostsReady = expandedRows.every((r) => plotHosts[r.kind]);
+    const hosts = plotHostsRef.current;
+    const hostsReady = expandedRows.every((r) => hosts[r.kind]);
     if (!hostsReady) return;
 
-    const firstHost = plotHosts[expandedRows[0].kind];
+    const firstHost = hosts[expandedRows[0].kind];
     const width = firstHost?.clientWidth ?? 0;
     if (width < 20) return;
 
@@ -300,7 +288,7 @@ export function TrackProfileCharts() {
     const instances: ChartInstance[] = [];
 
     expandedRows.forEach((row, rowIdx) => {
-      const plotHost = plotHosts[row.kind];
+      const plotHost = hosts[row.kind];
       if (!plotHost) return;
 
       const values = profile.samples.map((s) => row.getValue(s) ?? null);
@@ -366,11 +354,10 @@ export function TrackProfileCharts() {
     profile,
     rows.length,
     expandedRows,
-    plotHosts,
     chartHeight,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     buildCharts();
   }, [buildCharts]);
 
@@ -380,11 +367,19 @@ export function TrackProfileCharts() {
     if (!el) return;
 
     const ro = new ResizeObserver(() => {
+      const charts = chartsRef.current;
+      const width = plotHostsRef.current[expandedRows[0]?.kind]?.clientWidth ?? 0;
+      if (charts.length > 0 && width >= 20) {
+        for (const { plot } of charts) {
+          plot.setSize({ width, height: plot.height });
+        }
+        return;
+      }
       buildCharts();
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [panelCollapsed, buildCharts]);
+  }, [panelCollapsed, buildCharts, expandedRows]);
 
   const scrubToClientX = useCallback(
     (clientX: number) => {
@@ -569,7 +564,7 @@ export function TrackProfileCharts() {
                   <div
                     className="profile-chart-plot"
                     style={{ height: chartHeight }}
-                    ref={(el) => setPlotHost(row.kind, el)}
+                    ref={(el) => bindPlotHost(row.kind, el)}
                   />
                 )}
               </div>

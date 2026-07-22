@@ -793,13 +793,14 @@ export function MapView() {
     };
   }, [headingUp, mode, mapInstance]);
 
-  // Reset north-up when turning heading-up off
+  // Reset north-up when turning heading-up off, or when leaving View
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || headingUp) return;
+    if (!map) return;
+    if (mode === "view" && headingUp) return;
     headingBearingRef.current = null;
     map.easeTo({ bearing: 0, duration: 400 });
-  }, [headingUp]);
+  }, [headingUp, mode, mapInstance]);
 
   // Preview highlight while picking a follow-comment range, or selected follow range
   const followHoverMsRef = useRef<number | null>(null);

@@ -119,8 +119,10 @@ export const useUiStore = create<UiState>((set, get) => ({
     "Start with GPX so the map jumps to the competition area, then add the map image.",
 
   setMode: (mode) => {
-    const { setupGpxDone, setupMapDone, editTool, commentTool } = get();
+    const prev = get();
+    const { setupGpxDone, setupMapDone, editTool, commentTool } = prev;
     const setupComplete = setupGpxDone && setupMapDone;
+    const leavingView = prev.mode === "view" && mode !== "view";
     if (!setupComplete && (mode === "view" || mode === "edit")) {
       if (mode === "view") {
         set({
@@ -146,7 +148,9 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       mode,
       editTool: mode === "georef" ? "setup" : editTool,
-      isPlaying: mode === "georef" ? false : get().isPlaying,
+      isPlaying: mode === "georef" || leavingView ? false : prev.isPlaying,
+      terrain3d: leavingView ? false : prev.terrain3d,
+      headingUp: leavingView ? false : prev.headingUp,
       georefStep: 0,
       georefPin: null,
       georefPendingFrom: null,
@@ -161,7 +165,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   setEditTool: (tool) => {
-    const { setupGpxDone, setupMapDone, mode, commentTool } = get();
+    const prev = get();
+    const { setupGpxDone, setupMapDone, mode, commentTool } = prev;
     const setupComplete = setupGpxDone && setupMapDone;
     if (!setupComplete && tool !== "setup") {
       set({
@@ -172,10 +177,13 @@ export const useUiStore = create<UiState>((set, get) => ({
       return;
     }
     const leaveGeoref = mode === "georef";
+    const leavingView = mode === "view";
     set({
-      mode: leaveGeoref || mode === "view" ? "edit" : mode,
+      mode: leaveGeoref || leavingView ? "edit" : mode,
       editTool: tool,
-      isPlaying: leaveGeoref ? false : get().isPlaying,
+      isPlaying: leaveGeoref || leavingView ? false : prev.isPlaying,
+      terrain3d: leavingView ? false : prev.terrain3d,
+      headingUp: leavingView ? false : prev.headingUp,
       georefStep: 0,
       georefPin: null,
       georefPendingFrom: null,

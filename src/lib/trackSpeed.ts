@@ -176,6 +176,24 @@ export function buildSpeedColoredTrackFeatures(
   return { features, minSpeedMps, maxSpeedMps };
 }
 
-export function formatSpeedKmh(mps: number): string {
-  return `${(mps * 3.6).toFixed(1)} km/h`;
+/** Convert m/s → pace in minutes per km. */
+export function mpsToPaceMinPerKm(mps: number): number | undefined {
+  if (!(mps > 0) || !Number.isFinite(mps)) return undefined;
+  return 1000 / (mps * 60);
+}
+
+/** Format pace as `m:ss` (e.g. 5:30). */
+export function formatPaceValue(minPerKm: number): string {
+  if (!Number.isFinite(minPerKm) || minPerKm <= 0) return "—";
+  const totalSec = Math.round(minPerKm * 60);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Format speed (m/s) as pace with unit, e.g. `5:30 min/km`. */
+export function formatPaceMinPerKm(mps: number): string {
+  const pace = mpsToPaceMinPerKm(mps);
+  if (pace == null) return "—";
+  return `${formatPaceValue(pace)} min/km`;
 }

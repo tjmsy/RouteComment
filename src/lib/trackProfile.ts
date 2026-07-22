@@ -2,6 +2,7 @@ import { haversineDistance } from "./geo";
 import { interpolateValueAtTime } from "./gpx";
 import {
   hasRealTimestamps,
+  mpsToPaceMinPerKm,
   rawSegmentSpeedsMps,
   smoothSegmentSpeeds,
 } from "./trackSpeed";
@@ -12,7 +13,8 @@ export type ProfileSample = {
   distanceM: number;
   ele?: number;
   heartRate?: number;
-  speedKmh?: number;
+  /** Pace in minutes per kilometer. */
+  paceMinPerKm?: number;
 };
 
 export type TrackProfile = {
@@ -94,10 +96,12 @@ export function buildTrackProfile(points: TrackPoint[]): TrackProfile {
     const raw = rawSegmentSpeedsMps(timed);
     const smoothed = smoothSegmentSpeeds(raw, timed);
     for (let i = 0; i < smoothed.length; i++) {
-      samples[i + 1].speedKmh = smoothed[i] * 3.6;
+      const pace = mpsToPaceMinPerKm(smoothed[i]);
+      if (pace != null) samples[i + 1].paceMinPerKm = pace;
     }
     if (samples.length > 0 && smoothed.length > 0) {
-      samples[0].speedKmh = smoothed[0] * 3.6;
+      const pace = mpsToPaceMinPerKm(smoothed[0]);
+      if (pace != null) samples[0].paceMinPerKm = pace;
     }
   }
 

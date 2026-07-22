@@ -1,4 +1,4 @@
-import { percentile } from "./trackSpeed";
+import { percentile, formatPaceValue } from "./trackSpeed";
 
 export type ChartKind = "ele" | "hr" | "speed";
 
@@ -60,7 +60,7 @@ export function yRangeForKind(
 export function formatYLabel(kind: ChartKind, value: number): string {
   if (kind === "ele") return `${Math.round(value)}`;
   if (kind === "hr") return `${Math.round(value)}`;
-  return value.toFixed(1);
+  return formatPaceValue(value);
 }
 
 /** Rough tick splits between min and max (5 ticks). */

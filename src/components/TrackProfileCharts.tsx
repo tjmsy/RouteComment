@@ -21,6 +21,7 @@ import {
   yRangeForKind,
   type ChartKind,
 } from "../lib/chartScales";
+import { formatPaceValue } from "../lib/trackSpeed";
 
 const CURSOR_SYNC_KEY = "profile";
 /** Reserve the same bottom space as a visible x-axis on every chart. */
@@ -53,8 +54,8 @@ const CHART_ROWS: ChartRow[] = [
     kind: "speed",
     label: "Speed",
     color: "#a3e635",
-    getValue: (s) => s.speedKmh,
-    formatValue: (v) => `${v.toFixed(1)} km/h`,
+    getValue: (s) => s.paceMinPerKm,
+    formatValue: (v) => `${formatPaceValue(v)} min/km`,
   },
 ];
 

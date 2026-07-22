@@ -41,8 +41,11 @@ export type RoutePlan = {
  */
 export type CommentKind = "map" | "follow" | "danmaku";
 
-export const DEFAULT_POPUP_WIDTH = 220;
-export const DEFAULT_POPUP_HEIGHT = 140;
+export const DEFAULT_POPUP_WIDTH = 180;
+export const DEFAULT_POPUP_HEIGHT = 100;
+export const MIN_POPUP_WIDTH = 48;
+export const MIN_POPUP_HEIGHT = 36;
+export const MAX_POPUP_SIZE = 480;
 
 export type Comment = {
   id: string;
@@ -59,6 +62,8 @@ export type Comment = {
   popupWidth?: number;
   /** Map-pin popup height in CSS pixels (persisted per comment). */
   popupHeight?: number;
+  /** Map-pin: whether the speech-bubble popup is open (persisted). Default true. */
+  popupOpen?: boolean;
 };
 
 export type ProjectData = {
@@ -103,9 +108,13 @@ export function createEmptyProject(name = "Untitled"): ProjectData {
   };
 }
 
-function clampPopupSize(n: number | undefined, fallback: number): number {
+function clampPopupSize(
+  n: number | undefined,
+  fallback: number,
+  min: number,
+): number {
   if (typeof n !== "number" || !Number.isFinite(n)) return fallback;
-  return Math.min(480, Math.max(120, Math.round(n)));
+  return Math.min(MAX_POPUP_SIZE, Math.max(min, Math.round(n)));
 }
 
 /** Normalize legacy comments that only had timeOffsetMs / no kind. */
@@ -127,12 +136,13 @@ export function normalizeComment(
         : "map";
   const popupWidth =
     kind === "map"
-      ? clampPopupSize(raw.popupWidth, DEFAULT_POPUP_WIDTH)
+      ? clampPopupSize(raw.popupWidth, DEFAULT_POPUP_WIDTH, MIN_POPUP_WIDTH)
       : undefined;
   const popupHeight =
     kind === "map"
-      ? clampPopupSize(raw.popupHeight, DEFAULT_POPUP_HEIGHT)
+      ? clampPopupSize(raw.popupHeight, DEFAULT_POPUP_HEIGHT, MIN_POPUP_HEIGHT)
       : undefined;
+  const popupOpen = kind === "map" ? raw.popupOpen !== false : undefined;
   return {
     id: raw.id ?? crypto.randomUUID(),
     kind,
@@ -144,6 +154,7 @@ export function normalizeComment(
     timeEndMs: kind === "follow" ? timeEndMs : undefined,
     popupWidth,
     popupHeight,
+    popupOpen,
   };
 }
 

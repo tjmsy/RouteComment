@@ -1,7 +1,7 @@
 ﻿import { useRef } from "react";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
-import { parseGpx } from "../lib/gpx";
+import { interpolateTrackPosition, parseGpx } from "../lib/gpx";
 import {
   downloadBlob,
   loadProjectZip,
@@ -14,6 +14,15 @@ import {
   formatSummaryTime,
 } from "../lib/trackSummary";
 import { CommentPanel } from "./CommentPanel";
+
+function formatCommentHms(ms: number | undefined): string {
+  if (ms == null) return "—";
+  const totalSec = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
 
 const EDIT_TOOLS: { id: EditTool; label: string }[] = [
   { id: "setup", label: "Setup" },
@@ -93,7 +102,9 @@ export function Toolbar() {
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const addComment = useProjectStore((s) => s.addComment);
+  const removeComment = useProjectStore((s) => s.removeComment);
 
   const setupComplete = setupGpxDone && setupMapDone;
   const inEdit = mode === "edit" || mode === "georef";
@@ -647,37 +658,98 @@ export function Toolbar() {
               </div>
               <p className="hint">
                 {commentTool === "map"
-                  ? "Click the map to place a bubble. Drag the icon to move it; click to open the popup."
+                  ? "Click the map to place a pin. Popup opens by default; use × to collapse to an icon."
                   : commentTool === "follow"
-                    ? "Click or drag along the GPS track to set a time range. The bubble follows the runner in that range."
-                    : "Adds a scrolling comment that fires once at the current playback time (set time in View mode first)."}
+                    ? "Click or drag along the GPS track to set a time range. Click the runner icon to edit text on the map."
+                    : "Click the GPS track to place a danmaku, or drag its marker to adjust timing."}
               </p>
               {commentTool === "danmaku" && (
-                <button
-                  type="button"
-                  className="btn-add-danmaku"
-                  onClick={() => {
-                    if (project.track.points.length === 0) {
-                      setStatusMessage(
-                        "Load a GPS track before adding a danmaku comment.",
+                <>
+                  <button
+                    type="button"
+                    className="btn-add-danmaku"
+                    onClick={() => {
+                      if (project.track.points.length === 0) {
+                        setStatusMessage(
+                          "Load a GPS track before adding a danmaku comment.",
+                        );
+                        return;
+                      }
+                      const timeMs = useUiStore.getState().animationTimeMs;
+                      const pos = interpolateTrackPosition(
+                        project.track.points,
+                        timeMs,
                       );
-                      return;
+                      const id = addComment({
+                        kind: "danmaku",
+                        lng: pos?.lng ?? 0,
+                        lat: pos?.lat ?? 0,
+                        text: "",
+                        timeStartMs: timeMs,
+                      });
+                      setCommentExpanded(id, true);
+                      setStatusMessage(
+                        "Danmaku added at the current playback time. Edit text in the panel.",
+                      );
+                    }}
+                  >
+                    Add danmaku at current time
+                  </button>
+                  {(() => {
+                    const danmakuList = project.comments
+                      .filter((c) => c.kind === "danmaku")
+                      .slice()
+                      .sort(
+                        (a, b) => (a.timeStartMs ?? 0) - (b.timeStartMs ?? 0),
+                      );
+                    const activeId =
+                      expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+                    if (danmakuList.length === 0) {
+                      return (
+                        <p className="hint">
+                          No danmaku yet. Click the track to add one.
+                        </p>
+                      );
                     }
-                    const id = addComment({
-                      kind: "danmaku",
-                      lng: 0,
-                      lat: 0,
-                      text: "",
-                      timeStartMs: useUiStore.getState().animationTimeMs,
-                    });
-                    setCommentExpanded(id, true);
-                    setStatusMessage(
-                      "Danmaku added at the current playback time. Edit text in the panel.",
+                    return (
+                      <ul className="danmaku-list">
+                        {danmakuList.map((c) => (
+                          <li key={c.id} className="danmaku-list-item">
+                            <button
+                              type="button"
+                              className={
+                                c.id === activeId
+                                  ? "danmaku-select active"
+                                  : "danmaku-select"
+                              }
+                              onClick={() => setCommentExpanded(c.id, true)}
+                            >
+                              <span className="danmaku-select-time">
+                                {formatCommentHms(c.timeStartMs)}
+                              </span>
+                              <span className="danmaku-select-text">
+                                {c.text.trim() || "(No text)"}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              className="plan-remove"
+                              title="Remove danmaku"
+                              onClick={() => {
+                                removeComment(c.id);
+                                if (c.id === activeId) {
+                                  setCommentExpanded(c.id, false);
+                                }
+                              }}
+                            >
+                              ×
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
                     );
-                  }}
-                >
-                  Add danmaku at current time
-                </button>
+                  })()}
+                </>
               )}
             </section>
           )}

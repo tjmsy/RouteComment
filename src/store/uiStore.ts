@@ -180,6 +180,11 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPin: null,
       georefPendingFrom: null,
       followRangeStartMs: null,
+      // Drop follow/danmaku selection when leaving Comment edit (e.g. View).
+      expandedCommentIds:
+        mode === "edit" && editTool === "comment"
+          ? prev.expandedCommentIds
+          : [],
       statusMessage:
         mode === "georef"
           ? georefHint(0)
@@ -213,6 +218,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPin: null,
       georefPendingFrom: null,
       followRangeStartMs: null,
+      expandedCommentIds: tool === "comment" ? prev.expandedCommentIds : [],
       statusMessage: editToolHint(tool, commentTool),
     });
   },

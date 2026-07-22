@@ -201,7 +201,7 @@ export function CommentPanel() {
 
       {!editable && isMap && (
         <p className="hint">
-          Click the bubble icon on the map to open the popup. Switch to Comment
+          Click the pin icon on the map to open the popup. Switch to Comment
           mode to edit or move the pin.
         </p>
       )}

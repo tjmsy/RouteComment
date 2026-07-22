@@ -203,6 +203,8 @@ export function MapView() {
   const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const comments = useProjectStore((s) => s.project.comments);
   const showProfileCharts = useUiStore((s) => s.showProfileCharts);
   const isPlaying = useUiStore((s) => s.isPlaying);
   const setGeorefStep = useUiStore((s) => s.setGeorefStep);
@@ -522,6 +524,21 @@ export function MapView() {
     return buildSpeedColoredTrackFeatures(trackPoints);
   }, [colorTrackBySpeed, trackPoints]);
 
+  const forceSolidTrack = useMemo(() => {
+    // Only while editing follow ranges — selection must not stick into View.
+    if (mode !== "edit" || editTool !== "comment") return false;
+    if (followRangeStartMs != null) return true;
+    const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+    if (!activeId) return false;
+    return comments.some((c) => c.id === activeId && c.kind === "follow");
+  }, [
+    mode,
+    editTool,
+    followRangeStartMs,
+    expandedCommentIds,
+    comments,
+  ]);
+
   // Track
   useEffect(() => {
     const map = mapRef.current;
@@ -531,7 +548,8 @@ export function MapView() {
       if (!map.isStyleLoaded()) return;
       const pts = trackPoints;
       const visible = showTrack && pts.length >= 2;
-      const useSpeedColors = visible && speedColoredTrack != null;
+      const useSpeedColors =
+        visible && speedColoredTrack != null && !forceSolidTrack;
       const lineData: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
         features: !visible
@@ -609,7 +627,14 @@ export function MapView() {
       map.off("style.load", apply);
       map.off("idle", onIdleOnce);
     };
-  }, [trackPoints, showTrack, speedColoredTrack, trackLineWidth, mapInstance]);
+  }, [
+    trackPoints,
+    showTrack,
+    speedColoredTrack,
+    forceSolidTrack,
+    trackLineWidth,
+    mapInstance,
+  ]);
 
   const fittedTrackRef = useRef("");
   useEffect(() => {
@@ -936,8 +961,6 @@ export function MapView() {
   // Preview highlight while picking a follow-comment range, or selected follow range
   const followHoverMsRef = useRef<number | null>(null);
   const skipFollowClickRef = useRef(false);
-  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
-  const comments = useProjectStore((s) => s.project.comments);
 
   const syncTrackRangeHighlight = useCallback(
     (endMs: number | null = null) => {
@@ -1285,8 +1308,27 @@ export function MapView() {
         const pts = useProjectStore.getState().project.track.points;
 
         if (tool === "danmaku") {
+          if (pts.length === 0) {
+            setStatusMessage(
+              "Load a GPS track before adding a danmaku comment.",
+            );
+            return;
+          }
+          const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
+          if (!hit || hit.timeOffsetMs == null) {
+            setStatusMessage("Click near the GPS track to place a danmaku.");
+            return;
+          }
+          const id = addComment({
+            kind: "danmaku",
+            lng: hit.lng,
+            lat: hit.lat,
+            text: "",
+            timeStartMs: hit.timeOffsetMs,
+          });
+          setCommentExpanded(id, true);
           setStatusMessage(
-            "Use “Add danmaku at current time” in the toolbar (set playback time in View first).",
+            "Danmaku added. Edit text in the panel, or drag the marker along the track.",
           );
           return;
         }
@@ -1299,6 +1341,7 @@ export function MapView() {
             text: "",
             popupWidth: DEFAULT_POPUP_WIDTH,
             popupHeight: DEFAULT_POPUP_HEIGHT,
+            popupOpen: true,
           });
           setCommentExpanded(id, true);
           return;
@@ -1403,7 +1446,10 @@ export function MapView() {
   }, [mode, editTool]);
 
   const showSpeedScale =
-    showTrack && speedColoredTrack != null && trackPoints.length >= 2;
+    showTrack &&
+    speedColoredTrack != null &&
+    !forceSolidTrack &&
+    trackPoints.length >= 2;
   const legendPlans = routePlans.filter((p) => p.visible);
   const showTrackInLegend = showTrack && trackPoints.length >= 2;
   const showLayerLegend = showTrackInLegend || legendPlans.length > 0;

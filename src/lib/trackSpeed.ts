@@ -92,7 +92,7 @@ export function smoothSegmentSpeeds(
   return out;
 }
 
-function percentile(sortedAsc: number[], p: number): number {
+export function percentile(sortedAsc: number[], p: number): number {
   if (sortedAsc.length === 0) return 0;
   if (sortedAsc.length === 1) return sortedAsc[0];
   const idx = (sortedAsc.length - 1) * p;

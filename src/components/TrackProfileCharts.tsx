@@ -64,6 +64,39 @@ function clampProfileHeight(h: number): number {
   return Math.min(max, Math.max(PROFILE_MIN_HEIGHT, Math.round(h)));
 }
 
+function fillSeriesGaps(values: (number | undefined | null)[]): number[] {
+  const n = values.length;
+  if (n === 0) return [];
+
+  const out = new Array<number>(n);
+  const valid = values.map((v) =>
+    v != null && Number.isFinite(v) ? v : null,
+  );
+
+  let last: number | null = null;
+  for (let i = 0; i < n; i++) {
+    if (valid[i] != null) last = valid[i];
+  }
+  let next: number | null = null;
+  for (let i = n - 1; i >= 0; i--) {
+    if (valid[i] != null) next = valid[i];
+    if (valid[i] == null && next != null) valid[i] = next;
+    next = valid[i] ?? next;
+  }
+  for (let i = 0; i < n; i++) {
+    if (valid[i] == null && last != null) valid[i] = last;
+    if (valid[i] != null) last = valid[i];
+    out[i] = valid[i] ?? 0;
+  }
+  return out;
+}
+
+function isPlotPointerTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element && target.closest(".profile-chart-plot") != null
+  );
+}
+
 function playheadPlugin(getTimeSec: () => number): uPlot.Plugin {
   return {
     hooks: {
@@ -291,7 +324,9 @@ export function TrackProfileCharts() {
       const plotHost = hosts[row.kind];
       if (!plotHost) return;
 
-      const values = profile.samples.map((s) => row.getValue(s) ?? null);
+      const values = fillSeriesGaps(
+        profile.samples.map((s) => row.getValue(s)),
+      );
       const yRange = rowRanges[rowIdx];
       const isLast = rowIdx === expandedRows.length - 1;
 
@@ -429,30 +464,29 @@ export function TrackProfileCharts() {
     if (!el || panelCollapsed) return;
 
     const onMove = (e: PointerEvent) => {
-      if (!el.contains(e.target as Node)) return;
+      if (!draggingRef.current && !isPlotPointerTarget(e.target)) return;
       scrubToClientX(e.clientX);
     };
 
     const onDown = (e: PointerEvent) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || !isPlotPointerTarget(e.target)) return;
       draggingRef.current = true;
-      el.setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       scrubToClientX(e.clientX);
     };
 
     const onUp = (e: PointerEvent) => {
       draggingRef.current = false;
-      if (el.hasPointerCapture(e.pointerId)) {
-        el.releasePointerCapture(e.pointerId);
+      const host = e.currentTarget as HTMLElement;
+      if (host.hasPointerCapture(e.pointerId)) {
+        host.releasePointerCapture(e.pointerId);
       }
       const tooltip = tooltipRef.current;
-      if (tooltip && !draggingRef.current) {
-        tooltip.style.display = "none";
-      }
+      if (tooltip) tooltip.style.display = "none";
     };
 
     const onLeave = () => {
-      draggingRef.current = false;
+      if (draggingRef.current) return;
       const tooltip = tooltipRef.current;
       if (tooltip) tooltip.style.display = "none";
     };
@@ -555,6 +589,7 @@ export function TrackProfileCharts() {
                 <button
                   type="button"
                   className="profile-chart-row-toggle"
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => toggleProfileChartCollapsed(row.kind)}
                   aria-expanded={!rowCollapsed}
                 >

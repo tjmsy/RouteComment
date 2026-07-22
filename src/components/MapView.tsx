@@ -217,22 +217,6 @@ export function MapView() {
   );
   /** While true, skip heading-up camera writes so pitch/rotate drag can stick. */
   const headingDragPauseRef = useRef(false);
-  /** While true, skip heading-up camera writes so terrain pitch easeTo can finish. */
-  const headingEasePauseRef = useRef(false);
-  const headingEaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-
-  const pauseHeadingForCameraEase = useCallback((durationMs: number) => {
-    headingEasePauseRef.current = true;
-    if (headingEaseTimerRef.current != null) {
-      clearTimeout(headingEaseTimerRef.current);
-    }
-    headingEaseTimerRef.current = setTimeout(() => {
-      headingEasePauseRef.current = false;
-      headingEaseTimerRef.current = null;
-    }, durationMs + 50);
-  }, []);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -434,11 +418,22 @@ export function MapView() {
 
     const PITCH_EASE_MS = 400;
 
+    const applyPitch = (pitch: number) => {
+      const ui = useUiStore.getState();
+      // Heading-up jumpTo() calls stop() every frame and cancels easeTo. During
+      // Play the main thread is busier so a timed pause is unreliable — set
+      // pitch immediately whenever follow or playback would fight the ease.
+      const instant =
+        ui.isPlaying || (ui.headingUp && ui.mode === "view");
+      if (instant) {
+        map.setPitch(pitch);
+      } else {
+        map.easeTo({ pitch, duration: PITCH_EASE_MS });
+      }
+    };
+
     const apply = () => {
       if (!map.isStyleLoaded()) return;
-
-      const ui = useUiStore.getState();
-      const headingActive = ui.headingUp && ui.mode === "view";
 
       if (terrain3d) {
         if (!map.getSource(TERRAIN_SOURCE)) {
@@ -454,26 +449,27 @@ export function MapView() {
         }
         map.setTerrain({ source: TERRAIN_SOURCE, exaggeration: 1 });
         map.setMaxPitch(DEFAULT_MAX_PITCH);
-        // Heading-up jumpTo() calls stop() every frame and cancels easeTo;
-        // pause follow briefly so the pitch transition can complete.
-        if (headingActive) pauseHeadingForCameraEase(PITCH_EASE_MS);
-        map.easeTo({ pitch: TERRAIN_PITCH, duration: PITCH_EASE_MS });
+        applyPitch(TERRAIN_PITCH);
       } else {
         map.setTerrain(null);
-        map.setMaxPitch(0);
         if (map.getPitch() !== 0) {
-          if (headingActive) pauseHeadingForCameraEase(PITCH_EASE_MS);
-          map.easeTo({ pitch: 0, duration: PITCH_EASE_MS });
+          applyPitch(0);
         }
+        map.setMaxPitch(0);
       }
     };
 
     apply();
     map.on("style.load", apply);
+    const onIdleOnce = () => apply();
+    if (!map.isStyleLoaded()) {
+      map.once("idle", onIdleOnce);
+    }
     return () => {
       map.off("style.load", apply);
+      map.off("idle", onIdleOnce);
     };
-  }, [terrain3d, mapInstance, pauseHeadingForCameraEase]);
+  }, [terrain3d, mapInstance]);
 
   const speedColoredTrack = useMemo(() => {
     if (!colorTrackBySpeed || trackPoints.length < 2) return null;
@@ -772,13 +768,8 @@ export function MapView() {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;
       }
-      if (headingEaseTimerRef.current != null) {
-        clearTimeout(headingEaseTimerRef.current);
-        headingEaseTimerRef.current = null;
-      }
       headingWheelPauseRef.current = false;
       headingDragPauseRef.current = false;
-      headingEasePauseRef.current = false;
       return;
     }
 
@@ -836,14 +827,11 @@ export function MapView() {
         headingDragPauseRef.current ||
         map.dragRotate.isActive() ||
         map.touchPitch.isActive();
-      if (
-        !headingWheelPauseRef.current &&
-        !headingEasePauseRef.current &&
-        !dragBusy
-      ) {
+      if (!headingWheelPauseRef.current && !dragBusy) {
         const pts = useProjectStore.getState().project.track.points;
         const t = useUiStore.getState().animationTimeMs;
         const playing = useUiStore.getState().isPlaying;
+        const terrainOn = useUiStore.getState().terrain3d;
         const runnerPose = interpolateTrackPose(pts, t);
         if (runnerPose) {
           const currentBearing =
@@ -856,10 +844,12 @@ export function MapView() {
             alpha,
           );
           headingBearingRef.current = nextBearing;
-          // Omit zoom/pitch so wheel zoom and terrain pitch stick.
+          // Omit zoom so wheel zoom sticks. When terrain is off, force pitch 0
+          // every frame so a cancelled toggle cannot leave the camera tilted.
           map.jumpTo({
             center: [runnerPose.lng, runnerPose.lat],
             bearing: nextBearing,
+            ...(terrainOn ? {} : { pitch: 0 }),
           });
         }
       }
@@ -879,13 +869,8 @@ export function MapView() {
         clearTimeout(headingWheelTimerRef.current);
         headingWheelTimerRef.current = null;
       }
-      if (headingEaseTimerRef.current != null) {
-        clearTimeout(headingEaseTimerRef.current);
-        headingEaseTimerRef.current = null;
-      }
       headingWheelPauseRef.current = false;
       headingDragPauseRef.current = false;
-      headingEasePauseRef.current = false;
       if (headingRafRef.current != null) {
         cancelAnimationFrame(headingRafRef.current);
         headingRafRef.current = null;

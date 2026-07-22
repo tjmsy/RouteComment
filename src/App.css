@@ -308,6 +308,15 @@ button.btn-skip {
   cursor: pointer;
 }
 
+.check--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.check input:disabled {
+  cursor: not-allowed;
+}
+
 .hint {
   margin: 0;
   font-size: 0.8rem;

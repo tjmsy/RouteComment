@@ -79,17 +79,25 @@ function setBasemapVisible(
   visible: boolean,
   originalBg: Record<string, unknown>,
 ) {
-  const style = map.getStyle();
-  if (!style?.layers) return;
+  if (!map.isStyleLoaded()) return;
   const vis = visible ? "visible" : "none";
-  for (const layer of style.layers) {
-    if (isAppOwnedLayer(layer.id)) continue;
+  // Prefer live layer order over getStyle().layers snapshot so runtime layers
+  // (and visibility overrides) stay in sync during camera movement / Play.
+  const layerIds =
+    typeof map.getLayersOrder === "function"
+      ? map.getLayersOrder()
+      : (map.getStyle()?.layers?.map((l) => l.id) ?? []);
+
+  for (const id of layerIds) {
+    if (isAppOwnedLayer(id)) continue;
+    const layer = map.getLayer(id);
+    if (!layer) continue;
     if (layer.type === "background") {
       try {
         map.setPaintProperty(
-          layer.id,
+          id,
           "background-color",
-          visible ? (originalBg[layer.id] ?? MAP_BG) : MAP_BG,
+          visible ? (originalBg[id] ?? MAP_BG) : MAP_BG,
         );
       } catch {
         // ignore
@@ -97,7 +105,9 @@ function setBasemapVisible(
       continue;
     }
     try {
-      map.setLayoutProperty(layer.id, "visibility", vis);
+      if (map.getLayoutProperty(id, "visibility") !== vis) {
+        map.setLayoutProperty(id, "visibility", vis);
+      }
     } catch {
       // ignore
     }
@@ -188,7 +198,6 @@ export function MapView() {
   const showTrack = useUiStore((s) => s.showTrack);
   const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
   const trackLineWidth = useUiStore((s) => s.trackLineWidth);
-  const showBasemap = useUiStore((s) => s.showBasemap);
   const headingUp = useUiStore((s) => s.headingUp);
   const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
@@ -386,18 +395,24 @@ export function MapView() {
     };
   }, [mapImageUrl, mapImageSize, pose, mapOpacity, mode, mapInstance, setPose]);
 
-  // Show OpenFreeMap once there's real content (GPX/map). The overlays always
-  // sit on top; the map image is dimmed only during georef.
-  const hasContent = trackPoints.length > 0 || mapImageUrl != null;
+  // Basemap visibility — long-lived listeners always read the store so Play /
+  // heading-up camera movement cannot leave layers stuck after a toggle, and
+  // cannot re-apply a stale closure. (GPS track had the opposite bug: a stale
+  // idle closure undoing the toggle; here we keep idle but never close over
+  // showBasemap.)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
+
     const apply = () => {
       if (!map.isStyleLoaded()) return;
-      // Read from the store so a delayed once('idle') retry cannot apply a
-      // stale showBasemap from a previous effect closure (same Play race as
-      // the GPS track toggle).
+      if (Object.keys(originalBgRef.current).length === 0) {
+        originalBgRef.current = captureBackgroundColors(map);
+      }
       const ui = useUiStore.getState();
+      const proj = useProjectStore.getState();
+      const hasContent =
+        proj.project.track.points.length > 0 || proj.mapImageUrl != null;
       setBasemapVisible(
         map,
         hasContent && ui.showBasemap,
@@ -412,17 +427,34 @@ export function MapView() {
       }
       ensureLayerOrder(map);
     };
+
     apply();
     map.on("style.load", apply);
-    const onIdleOnce = () => apply();
-    if (!map.isStyleLoaded()) {
-      map.once("idle", onIdleOnce);
-    }
+    map.on("idle", apply);
+    const unsubUi = useUiStore.subscribe((s, prev) => {
+      if (
+        s.showBasemap !== prev.showBasemap ||
+        s.mode !== prev.mode ||
+        s.mapOpacity !== prev.mapOpacity
+      ) {
+        apply();
+      }
+    });
+    const unsubProj = useProjectStore.subscribe((s, prev) => {
+      if (
+        s.project.track.points !== prev.project.track.points ||
+        s.mapImageUrl !== prev.mapImageUrl
+      ) {
+        apply();
+      }
+    });
     return () => {
       map.off("style.load", apply);
-      map.off("idle", onIdleOnce);
+      map.off("idle", apply);
+      unsubUi();
+      unsubProj();
     };
-  }, [hasContent, showBasemap, mode, mapOpacity, mapInstance]);
+  }, [mapInstance]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
   useEffect(() => {

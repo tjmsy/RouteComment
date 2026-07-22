@@ -69,6 +69,7 @@ export function Toolbar() {
   const elevationStatus = useUiStore((s) => s.elevationStatus);
   const playbackSpeed = useUiStore((s) => s.playbackSpeed);
   const setPlaybackSpeed = useUiStore((s) => s.setPlaybackSpeed);
+  const isPlaying = useUiStore((s) => s.isPlaying);
   const headingUp = useUiStore((s) => s.headingUp);
   const setHeadingUp = useUiStore((s) => s.setHeadingUp);
   const setupGpxDone = useUiStore((s) => s.setupGpxDone);
@@ -451,10 +452,18 @@ export function Toolbar() {
           <details className="panel layers-panel" open>
             <summary>Layers</summary>
             {(project.track.points.length > 0 || project.mapImage) && (
-              <label className="check">
+              <label
+                className={`check${isPlaying ? " check--disabled" : ""}`}
+                title={
+                  isPlaying
+                    ? "Pause playback to toggle the basemap"
+                    : undefined
+                }
+              >
                 <input
                   type="checkbox"
                   checked={showBasemap}
+                  disabled={isPlaying}
                   onChange={(e) => setShowBasemap(e.target.checked)}
                 />
                 Basemap

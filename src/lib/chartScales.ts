@@ -1,4 +1,9 @@
-import { percentile, formatPaceValue } from "./trackSpeed";
+import {
+  percentile,
+  formatPaceValue,
+  clampPace,
+  MAX_PACE_MIN_PER_KM,
+} from "./trackSpeed";
 
 export type ChartKind = "ele" | "hr" | "speed";
 
@@ -39,17 +44,47 @@ function percentileRange(
   return paddedRange(lo, hi, padRatio);
 }
 
+/** Y-axis range for pace (min/km): fast (small) … slow (capped at 45). */
+function paceYRange(sorted: number[]): { min: number; max: number } {
+  if (sorted.length === 0) {
+    return { min: 0, max: MAX_PACE_MIN_PER_KM };
+  }
+  const capped = sorted.map(clampPace).sort((a, b) => a - b);
+  let fast = percentile(capped, 0.05);
+  let slow = Math.min(percentile(capped, 0.95), MAX_PACE_MIN_PER_KM);
+  if (slow <= fast) {
+    fast = capped[0];
+    slow = Math.min(capped[capped.length - 1], MAX_PACE_MIN_PER_KM);
+  }
+  if (slow <= fast) {
+    slow = Math.min(fast + 0.5, MAX_PACE_MIN_PER_KM);
+    if (slow <= fast) fast = Math.max(0, slow - 0.5);
+  }
+  const pad = (slow - fast) * 0.05;
+  return {
+    min: Math.max(0, fast - pad),
+    max: Math.min(MAX_PACE_MIN_PER_KM, slow),
+  };
+}
+
 /** Y-axis range for profile chart series (matches map speed coloring for speed). */
 export function yRangeForKind(
   kind: ChartKind,
   values: number[],
 ): { min: number; max: number } {
   const valid = values.filter((v) => Number.isFinite(v));
-  if (valid.length === 0) return { min: 0, max: 1 };
+  if (valid.length === 0) {
+    if (kind === "speed") return { min: 0, max: MAX_PACE_MIN_PER_KM };
+    return { min: 0, max: 1 };
+  }
 
   const sorted = [...valid].sort((a, b) => a - b);
 
-  if (kind === "speed" || kind === "hr") {
+  if (kind === "speed") {
+    return paceYRange(sorted);
+  }
+
+  if (kind === "hr") {
     return percentileRange(sorted, 0.05, 0.95, 0.05);
   }
 

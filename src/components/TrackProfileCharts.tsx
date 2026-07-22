@@ -21,7 +21,7 @@ import {
   yRangeForKind,
   type ChartKind,
 } from "../lib/chartScales";
-import { formatPaceValue } from "../lib/trackSpeed";
+import { formatPaceValue, clampPace } from "../lib/trackSpeed";
 
 const CURSOR_SYNC_KEY = "profile";
 /** Reserve the same bottom space as a visible x-axis on every chart. */
@@ -54,7 +54,8 @@ const CHART_ROWS: ChartRow[] = [
     kind: "speed",
     label: "Speed",
     color: "#a3e635",
-    getValue: (s) => s.paceMinPerKm,
+    getValue: (s) =>
+      s.paceMinPerKm != null ? clampPace(s.paceMinPerKm) : undefined,
     formatValue: (v) => `${formatPaceValue(v)} min/km`,
   },
 ];
@@ -462,7 +463,10 @@ export function TrackProfileCharts() {
         legend: { show: false },
         scales: {
           x: { time: false },
-          y: { min: yRange.min, max: yRange.max },
+          y:
+            row.kind === "speed"
+              ? { min: yRange.min, max: yRange.max, dir: -1 }
+              : { min: yRange.min, max: yRange.max },
         },
         axes: [
           {

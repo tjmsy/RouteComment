@@ -3,6 +3,8 @@ import type { TrackPoint } from "./types";
 
 /** Cap absurd GPS spikes (≈108 km/h). */
 const MAX_SPEED_MPS = 30;
+/** Slower than this pace is not distinguished (standing / walking). */
+export const MAX_PACE_MIN_PER_KM = 45;
 /** Ignore segments shorter than this duration. */
 const MIN_DT_MS = 50;
 /** Rolling average window for speed smoothing (QuickRoute-style). */
@@ -152,6 +154,11 @@ export function buildSpeedColoredTrackFeatures(
   if (maxSpeedMps <= minSpeedMps) {
     maxSpeedMps = minSpeedMps + 0.1;
   }
+  // Floor slow end at 45:00 min/km — slower segments all map to red.
+  minSpeedMps = Math.max(minSpeedMps, paceToMps(MAX_PACE_MIN_PER_KM));
+  if (maxSpeedMps <= minSpeedMps) {
+    maxSpeedMps = minSpeedMps + 0.1;
+  }
 
   const range = maxSpeedMps - minSpeedMps;
   const features: GeoJSON.Feature[] = [];
@@ -180,6 +187,17 @@ export function buildSpeedColoredTrackFeatures(
 export function mpsToPaceMinPerKm(mps: number): number | undefined {
   if (!(mps > 0) || !Number.isFinite(mps)) return undefined;
   return 1000 / (mps * 60);
+}
+
+/** Convert pace (min/km) → m/s. */
+export function paceToMps(minPerKm: number): number {
+  return 1000 / (minPerKm * 60);
+}
+
+/** Cap pace at MAX_PACE_MIN_PER_KM for display / charting. */
+export function clampPace(minPerKm: number): number {
+  if (!Number.isFinite(minPerKm) || minPerKm <= 0) return MAX_PACE_MIN_PER_KM;
+  return Math.min(minPerKm, MAX_PACE_MIN_PER_KM);
 }
 
 /** Format pace as `m:ss` (e.g. 5:30). */

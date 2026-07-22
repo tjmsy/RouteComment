@@ -198,6 +198,7 @@ export function MapView() {
   const showTrack = useUiStore((s) => s.showTrack);
   const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
   const trackLineWidth = useUiStore((s) => s.trackLineWidth);
+  const showBasemap = useUiStore((s) => s.showBasemap);
   const headingUp = useUiStore((s) => s.headingUp);
   const terrain3d = useUiStore((s) => s.terrain3d);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
@@ -454,7 +455,7 @@ export function MapView() {
       unsubUi();
       unsubProj();
     };
-  }, [mapInstance]);
+  }, [mapInstance, showBasemap, mode, mapOpacity]);
 
   // Terrain 3D (Mapterhorn DEM; no hillshade)
   useEffect(() => {

@@ -8,6 +8,11 @@ import {
   saveProjectZip,
 } from "../lib/projectZip";
 import { PLAN_COLORS, type EditTool } from "../lib/types";
+import { formatDistanceKm } from "../lib/trackProfile";
+import {
+  buildTrackSummary,
+  formatSummaryTime,
+} from "../lib/trackSummary";
 import { CommentPanel } from "./CommentPanel";
 
 const EDIT_TOOLS: { id: EditTool; label: string }[] = [
@@ -99,6 +104,15 @@ export function Toolbar() {
   const activePlan =
     project.routePlans.find((p) => p.id === activeRoutePlanId) ??
     project.routePlans[0];
+
+  const trackSummary =
+    project.track.points.length > 0
+      ? buildTrackSummary(project.track.points)
+      : null;
+  const elevGainLoading =
+    trackSummary != null &&
+    elevationStatus === "loading" &&
+    trackSummary.elevGainM == null;
 
   const onMapImage = async (file: File | undefined) => {
     if (!file) return;
@@ -447,6 +461,38 @@ export function Toolbar() {
                 )}
               </div>
             </section>
+          )}
+
+          {trackSummary && (
+            <details className="panel summary-panel" open>
+              <summary>Summary</summary>
+              <dl className="summary-stats">
+                <div className="summary-stat">
+                  <dt>Distance</dt>
+                  <dd>{formatDistanceKm(trackSummary.totalDistanceM)}</dd>
+                </div>
+                <div className="summary-stat">
+                  <dt>Time</dt>
+                  <dd>{formatSummaryTime(trackSummary.durationMs)}</dd>
+                </div>
+                {(trackSummary.elevGainM != null || elevGainLoading) && (
+                  <div className="summary-stat">
+                    <dt>Elev gain</dt>
+                    <dd>
+                      {elevGainLoading
+                        ? "…"
+                        : `${trackSummary.elevGainM}\u00a0m`}
+                    </dd>
+                  </div>
+                )}
+                {trackSummary.avgHeartRate != null && (
+                  <div className="summary-stat">
+                    <dt>Avg HR</dt>
+                    <dd>{trackSummary.avgHeartRate}&nbsp;bpm</dd>
+                  </div>
+                )}
+              </dl>
+            </details>
           )}
 
           <details className="panel layers-panel" open>

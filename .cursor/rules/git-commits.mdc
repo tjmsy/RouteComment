@@ -21,11 +21,25 @@ Create a git commit after each completed unit of work, not only at the end of a 
 
 ## Commit message style
 
-- 1–2 sentences; focus on **why**, not a file list
-- Use the repo’s existing tone (English is fine for this project)
-- Examples:
-  - `Fix profile chart infinite render loop from plot host refs.`
-  - `Improve profile chart Y-axis scaling with percentile ranges.`
+Use **[Conventional Commits](https://www.conventionalcommits.org/)** format:
+
+```
+type(scope): short summary in imperative mood
+```
+
+- **type**: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`, etc.
+- **scope** (optional): area of change, e.g. `profile`, `map`, `ui`
+- **summary**: 1 line, imperative, focus on **why** when helpful
+- Add a body only when the subject alone is not enough
+
+Examples:
+
+- `fix(profile): disable uPlot drag zoom and bind scrub on plot overlay`
+- `fix(profile): align x/y axis layout so crosshair matches across charts`
+- `feat(profile): move series toggles to header checkboxes`
+- `docs(rules): require conventional commit messages`
+
+Do not use non-conventional one-line messages like `Fix profile chart infinite render loop from plot host refs.` unless amending old history.
 
 ## Workflow
 

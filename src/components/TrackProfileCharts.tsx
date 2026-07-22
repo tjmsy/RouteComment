@@ -477,8 +477,14 @@ export function TrackProfileCharts() {
           x: { time: false },
           y:
             row.kind === "speed"
-              ? { min: yRange.min, max: yRange.max, dir: -1 }
-              : { min: yRange.min, max: yRange.max },
+              ? {
+                  // Fixed range array disables uPlot y auto-scale. Default
+                  // redraw() re-sets x and would otherwise re-range y from
+                  // full data (widening pace thresholds when Play starts).
+                  dir: -1,
+                  range: [yRange.min, yRange.max],
+                }
+              : { range: [yRange.min, yRange.max] },
         },
         axes: [
           {
@@ -605,7 +611,9 @@ export function TrackProfileCharts() {
 
   useEffect(() => {
     for (const { plot } of chartsRef.current) {
-      plot.redraw();
+      // rebuildPaths=false: redraw playhead without setScale('x'), which would
+      // auto-expand y ranges and compress the pace series when Play starts.
+      plot.redraw(false);
     }
   }, [animationTimeMs, expandedCommentIds]);
 

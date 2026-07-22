@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import uPlot from "uplot";
 import "uplot/dist/uPlot.min.css";
 import { useProjectStore } from "../store/projectStore";
@@ -16,10 +17,14 @@ import type { Comment } from "../lib/types";
 import { commentActiveAt } from "../lib/types";
 import {
   formatYLabel,
-  uniformYAxisSize,
+  uniformYAxisLayout,
   yRangeForKind,
   type ChartKind,
 } from "../lib/chartScales";
+
+const CURSOR_SYNC_KEY = "profile";
+/** Reserve the same bottom space as a visible x-axis on every chart. */
+const X_AXIS_SPACE = 22;
 
 type ChartRow = {
   kind: ChartKind;
@@ -53,8 +58,7 @@ const CHART_ROWS: ChartRow[] = [
   },
 ];
 
-const PROFILE_HEADER_H = 32;
-const ROW_TOGGLE_H = 22;
+const PROFILE_HEADER_MIN_H = 36;
 const PROFILE_MIN_HEIGHT = 60;
 const PROFILE_MAX_HEIGHT_RATIO = 0.5;
 const MIN_CHART_HEIGHT = 40;
@@ -91,10 +95,58 @@ function fillSeriesGaps(values: (number | undefined | null)[]): number[] {
   return out;
 }
 
-function isPlotPointerTarget(target: EventTarget | null): boolean {
-  return (
-    target instanceof Element && target.closest(".profile-chart-plot") != null
-  );
+type ScrubHandler = (plot: uPlot, clientX: number) => void;
+
+function attachPlotScrub(
+  plot: uPlot,
+  onScrub: ScrubHandler,
+  onScrubEnd: () => void,
+): () => void {
+  const over = plot.over;
+
+  const scrub = (e: PointerEvent) => onScrub(plot, e.clientX);
+
+  const onDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    over.setPointerCapture(e.pointerId);
+    scrub(e);
+  };
+
+  const onMove = (e: PointerEvent) => {
+    scrub(e);
+  };
+
+  const end = (e: PointerEvent) => {
+    if (over.hasPointerCapture(e.pointerId)) {
+      over.releasePointerCapture(e.pointerId);
+    }
+    onScrubEnd();
+  };
+
+  over.addEventListener("pointerdown", onDown);
+  over.addEventListener("pointermove", onMove);
+  over.addEventListener("pointerup", end);
+  over.addEventListener("pointercancel", end);
+
+  return () => {
+    over.removeEventListener("pointerdown", onDown);
+    over.removeEventListener("pointermove", onMove);
+    over.removeEventListener("pointerup", end);
+    over.removeEventListener("pointercancel", end);
+  };
+}
+
+function scheduleChartBuild(
+  buildFn: () => void,
+  scheduleRef: { current: number },
+) {
+  cancelAnimationFrame(scheduleRef.current);
+  scheduleRef.current = requestAnimationFrame(() => {
+    buildFn();
+    scheduleRef.current = requestAnimationFrame(buildFn);
+  });
 }
 
 function playheadPlugin(getTimeSec: () => number): uPlot.Plugin {
@@ -203,9 +255,11 @@ export function TrackProfileCharts() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const plotHostsRef = useRef<Partial<Record<ChartKind, HTMLDivElement>>>({});
   const chartsRef = useRef<ChartInstance[]>([]);
+  const scrubCleanupRef = useRef<(() => void)[]>([]);
+  const buildChartsRef = useRef<() => void>(() => {});
+  const scheduleBuildRef = useRef(0);
   const playheadSecRef = useRef(animationTimeMs / 1000);
   const rangesRef = useRef<{ startSec: number; endSec: number }[]>([]);
-  const draggingRef = useRef(false);
   const resizeDragRef = useRef<{ startY: number; startH: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
@@ -263,23 +317,66 @@ export function TrackProfileCharts() {
     [rows, profileChartCollapsed],
   );
 
-  const bodyHeight = profilePanelHeightPx - PROFILE_HEADER_H;
   const chartHeight = useMemo(() => {
     if (expandedRows.length === 0) return 0;
-    const available =
-      bodyHeight - rows.length * ROW_TOGGLE_H - 8;
+    const available = profilePanelHeightPx - PROFILE_HEADER_MIN_H - 8;
     return Math.max(
       MIN_CHART_HEIGHT,
       Math.floor(available / expandedRows.length),
     );
-  }, [bodyHeight, expandedRows.length, rows.length]);
+  }, [profilePanelHeightPx, expandedRows.length]);
+
+  const hideTooltip = useCallback(() => {
+    const tooltip = tooltipRef.current;
+    if (tooltip) tooltip.style.display = "none";
+  }, []);
+
+  const scrubOnPlot = useCallback(
+    (plot: uPlot, clientX: number) => {
+      if (profile.samples.length === 0) return;
+      const rect = plot.over.getBoundingClientRect();
+      const relX = clientX - rect.left;
+      const timeSec = plot.posToVal(relX, "x");
+      const maxSec = profile.samples[profile.samples.length - 1].timeMs / 1000;
+      const clamped = Math.max(0, Math.min(maxSec, timeSec));
+      setIsPlaying(false);
+      setAnimationTimeMs(clamped * 1000);
+
+      const idx = nearestSampleIndex(profile.samples, clamped * 1000);
+      const sample = profile.samples[idx];
+      const tooltip = tooltipRef.current;
+      const body = bodyRef.current;
+      if (tooltip && sample && body) {
+        const bodyRect = body.getBoundingClientRect();
+        const metricParts = rows
+          .map((row) => {
+            const val = row.getValue(sample);
+            return val != null ? row.formatValue(val) : null;
+          })
+          .filter((v): v is string => v != null);
+        tooltip.style.display = "block";
+        tooltip.style.left = `${clientX - bodyRect.left}px`;
+        tooltip.textContent = [
+          formatProfileTime(sample.timeMs),
+          formatDistanceKm(sample.distanceM),
+          ...metricParts,
+        ].join(" · ");
+      }
+    },
+    [profile, rows, setAnimationTimeMs, setIsPlaying],
+  );
 
   const bindPlotHost = useCallback((kind: ChartKind, el: HTMLDivElement | null) => {
+    const prev = plotHostsRef.current[kind];
     if (el) plotHostsRef.current[kind] = el;
     else delete plotHostsRef.current[kind];
+    if (prev === el || !el) return;
+    scheduleChartBuild(() => buildChartsRef.current(), scheduleBuildRef);
   }, []);
 
   const destroyCharts = useCallback(() => {
+    for (const cleanup of scrubCleanupRef.current) cleanup();
+    scrubCleanupRef.current = [];
     for (const { plot } of chartsRef.current) {
       plot.destroy();
     }
@@ -316,7 +413,8 @@ export function TrackProfileCharts() {
         .filter((v): v is number => v != null && Number.isFinite(v));
       return { kind: row.kind, ...yRangeForKind(row.kind, nums) };
     });
-    const yAxisSize = uniformYAxisSize(rowRanges);
+    const yAxisLayout = uniformYAxisLayout(rowRanges);
+    const { size: yAxisSize, labelChars: yLabelChars } = yAxisLayout;
 
     const instances: ChartInstance[] = [];
 
@@ -334,7 +432,15 @@ export function TrackProfileCharts() {
         width,
         height: chartHeight,
         pxAlign: 1,
-        cursor: { show: false },
+        padding: [4, 8, 4, 0],
+        cursor: {
+          show: true,
+          x: true,
+          y: false,
+          points: { show: false },
+          drag: { setScale: false, x: false, y: false },
+          sync: { key: CURSOR_SYNC_KEY, scales: ["x", null] },
+        },
         legend: { show: false },
         scales: {
           x: { time: false },
@@ -342,11 +448,17 @@ export function TrackProfileCharts() {
         },
         axes: [
           {
-            show: isLast,
-            stroke: "#9aab9e",
-            grid: { show: true, stroke: "rgba(154,171,158,0.15)" },
+            show: true,
+            size: X_AXIS_SPACE,
+            stroke: isLast ? "#9aab9e" : "transparent",
+            grid: {
+              show: isLast,
+              stroke: "rgba(154,171,158,0.15)",
+            },
             ticks: { show: isLast, stroke: "#9aab9e" },
-            values: (_u, splits) => splits.map((v) => formatAxisTime(v)),
+            values: isLast
+              ? (_u, splits) => splits.map((v) => formatAxisTime(v))
+              : () => [],
             font: "10px DM Sans, system-ui, sans-serif",
             gap: 4,
           },
@@ -355,11 +467,13 @@ export function TrackProfileCharts() {
             stroke: "#9aab9e",
             grid: { show: true, stroke: "rgba(154,171,158,0.1)" },
             ticks: { show: false },
-            size: yAxisSize,
-            font: "10px DM Sans, system-ui, sans-serif",
+            size: () => yAxisSize,
+            font: "10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
             gap: 4,
             values: (_u, splits) =>
-              splits.map((v) => formatYLabel(row.kind, v)),
+              splits.map((v) =>
+                formatYLabel(row.kind, v).padStart(yLabelChars, " "),
+              ),
           },
         ],
         series: [
@@ -379,6 +493,9 @@ export function TrackProfileCharts() {
       };
 
       const plot = new uPlot(opts, [times, values], plotHost);
+      scrubCleanupRef.current.push(
+        attachPlotScrub(plot, scrubOnPlot, hideTooltip),
+      );
       instances.push({ kind: row.kind, plot });
     });
 
@@ -390,11 +507,29 @@ export function TrackProfileCharts() {
     rows.length,
     expandedRows,
     chartHeight,
+    scrubOnPlot,
+    hideTooltip,
   ]);
+
+  buildChartsRef.current = buildCharts;
 
   useLayoutEffect(() => {
     buildCharts();
-  }, [buildCharts]);
+    if (
+      !panelCollapsed &&
+      expandedRows.length > 0 &&
+      profile.samples.length > 0 &&
+      chartHeight >= MIN_CHART_HEIGHT &&
+      chartsRef.current.length === 0
+    ) {
+      scheduleChartBuild(() => buildChartsRef.current(), scheduleBuildRef);
+    }
+  }, [buildCharts, panelCollapsed, expandedRows.length, profile.samples.length, chartHeight]);
+
+  useEffect(
+    () => () => cancelAnimationFrame(scheduleBuildRef.current),
+    [],
+  );
 
   useEffect(() => {
     if (panelCollapsed) return;
@@ -416,93 +551,11 @@ export function TrackProfileCharts() {
     return () => ro.disconnect();
   }, [panelCollapsed, buildCharts, expandedRows]);
 
-  const scrubToClientX = useCallback(
-    (clientX: number) => {
-      const charts = chartsRef.current;
-      if (charts.length === 0 || profile.samples.length === 0) return;
-      const plot = charts[0].plot;
-      const rect = plot.over.getBoundingClientRect();
-      const relX = clientX - rect.left;
-      const timeSec = plot.posToVal(relX, "x");
-      const maxSec = profile.samples[profile.samples.length - 1].timeMs / 1000;
-      const clamped = Math.max(0, Math.min(maxSec, timeSec));
-      setIsPlaying(false);
-      setAnimationTimeMs(clamped * 1000);
-
-      const idx = nearestSampleIndex(profile.samples, clamped * 1000);
-      const sample = profile.samples[idx];
-      const tooltip = tooltipRef.current;
-      const body = bodyRef.current;
-      if (tooltip && sample && body) {
-        const bodyRect = body.getBoundingClientRect();
-        const metricParts = rows
-          .map((row) => {
-            const val = row.getValue(sample);
-            return val != null ? row.formatValue(val) : null;
-          })
-          .filter((v): v is string => v != null);
-        tooltip.style.display = "block";
-        tooltip.style.left = `${clientX - bodyRect.left}px`;
-        tooltip.textContent = [
-          formatProfileTime(sample.timeMs),
-          formatDistanceKm(sample.distanceM),
-          ...metricParts,
-        ].join(" · ");
-      }
-    },
-    [profile, rows, setAnimationTimeMs, setIsPlaying],
-  );
-
   useEffect(() => {
     for (const { plot } of chartsRef.current) {
       plot.redraw();
     }
   }, [animationTimeMs, expandedCommentIds]);
-
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el || panelCollapsed) return;
-
-    const onMove = (e: PointerEvent) => {
-      if (!draggingRef.current && !isPlotPointerTarget(e.target)) return;
-      scrubToClientX(e.clientX);
-    };
-
-    const onDown = (e: PointerEvent) => {
-      if (e.button !== 0 || !isPlotPointerTarget(e.target)) return;
-      draggingRef.current = true;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      scrubToClientX(e.clientX);
-    };
-
-    const onUp = (e: PointerEvent) => {
-      draggingRef.current = false;
-      const host = e.currentTarget as HTMLElement;
-      if (host.hasPointerCapture(e.pointerId)) {
-        host.releasePointerCapture(e.pointerId);
-      }
-      const tooltip = tooltipRef.current;
-      if (tooltip) tooltip.style.display = "none";
-    };
-
-    const onLeave = () => {
-      if (draggingRef.current) return;
-      const tooltip = tooltipRef.current;
-      if (tooltip) tooltip.style.display = "none";
-    };
-
-    el.addEventListener("pointerdown", onDown);
-    el.addEventListener("pointermove", onMove);
-    el.addEventListener("pointerup", onUp);
-    el.addEventListener("pointerleave", onLeave);
-
-    return () => {
-      el.removeEventListener("pointerdown", onDown);
-      el.removeEventListener("pointermove", onMove);
-      el.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointerleave", onLeave);
-    };
-  }, [scrubToClientX, panelCollapsed, rows.length]);
 
   useEffect(() => {
     const onResizeMove = (e: PointerEvent) => {
@@ -562,6 +615,27 @@ export function TrackProfileCharts() {
         >
           {panelCollapsed ? "▸" : "▾"} Profile
         </button>
+        {!panelCollapsed && rows.length > 0 && (
+          <div
+            className="profile-charts-series-toggles"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {rows.map((row) => (
+              <label
+                key={row.kind}
+                className="profile-charts-series-toggle"
+                style={{ "--series-color": row.color } as CSSProperties}
+              >
+                <input
+                  type="checkbox"
+                  checked={!profileChartCollapsed[row.kind]}
+                  onChange={() => toggleProfileChartCollapsed(row.kind)}
+                />
+                {row.label}
+              </label>
+            ))}
+          </div>
+        )}
         {demLoading && (
           <span className="profile-charts-status">Loading elevation…</span>
         )}
@@ -577,34 +651,21 @@ export function TrackProfileCharts() {
         )}
       </div>
       {!panelCollapsed && (
-        <div
-          className="profile-charts-body"
-          ref={bodyRef}
-          style={{ height: bodyHeight }}
-        >
-          {rows.map((row) => {
-            const rowCollapsed = profileChartCollapsed[row.kind];
-            return (
-              <div key={row.kind} className="profile-chart-row">
-                <button
-                  type="button"
-                  className="profile-chart-row-toggle"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => toggleProfileChartCollapsed(row.kind)}
-                  aria-expanded={!rowCollapsed}
-                >
-                  {rowCollapsed ? "▸" : "▾"} {row.label}
-                </button>
-                {!rowCollapsed && (
-                  <div
-                    className="profile-chart-plot"
-                    style={{ height: chartHeight }}
-                    ref={(el) => bindPlotHost(row.kind, el)}
-                  />
-                )}
-              </div>
-            );
-          })}
+        <div className="profile-charts-body" ref={bodyRef}>
+          {expandedRows.length === 0 && rows.length > 0 && (
+            <p className="profile-charts-empty">
+              Select a series above to show charts.
+            </p>
+          )}
+          {expandedRows.map((row) => (
+            <div key={row.kind} className="profile-chart-row">
+              <div
+                className="profile-chart-plot"
+                style={{ height: chartHeight }}
+                ref={(el) => bindPlotHost(row.kind, el)}
+              />
+            </div>
+          ))}
           {rows.length === 0 && demLoading && (
             <p className="profile-charts-empty">Waiting for elevation data…</p>
           )}

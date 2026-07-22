@@ -75,15 +75,23 @@ export function yAxisSplits(min: number, max: number, count = 5): number[] {
 const CHAR_WIDTH_PX = 6.2;
 const AXIS_GAP = 4;
 
-/** Compute a shared left-axis width (px) for all profile charts. */
+/** Compute shared left-axis width and label column for profile charts. */
+export function uniformYAxisLayout(
+  ranges: { kind: ChartKind; min: number; max: number }[],
+): { size: number; labelChars: number } {
+  let labelChars = 4;
+  for (const { kind, min, max } of ranges) {
+    for (const v of yAxisSplits(min, max)) {
+      labelChars = Math.max(labelChars, formatYLabel(kind, v).length);
+    }
+  }
+  const size = Math.ceil(labelChars * CHAR_WIDTH_PX) + AXIS_GAP + 8;
+  return { size, labelChars };
+}
+
+/** @deprecated Use uniformYAxisLayout */
 export function uniformYAxisSize(
   ranges: { kind: ChartKind; min: number; max: number }[],
 ): number {
-  let maxChars = 4;
-  for (const { kind, min, max } of ranges) {
-    for (const v of yAxisSplits(min, max)) {
-      maxChars = Math.max(maxChars, formatYLabel(kind, v).length);
-    }
-  }
-  return Math.ceil(maxChars * CHAR_WIDTH_PX) + AXIS_GAP + 8;
+  return uniformYAxisLayout(ranges).size;
 }

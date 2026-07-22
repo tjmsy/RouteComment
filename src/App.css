@@ -1135,9 +1135,41 @@ button.btn-skip {
 .profile-charts-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   padding: 0.35rem 0.75rem;
-  min-height: 32px;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.profile-charts-series-toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.profile-charts-series-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.profile-charts-series-toggle::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--series-color, var(--muted));
+}
+
+.profile-charts-series-toggle input {
+  margin: 0;
+  accent-color: var(--series-color, var(--accent));
 }
 
 .profile-charts-toggle {
@@ -1201,30 +1233,11 @@ button.btn-skip {
 }
 
 .profile-chart-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.15rem;
 }
 
-.profile-chart-row-toggle {
-  flex-shrink: 0;
-  height: 22px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left;
-  padding: 0 0 0 0.25rem;
-  cursor: pointer;
-  position: relative;
-  z-index: 2;
-}
-
-.profile-chart-row-toggle:hover {
-  color: var(--accent);
+.profile-chart-row:last-child {
+  margin-bottom: 0;
 }
 
 .profile-chart-label {
@@ -1239,6 +1252,10 @@ button.btn-skip {
 .profile-chart-plot {
   min-width: 0;
   width: 100%;
+}
+
+.profile-chart-plot .u-cursor-x {
+  border-left: 1px solid rgba(154, 171, 158, 0.75);
 }
 
 .profile-chart-tooltip {

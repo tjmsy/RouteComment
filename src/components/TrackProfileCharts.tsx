@@ -99,7 +99,11 @@ function fillSeriesGaps(values: (number | undefined | null)[]): number[] {
   return out;
 }
 
-type ScrubHandler = (plot: uPlot, clientX: number) => void;
+type ScrubHandler = (
+  plot: uPlot,
+  clientX: number,
+  source: "hover" | "drag",
+) => void;
 
 function attachPlotScrub(
   plot: uPlot,
@@ -108,18 +112,23 @@ function attachPlotScrub(
 ): () => void {
   const over = plot.over;
 
-  const scrub = (e: PointerEvent) => onScrub(plot, e.clientX);
+  const scrub = (e: PointerEvent, source: "hover" | "drag") =>
+    onScrub(plot, e.clientX, source);
 
   const onDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     over.setPointerCapture(e.pointerId);
-    scrub(e);
+    scrub(e, "drag");
   };
 
   const onMove = (e: PointerEvent) => {
-    scrub(e);
+    if (over.hasPointerCapture(e.pointerId)) {
+      scrub(e, "drag");
+      return;
+    }
+    scrub(e, "hover");
   };
 
   const end = (e: PointerEvent) => {
@@ -344,7 +353,10 @@ export function TrackProfileCharts() {
   }, []);
 
   const scrubOnPlot = useCallback(
-    (plot: uPlot, clientX: number) => {
+    (plot: uPlot, clientX: number, source: "hover" | "drag") => {
+      // Hover scrub while playing would jump the playhead and pause — ignore it.
+      // Intentional click/drag still seeks and pauses.
+      if (source === "hover" && useUiStore.getState().isPlaying) return;
       if (profile.samples.length === 0) return;
       const rect = plot.over.getBoundingClientRect();
       const relX = clientX - rect.left;

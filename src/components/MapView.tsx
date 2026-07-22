@@ -16,7 +16,8 @@ import {
 } from "../lib/gpx";
 import {
   buildSpeedColoredTrackFeatures,
-  formatPaceMinPerKm,
+  formatPaceValue,
+  mpsToPaceMinPerKm,
 } from "../lib/trackSpeed";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
@@ -1322,18 +1323,25 @@ export function MapView() {
       {showSpeedScale && speedColoredTrack && (
         <div
           className="map-legend map-legend--speed"
-          aria-label="Track speed scale"
+          aria-label="Track pace scale (min/km)"
         >
           <span className="map-legend-speed-label">
             Slow
             <br />
-            {formatPaceMinPerKm(speedColoredTrack.minSpeedMps)}
+            {formatPaceValue(
+              mpsToPaceMinPerKm(speedColoredTrack.minSpeedMps) ?? 0,
+            )}
           </span>
-          <div className="map-legend-speed-bar" />
+          <div className="map-legend-speed-mid">
+            <div className="map-legend-speed-bar" />
+            <span className="map-legend-speed-unit">min/km</span>
+          </div>
           <span className="map-legend-speed-label">
             Fast
             <br />
-            {formatPaceMinPerKm(speedColoredTrack.maxSpeedMps)}
+            {formatPaceValue(
+              mpsToPaceMinPerKm(speedColoredTrack.maxSpeedMps) ?? 0,
+            )}
           </span>
         </div>
       )}

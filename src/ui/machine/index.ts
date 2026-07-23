@@ -6,6 +6,7 @@ export {
   deriveLegacyMode,
   deriveLegacyEditTool,
   isReviewChrome,
+  isReviewReadonly,
   isEditingPlan,
   isEditingComment,
   isGeorefActive,

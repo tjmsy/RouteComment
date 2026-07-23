@@ -54,6 +54,15 @@ export function isReviewChrome(screen: UiState): boolean {
   );
 }
 
+/** Reading the race (not placing/editing comments or plans). */
+export function isReviewReadonly(screen: UiState): boolean {
+  return (
+    screen.kind === "review" ||
+    screen.kind === "layers" ||
+    screen.kind === "playback"
+  );
+}
+
 export function isEditingPlan(screen: UiState): boolean {
   return screen.kind === "editPlan";
 }

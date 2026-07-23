@@ -101,7 +101,12 @@ export function EditPlanBar() {
         </>
       )}
       {!activePlan && (
-        <span className="hint">Add a plan, then tap the map to draw.</span>
+        <span className="hint">Add a plan first, then tap the map to draw.</span>
+      )}
+      {activePlan && (
+        <span className="hint tool-bar-hint">
+          Editing {activePlan.name} — tap the map to add vertices.
+        </span>
       )}
     </div>
   );

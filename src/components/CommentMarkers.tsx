@@ -14,6 +14,10 @@ import { useMobileLayout } from "../hooks/useMobileLayout";
 import { isMobileViewport } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import {
+  isEditingComment,
+  isReviewReadonly,
+} from "../ui/machine";
 
 type Props = {
   map: maplibregl.Map | null;
@@ -24,13 +28,11 @@ export function CommentMarkers({ map }: Props) {
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const toggleCommentExpanded = useUiStore((s) => s.toggleCommentExpanded);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
-  const mode = useUiStore((s) => s.mode);
-  const editTool = useUiStore((s) => s.editTool);
+  const screen = useUiStore((s) => s.screen);
   const mobile = useMobileLayout();
-  const commentEditing = mode === "edit" && editTool === "comment";
-  const showTrackComments = commentEditing || mode === "view";
-  /** Desktop edit: inline map popup. Mobile / view: sheet or side panel. */
-  const mapPopupEditable = commentEditing && !mobile;
+  const commentEditing = isEditingComment(screen);
+  /** Map comments are written on the map bubble (including phone). */
+  const mapPopupEditable = commentEditing;
 
   if (!map) return null;
 
@@ -46,17 +48,17 @@ export function CommentMarkers({ map }: Props) {
             draggable={commentEditing}
             editable={mapPopupEditable}
           />
-        ) : comment.kind === "follow" && showTrackComments ? (
+        ) : comment.kind === "follow" && commentEditing ? (
           <FollowRangeMarker
             key={comment.id}
             map={map}
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
-            useMapPopup={mapPopupEditable}
+            useMapPopup={commentEditing && !mobile}
             onToggle={() => toggleCommentExpanded(comment.id)}
             onClose={() => setCommentExpanded(comment.id, false)}
           />
-        ) : comment.kind === "danmaku" && showTrackComments ? (
+        ) : comment.kind === "danmaku" && commentEditing ? (
           <DanmakuMarker
             key={comment.id}
             map={map}
@@ -72,10 +74,10 @@ export function CommentMarkers({ map }: Props) {
   );
 }
 
-/** Simple map pin (neutral slate, no open/closed color flip). */
-const PIN_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>`;
+/** Folded map-comment chip (not a location pin — the bubble is the comment). */
+const MAP_FOLD_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm3 4v2h10V9H7zm0 4v2h7v-2H7z"/></svg>`;
 
-/** Running person for follow comments. */
+/** Running person — edit-only landmark for follow comments. */
 const RUNNER_ICON = "🏃";
 
 /** Compact mark for danmaku timing on the track. */
@@ -126,9 +128,9 @@ function MapPinMarker({
     const icon = document.createElement("button");
     icon.type = "button";
     icon.className = "comment-icon comment-icon-map";
-    icon.title = "Map comment";
-    icon.innerHTML = PIN_ICON_SVG;
-    icon.setAttribute("aria-label", "Map comment");
+    icon.title = "Show map comment";
+    icon.innerHTML = MAP_FOLD_SVG;
+    icon.setAttribute("aria-label", "Show map comment");
     iconRef.current = icon;
 
     const content = document.createElement("div");
@@ -194,11 +196,9 @@ function MapPinMarker({
         suppressClickRef.current = false;
         return;
       }
-      // Mobile: sheet only. Desktop: open map popup (+ side panel).
-      if (isMobileViewport()) {
-        setCommentExpanded(comment.id, true);
-      } else {
-        updateComment(comment.id, { popupOpen: true });
+      // Folded chip → reopen on-map bubble (sheet is not the map comment UI).
+      updateComment(comment.id, { popupOpen: true });
+      if (!isMobileViewport()) {
         setCommentExpanded(comment.id, true);
       }
     };
@@ -291,8 +291,8 @@ function MapPinMarker({
     markerRef.current?.setDraggable(draggable);
     if (iconRef.current) {
       iconRef.current.title = draggable
-        ? "Map comment (drag to move)"
-        : "Map comment";
+        ? "Folded map comment (drag to move)"
+        : "Folded map comment — tap to expand";
       iconRef.current.classList.toggle("comment-icon-nodrag", !draggable);
     }
   }, [draggable]);
@@ -623,11 +623,11 @@ function FollowBubbles({ map }: { map: maplibregl.Map }) {
   const comments = useProjectStore((s) => s.project.comments);
   const trackPoints = useProjectStore((s) => s.project.track.points);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
-  const mode = useUiStore((s) => s.mode);
+  const screen = useUiStore((s) => s.screen);
 
   const active = comments.filter(
     (c) =>
-      mode === "view" &&
+      isReviewReadonly(screen) &&
       c.kind === "follow" &&
       c.text.trim().length > 0 &&
       commentActiveAt(c, animationTimeMs),

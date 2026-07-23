@@ -1,5 +1,6 @@
-import { useUiStore } from "../../store/uiStore";
+import { interpolateTrackPosition } from "../../lib/gpx";
 import { useProjectStore } from "../../store/projectStore";
+import { useUiStore } from "../../store/uiStore";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
 
 /** Thin Review hub chrome: Project, name, Edit, Layers, +. */
@@ -8,6 +9,8 @@ export function ReviewChrome() {
   const dispatch = useUiStore((s) => s.dispatch);
   const name = useProjectStore((s) => s.project.name);
   const mobile = useMobileLayout();
+  const setStatusMessage = useUiStore((s) => s.setStatusMessage);
+  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
 
   const hideChrome =
     screen.kind === "empty" ||
@@ -18,6 +21,28 @@ export function ReviewChrome() {
 
   const inTool = screen.kind === "editPlan" || screen.kind === "editComment";
   if (inTool) return null;
+
+  const addDanmakuAtPlayhead = () => {
+    const points = useProjectStore.getState().project.track.points;
+    if (points.length === 0) {
+      setStatusMessage("Load a GPS track before adding a danmaku comment.");
+      return;
+    }
+    const t = useUiStore.getState().animationTimeMs;
+    const pos = interpolateTrackPosition(points, t);
+    if (!pos) return;
+    const id = useProjectStore.getState().addComment({
+      kind: "danmaku",
+      lng: pos.lng,
+      lat: pos.lat,
+      text: "",
+      timeStartMs: t,
+    });
+    setCommentExpanded(id, true);
+    useUiStore.getState().setCommentTool("danmaku");
+    dispatch({ type: "SELECT_COMMENT" });
+    setStatusMessage("Danmaku added at the current playback time. Edit text below.");
+  };
 
   return (
     <header className={`review-chrome${mobile ? " review-chrome--mobile" : ""}`}>
@@ -55,9 +80,9 @@ export function ReviewChrome() {
         </button>
         <button
           type="button"
-          title="Add comment at playhead"
-          aria-label="Add comment at playhead"
-          onClick={() => dispatch({ type: "OPEN_ADD_COMMENT" })}
+          title="Add danmaku at playhead"
+          aria-label="Add danmaku at playhead"
+          onClick={addDanmakuAtPlayhead}
         >
           ＋
         </button>

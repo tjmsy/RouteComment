@@ -14,6 +14,8 @@ export const transitions: Record<
     OPEN_PLAYBACK: "playback",
     OPEN_EDIT_MENU: "chooseEdit",
     OPEN_ADD_COMMENT: "chooseComment",
+    SELECT_PLAN: "editPlan",
+    SELECT_COMMENT: "editComment",
   },
   project: {
     DISMISS: "review",

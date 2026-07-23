@@ -8,6 +8,7 @@ export function EditCommentBar() {
   const dispatch = useUiStore((s) => s.dispatch);
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
+  const clearExpandedComments = useUiStore((s) => s.clearExpandedComments);
   const comments = useProjectStore((s) => s.project.comments);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
@@ -15,6 +16,11 @@ export function EditCommentBar() {
   const mobile = useMobileLayout();
   const verb = pointerVerb();
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+
+  const pickTool = (tool: "map" | "follow" | "danmaku") => {
+    setCommentTool(tool);
+    clearExpandedComments();
+  };
 
   return (
     <>
@@ -30,35 +36,35 @@ export function EditCommentBar() {
           <button
             type="button"
             className={commentTool === "map" ? "active" : ""}
-            onClick={() => setCommentTool("map")}
+            onClick={() => pickTool("map")}
           >
-            Pin
+            Map
           </button>
           <button
             type="button"
             className={commentTool === "follow" ? "active" : ""}
-            onClick={() => setCommentTool("follow")}
+            onClick={() => pickTool("follow")}
           >
             Follow
           </button>
           <button
             type="button"
             className={commentTool === "danmaku" ? "active" : ""}
-            onClick={() => setCommentTool("danmaku")}
+            onClick={() => pickTool("danmaku")}
           >
             Danmaku
           </button>
         </div>
         <span className="hint tool-bar-hint">
           {commentTool === "follow"
-            ? `${verb} the track to set a range`
+            ? `${verb} or drag on the GPS track to set a time range`
             : commentTool === "danmaku"
-              ? `${verb} the track to place (or use ＋ on Review for playhead)`
-              : `${verb} the map to place a pin`}
+              ? `${verb} the track to place a scrolling comment`
+              : `${verb} the map to place a comment bubble (× collapses long text)`}
         </span>
       </div>
       {!mobile && (
-        <aside className="comment-float-panel">
+        <aside className="comment-float-panel comment-float-panel--right">
           <h3 className="comment-float-title">Comments</h3>
           {comments.length === 0 ? (
             <p className="hint">No comments yet.</p>

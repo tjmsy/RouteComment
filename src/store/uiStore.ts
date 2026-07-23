@@ -6,6 +6,8 @@ import {
   deriveLegacyEditTool,
   deriveLegacyMode,
   INITIAL_UI_STATE,
+  isEditingComment,
+  isReviewReadonly,
   reduceUiState,
   type UiEvent,
   type UiState as ScreenState,
@@ -113,12 +115,13 @@ const editToolHint = (
 ): string => {
   const verb = pointerVerb();
   if (tool === "setup") return "";
-  if (tool === "plan") return `${verb} the map to draw the route plan`;
+  if (tool === "plan")
+    return `Add a plan first, then ${verb.toLowerCase()} the map to draw`;
   if (commentTool === "follow")
     return `${verb} or drag along the GPS track to set the range`;
   if (commentTool === "danmaku")
     return `${verb} Add danmaku at the current playback time`;
-  return `${verb} the map to place a comment`;
+  return `${verb} the map to place a comment bubble`;
 };
 
 function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
@@ -126,6 +129,8 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
   const editTool = deriveLegacyEditTool(screen);
   const leavingView = prev.mode === "view" && mode !== "view";
   const enteringGeoref = mode === "georef" && prev.mode !== "georef";
+  const editingComment = isEditingComment(screen);
+  const wasEditingComment = isEditingComment(prev.screen);
   return {
     screen,
     mode,
@@ -136,9 +141,16 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
     georefStep: enteringGeoref || mode !== "georef" ? 0 : prev.georefStep,
     georefPin: mode === "georef" ? prev.georefPin : null,
     georefPendingFrom: mode === "georef" ? prev.georefPendingFrom : null,
-    followRangeStartMs: null,
+    followRangeStartMs:
+      editingComment || wasEditingComment
+        ? editingComment
+          ? prev.followRangeStartMs
+          : null
+        : null,
     expandedCommentIds:
-      mode === "edit" && editTool === "comment" ? prev.expandedCommentIds : [],
+      editingComment || isReviewReadonly(screen)
+        ? prev.expandedCommentIds
+        : [],
     statusMessage:
       mode === "georef"
         ? georefHint(0)
@@ -308,7 +320,7 @@ export const useUiStore = create<UiState>((set, get) => ({
           ? `${pointerVerb()} or drag along the GPS track to set the range`
           : tool === "danmaku"
             ? "Use Add danmaku to place a scrolling comment at the current playback time"
-            : `${pointerVerb()} the map to place a pin comment`,
+            : `${pointerVerb()} the map to place a comment bubble`,
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),

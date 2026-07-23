@@ -20,11 +20,12 @@ export function AnimationControls() {
   const isPlaying = useUiStore((s) => s.isPlaying);
   const playbackSpeed = useUiStore((s) => s.playbackSpeed);
   const headingUp = useUiStore((s) => s.headingUp);
+  const terrain3d = useUiStore((s) => s.terrain3d);
   const setAnimationTimeMs = useUiStore((s) => s.setAnimationTimeMs);
   const setIsPlaying = useUiStore((s) => s.setIsPlaying);
   const setPlaybackSpeed = useUiStore((s) => s.setPlaybackSpeed);
   const setHeadingUp = useUiStore((s) => s.setHeadingUp);
-  const dispatch = useUiStore((s) => s.dispatch);
+  const setTerrain3d = useUiStore((s) => s.setTerrain3d);
   const screen = useUiStore((s) => s.screen);
 
   const points = useProjectStore((s) => s.project.track.points);
@@ -79,7 +80,10 @@ export function AnimationControls() {
     setPlaybackSpeed(next);
   };
 
-  const showExtras = screen.kind === "review" || screen.kind === "playback";
+  const showExtras =
+    screen.kind === "review" ||
+    screen.kind === "playback" ||
+    screen.kind === "layers";
 
   return (
     <div
@@ -133,12 +137,12 @@ export function AnimationControls() {
           </button>
           <button
             type="button"
-            className="animation-chip"
-            onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
-            title="More playback settings (Terrain 3D…)"
-            aria-label="More playback settings"
+            className={terrain3d ? "animation-chip active" : "animation-chip"}
+            onClick={() => setTerrain3d(!terrain3d)}
+            title="Terrain 3D"
+            aria-pressed={terrain3d}
           >
-            ⋯
+            3D
           </button>
         </div>
       )}

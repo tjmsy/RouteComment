@@ -19,7 +19,7 @@ import {
   formatPaceValue,
   mpsToPaceMinPerKm,
 } from "../lib/trackSpeed";
-import { trackDragHitPx, trackHitPx, pointerVerb, isMobileViewport } from "../lib/mobile";
+import { trackDragHitPx, trackHitPx, pointerVerb } from "../lib/mobile";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
@@ -205,6 +205,7 @@ export function MapView() {
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const commentTool = useUiStore((s) => s.commentTool);
   const comments = useProjectStore((s) => s.project.comments);
   const showProfileCharts = useUiStore((s) => s.showProfileCharts);
   const isPlaying = useUiStore((s) => s.isPlaying);
@@ -1043,6 +1044,21 @@ export function MapView() {
     syncTrackRangeHighlight,
   ]);
 
+  // Follow range pick: disable map pan so drag on the track selects a range.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapInstance) return;
+    const picking =
+      mode === "edit" && editTool === "comment" && commentTool === "follow";
+    if (picking) {
+      map.dragPan.disable();
+      return () => {
+        map.dragPan.enable();
+      };
+    }
+    map.dragPan.enable();
+  }, [mode, editTool, commentTool, mapInstance]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
@@ -1133,15 +1149,19 @@ export function MapView() {
         return;
       if (ui.followRangeStartMs != null) return;
       const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat);
+      const hit = isNearTrack(
+        map,
+        pts,
+        e.lngLat.lng,
+        e.lngLat.lat,
+        trackDragHitPx(),
+      );
       if (hit?.timeOffsetMs == null) return;
       dragStartMsRef.current = hit.timeOffsetMs;
       followHoverMsRef.current = hit.timeOffsetMs;
-      map.dragPan.disable();
     };
 
     const onUp = (e: LngLatEvent) => {
-      map.dragPan.enable();
       const dragStart = dragStartMsRef.current;
       dragStartMsRef.current = null;
       if (dragStart == null) return;
@@ -1385,8 +1405,7 @@ export function MapView() {
             text: "",
             popupWidth: DEFAULT_POPUP_WIDTH,
             popupHeight: DEFAULT_POPUP_HEIGHT,
-            // Phones edit in the bottom sheet; keep the map clear.
-            popupOpen: !isMobileViewport(),
+            popupOpen: true,
           });
           setCommentExpanded(id, true);
           return;
@@ -1401,7 +1420,13 @@ export function MapView() {
           setStatusMessage("Load a GPS track before adding a follow comment.");
           return;
         }
-        const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
+        const hit = isNearTrack(
+          map,
+          pts,
+          lngLat.lng,
+          lngLat.lat,
+          trackDragHitPx(),
+        );
         if (!hit || hit.timeOffsetMs == null) {
           setStatusMessage(
             `${pointerVerb()} near the GPS track to set the range.`,
@@ -1483,12 +1508,17 @@ export function MapView() {
     const map = mapRef.current;
     if (!map) return;
     const canvas = map.getCanvas();
+    const ui = useUiStore.getState();
+    const hasDrawablePlan =
+      editTool === "plan" &&
+      routePlans.some((p) => p.id === ui.activeRoutePlanId);
     canvas.style.cursor =
       mode === "georef" ||
-      (mode === "edit" && (editTool === "plan" || editTool === "comment"))
+      (mode === "edit" && editTool === "comment") ||
+      (mode === "edit" && hasDrawablePlan)
         ? "crosshair"
         : "";
-  }, [mode, editTool]);
+  }, [mode, editTool, activeRoutePlanId, routePlans]);
 
   const showSpeedScale =
     showTrack &&

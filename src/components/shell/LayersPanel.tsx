@@ -19,7 +19,7 @@ export function LayersPanel() {
   const elevationStatus = useUiStore((s) => s.elevationStatus);
 
   return (
-    <PanelHost title="Layers">
+    <PanelHost title="Layers" side="right">
       {(project.track.points.length > 0 || project.mapImage) && (
         <label
           className={`check${isPlaying ? " check--disabled" : ""}`}

@@ -3,6 +3,7 @@ import { useMobileLayout } from "../hooks/useMobileLayout";
 import { pointerVerb } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import { isEditingComment, isReviewReadonly } from "../ui/machine";
 
 function formatHms(ms: number | undefined): string {
   if (ms == null) return "";
@@ -41,8 +42,7 @@ function kindLabel(kind: string): string {
  */
 export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "sheet" }) {
   const mobile = useMobileLayout();
-  const mode = useUiStore((s) => s.mode);
-  const editTool = useUiStore((s) => s.editTool);
+  const screen = useUiStore((s) => s.screen);
   const comments = useProjectStore((s) => s.project.comments);
   const updateComment = useProjectStore((s) => s.updateComment);
   const removeComment = useProjectStore((s) => s.removeComment);
@@ -51,7 +51,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
 
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
   const comment = comments.find((c) => c.id === activeId) ?? null;
-  const editable = mode === "edit" && editTool === "comment";
+  const editable = isEditingComment(screen);
 
   const [draft, setDraft] = useState("");
   const [startDraft, setStartDraft] = useState("");
@@ -72,11 +72,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
   }, [comment?.id, comment?.text, comment?.timeStartMs, comment?.timeEndMs]);
 
   if (!comment) return null;
-  if (
-    mode !== "view" &&
-    !(mode === "edit" && editTool === "comment")
-  )
-    return null;
+  if (!editable && !isReviewReadonly(screen)) return null;
 
   const isFollow = comment.kind === "follow";
   const isDanmaku = comment.kind === "danmaku";

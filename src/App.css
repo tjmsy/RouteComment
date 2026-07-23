@@ -490,7 +490,8 @@ button.btn-skip {
 }
 
 .map-legend--layers {
-  top: 12px;
+  /* Clear Review chrome header (name + action row). */
+  top: 4rem;
   left: 12px;
   display: flex;
   flex-direction: column;
@@ -611,7 +612,8 @@ button.btn-skip {
 }
 
 .comment-maplibre-popup.maplibregl-popup {
-  z-index: 6;
+  /* Above map controls; shell overlay uses pointer-events: none. */
+  z-index: 20;
 }
 
 .comment-maplibre-popup .maplibregl-popup-content {
@@ -1254,10 +1256,12 @@ button.btn-skip {
 }
 
 .comment-icon-map {
-  font-size: 16px;
+  font-size: 14px;
   cursor: grab;
-  background: #334155;
-  color: #f8fafc;
+  background: #fff;
+  color: #1a211c;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .comment-icon-map svg {
@@ -1740,6 +1744,7 @@ button.btn-skip {
   }
 
   .map-legend--layers {
+    top: calc(4rem + env(safe-area-inset-top));
     left: max(12px, env(safe-area-inset-left));
   }
 
@@ -1965,6 +1970,11 @@ button.btn-skip {
   border: 1px solid var(--panel-edge);
   border-radius: 10px;
   box-shadow: var(--shadow);
+}
+
+.comment-float-panel--right {
+  left: auto;
+  right: 0.5rem;
 }
 
 .comment-float-title {

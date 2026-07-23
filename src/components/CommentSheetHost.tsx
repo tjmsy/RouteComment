@@ -5,7 +5,9 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import { isEditingComment } from "../ui/machine";
 
 type Props = {
   children: ReactNode;
@@ -18,11 +20,30 @@ type Props = {
 export function CommentSheetHost({ children }: Props) {
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const clearExpandedComments = useUiStore((s) => s.clearExpandedComments);
-  const mode = useUiStore((s) => s.mode);
+  const screen = useUiStore((s) => s.screen);
+  const commentTool = useUiStore((s) => s.commentTool);
+  const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
+  const comments = useProjectStore((s) => s.project.comments);
   const [keyboardPad, setKeyboardPad] = useState(0);
   const [bottomChrome, setBottomChrome] = useState(0);
   const hostRef = useRef<HTMLDivElement>(null);
-  const open = expandedCommentIds.length > 0;
+
+  const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+  const active = comments.find((c) => c.id === activeId) ?? null;
+
+  /**
+   * Keep the map free while picking a follow range (two-click or drag).
+   * Map comments edit on the bubble itself — never cover the map with a sheet.
+   */
+  const pickingFollow =
+    isEditingComment(screen) &&
+    commentTool === "follow" &&
+    followRangeStartMs != null;
+
+  const open =
+    expandedCommentIds.length > 0 &&
+    !pickingFollow &&
+    active?.kind !== "map";
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -72,7 +93,7 @@ export function CommentSheetHost({ children }: Props) {
     if (anim) ro.observe(anim);
     if (profile) ro.observe(profile);
     return () => ro.disconnect();
-  }, [mode, open]);
+  }, [screen.kind, open]);
 
   return (
     <div

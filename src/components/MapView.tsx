@@ -19,7 +19,7 @@ import {
   formatPaceValue,
   mpsToPaceMinPerKm,
 } from "../lib/trackSpeed";
-import { trackDragHitPx, pointerVerb, isMobileViewport } from "../lib/mobile";
+import { trackDragHitPx, trackHitPx, pointerVerb, isMobileViewport } from "../lib/mobile";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";

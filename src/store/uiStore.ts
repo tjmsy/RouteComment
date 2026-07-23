@@ -2,6 +2,14 @@ import { create } from "zustand";
 import type { ChartKind } from "../lib/chartScales";
 import { pointerVerb } from "../lib/mobile";
 import type { AppMode, EditTool } from "../lib/types";
+import {
+  deriveLegacyEditTool,
+  deriveLegacyMode,
+  INITIAL_UI_STATE,
+  reduceUiState,
+  type UiEvent,
+  type UiState as ScreenState,
+} from "../ui/machine";
 
 /** Two-point fine-tune steps (streetview-o style). */
 export type GeorefStep = 0 | 1 | 2 | 3;
@@ -17,7 +25,11 @@ const DEFAULT_PROFILE_CHART_COLLAPSED: ProfileChartCollapsed = {
 };
 
 type UiState = {
+  /** Screen-mode machine (IA v6). Source of truth for navigation. */
+  screen: ScreenState;
+  /** @deprecated Prefer screen + dispatch; kept in sync for legacy UI. */
   mode: AppMode;
+  /** @deprecated Prefer screen + dispatch; kept in sync for legacy UI. */
   editTool: EditTool;
   toolbarCollapsed: boolean;
   expandedCommentIds: string[];
@@ -26,34 +38,26 @@ type UiState = {
   playbackSpeed: number;
   headingUp: boolean;
   commentTool: "map" | "follow" | "danmaku";
-  /** Follow-range pick: waiting for start click, or end click after startMs. */
   followRangeStartMs: number | null;
   activeRoutePlanId: string | null;
   showTrack: boolean;
-  /** Color GPS track by segment speed (red=slow, blue=fast). */
   colorTrackBySpeed: boolean;
-  /** GPS track line width in pixels. */
   trackLineWidth: number;
   showBasemap: boolean;
   mapOpacity: number;
   terrain3d: boolean;
-  /** Profile charts panel (elevation / HR / speed). */
   showProfileCharts: boolean;
-  /** DEM elevation fetch status for profile charts. */
   elevationStatus: "idle" | "loading" | "done" | "failed";
-  /** Total height of the profile charts panel (px). */
   profilePanelHeightPx: number;
-  /** Per-series collapse state for profile charts. */
   profileChartCollapsed: ProfileChartCollapsed;
-  /** GPX loaded or skipped during onboarding. */
   setupGpxDone: boolean;
-  /** Map image loaded or skipped during onboarding. */
   setupMapDone: boolean;
   georefStep: GeorefStep;
   georefPin: LngLat | null;
   georefPendingFrom: LngLat | null;
   statusMessage: string;
 
+  dispatch: (event: UiEvent) => void;
   setMode: (mode: AppMode) => void;
   setEditTool: (tool: EditTool) => void;
   setToolbarCollapsed: (collapsed: boolean) => void;
@@ -117,9 +121,53 @@ const editToolHint = (
   return `${verb} the map to place a comment`;
 };
 
+function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
+  const mode = deriveLegacyMode(screen);
+  const editTool = deriveLegacyEditTool(screen);
+  const leavingView = prev.mode === "view" && mode !== "view";
+  const enteringGeoref = mode === "georef" && prev.mode !== "georef";
+  return {
+    screen,
+    mode,
+    editTool,
+    isPlaying: mode === "georef" || leavingView ? false : prev.isPlaying,
+    terrain3d: leavingView ? false : prev.terrain3d,
+    headingUp: leavingView ? false : prev.headingUp,
+    georefStep: enteringGeoref || mode !== "georef" ? 0 : prev.georefStep,
+    georefPin: mode === "georef" ? prev.georefPin : null,
+    georefPendingFrom: mode === "georef" ? prev.georefPendingFrom : null,
+    followRangeStartMs: null,
+    expandedCommentIds:
+      mode === "edit" && editTool === "comment" ? prev.expandedCommentIds : [],
+    statusMessage:
+      mode === "georef"
+        ? georefHint(0)
+        : mode === "edit"
+          ? editToolHint(editTool, prev.commentTool)
+          : prev.statusMessage,
+  };
+}
+
+function screenForLegacyMode(mode: AppMode, editTool: EditTool): ScreenState {
+  if (mode === "view") return { kind: "review" };
+  if (mode === "georef") return { kind: "georef" };
+  if (editTool === "plan") return { kind: "editPlan" };
+  if (editTool === "comment") return { kind: "editComment" };
+  return { kind: "project" };
+}
+
+function sameScreen(a: ScreenState, b: ScreenState): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "createWizard" && b.kind === "createWizard") {
+    return a.step === b.step;
+  }
+  return true;
+}
+
 export const useUiStore = create<UiState>((set, get) => ({
-  mode: "edit",
-  editTool: "setup",
+  screen: INITIAL_UI_STATE,
+  mode: deriveLegacyMode(INITIAL_UI_STATE),
+  editTool: deriveLegacyEditTool(INITIAL_UI_STATE),
   toolbarCollapsed: false,
   expandedCommentIds: [],
   animationTimeMs: 0,
@@ -147,6 +195,13 @@ export const useUiStore = create<UiState>((set, get) => ({
   statusMessage:
     "Start with GPX so the map jumps to the competition area, then add the map image.",
 
+  dispatch: (event) => {
+    const prev = get();
+    const screen = reduceUiState(prev.screen, event);
+    if (sameScreen(screen, prev.screen)) return;
+    set(applyScreen(screen, prev));
+  },
+
   setMode: (mode) => {
     const prev = get();
     const { setupGpxDone, setupMapDone, editTool, commentTool } = prev;
@@ -161,20 +216,16 @@ export const useUiStore = create<UiState>((set, get) => ({
         });
         return;
       }
-      // Allow edit during onboarding, but keep Setup tool.
+      const screen: ScreenState = { kind: "project" };
       set({
-        mode: "edit",
-        editTool: "setup",
-        isPlaying: false,
-        georefStep: 0,
-        georefPin: null,
-        georefPendingFrom: null,
-        followRangeStartMs: null,
+        ...applyScreen(screen, prev),
         statusMessage: get().statusMessage,
       });
       return;
     }
+    const screen = screenForLegacyMode(mode, editTool);
     set({
+      ...applyScreen(screen, prev),
       mode,
       editTool: mode === "georef" ? "setup" : editTool,
       isPlaying: mode === "georef" || leavingView ? false : prev.isPlaying,
@@ -184,7 +235,6 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPin: null,
       georefPendingFrom: null,
       followRangeStartMs: null,
-      // Drop follow/danmaku selection when leaving Comment edit (e.g. View).
       expandedCommentIds:
         mode === "edit" && editTool === "comment"
           ? prev.expandedCommentIds
@@ -212,8 +262,11 @@ export const useUiStore = create<UiState>((set, get) => ({
     }
     const leaveGeoref = mode === "georef";
     const leavingView = mode === "view";
+    const nextMode = leaveGeoref || leavingView ? "edit" : mode;
+    const screen = screenForLegacyMode(nextMode, tool);
     set({
-      mode: leaveGeoref || leavingView ? "edit" : mode,
+      ...applyScreen(screen, prev),
+      mode: nextMode,
       editTool: tool,
       isPlaying: leaveGeoref || leavingView ? false : prev.isPlaying,
       terrain3d: leavingView ? false : prev.terrain3d,
@@ -231,7 +284,6 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   toggleCommentExpanded: (id) => {
     const cur = get().expandedCommentIds;
-    // Single selection: toggle off if already selected, otherwise switch to this id
     set({
       expandedCommentIds: cur.length === 1 && cur[0] === id ? [] : [id],
     });
@@ -294,7 +346,10 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       setupMapDone: true,
       mode: "view",
-      statusMessage: "Setup complete. You can add a map image later in Edit → Setup.",
+      screen: { kind: "review" },
+      editTool: deriveLegacyEditTool({ kind: "review" }),
+      statusMessage:
+        "Setup complete. You can add a map image later in Edit → Setup.",
     }),
   completeSetup: () =>
     set({

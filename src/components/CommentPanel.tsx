@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useMobileLayout } from "../hooks/useMobileLayout";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 
@@ -33,10 +34,12 @@ function kindLabel(kind: string): string {
 }
 
 /**
- * Selected comment in the side panel.
+ * Selected comment editor / reader.
  * Comment mode: editable. View mode: read-only.
+ * On mobile this is hosted as a bottom sheet from App.
  */
-export function CommentPanel() {
+export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "sheet" }) {
+  const mobile = useMobileLayout();
   const mode = useUiStore((s) => s.mode);
   const editTool = useUiStore((s) => s.editTool);
   const comments = useProjectStore((s) => s.project.comments);
@@ -77,9 +80,13 @@ export function CommentPanel() {
   const isFollow = comment.kind === "follow";
   const isDanmaku = comment.kind === "danmaku";
   const isMap = comment.kind === "map";
+  const panelClass =
+    variant === "sheet"
+      ? "panel comment-side-panel comment-sheet"
+      : "panel comment-side-panel";
 
   return (
-    <section className="panel comment-side-panel">
+    <section className={panelClass}>
       <div className="comment-editor-header">
         <strong>{kindLabel(comment.kind)}</strong>
         <button
@@ -94,9 +101,9 @@ export function CommentPanel() {
       {editable ? (
         <textarea
           value={draft}
-          rows={4}
+          rows={variant === "sheet" ? 3 : 4}
           placeholder="Write a comment…"
-          autoFocus={!isMap}
+          autoFocus={!isMap && !mobile}
           onChange={(e) => {
             const v = e.target.value;
             setDraft(v);

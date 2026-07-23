@@ -4,6 +4,8 @@ import { Toolbar } from "./components/Toolbar";
 import { AnimationControls } from "./components/AnimationControls";
 import { DanmakuOverlay } from "./components/DanmakuOverlay";
 import { TrackProfileCharts } from "./components/TrackProfileCharts";
+import { CommentPanel } from "./components/CommentPanel";
+import { useMobileLayout } from "./hooks/useMobileLayout";
 import { MOBILE_MQ, MOBILE_PROFILE_HEIGHT_PX } from "./lib/mobile";
 import { useUiStore } from "./store/uiStore";
 import "./App.css";
@@ -28,6 +30,7 @@ function useMobileShellDefaults() {
 }
 
 export default function App() {
+  const mobile = useMobileLayout();
   useMobileShellDefaults();
 
   return (
@@ -40,6 +43,11 @@ export default function App() {
         </div>
         <TrackProfileCharts />
         <AnimationControls />
+        {mobile && (
+          <div className="comment-sheet-host">
+            <CommentPanel variant="sheet" />
+          </div>
+        )}
       </main>
     </div>
   );

@@ -729,6 +729,34 @@ button.btn-skip {
   gap: 0.5rem;
 }
 
+.comment-sheet-host {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+.comment-sheet-host:empty,
+.comment-sheet-host:not(:has(.comment-sheet)) {
+  display: none;
+}
+
+.comment-sheet {
+  pointer-events: auto;
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  border-radius: 14px 14px 0 0;
+  border: 1px solid var(--panel-edge);
+  border-bottom: none;
+  background: rgba(26, 33, 28, 0.97);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+}
+
 .comment-side-panel textarea {
   width: 100%;
   border: 1px solid var(--panel-edge);

@@ -109,6 +109,7 @@ function MapPinMarker({
   const popupOpenRef = useRef(popupOpen);
   const suppressCloseRef = useRef(false);
   const updateComment = useProjectStore((s) => s.updateComment);
+  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   popupOpenRef.current = popupOpen;
 
   useEffect(() => {
@@ -186,6 +187,7 @@ function MapPinMarker({
         return;
       }
       updateComment(comment.id, { popupOpen: true });
+      setCommentExpanded(comment.id, true);
     };
     icon.addEventListener("click", onIconClick);
 

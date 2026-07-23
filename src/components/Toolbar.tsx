@@ -14,6 +14,7 @@ import {
   formatSummaryTime,
 } from "../lib/trackSummary";
 import { CommentPanel } from "./CommentPanel";
+import { useMobileLayout } from "../hooks/useMobileLayout";
 
 function formatCommentHms(ms: number | undefined): string {
   if (ms == null) return "—";
@@ -46,6 +47,7 @@ export function Toolbar() {
   const mapInputRef = useRef<HTMLInputElement>(null);
   const gpxInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const mobile = useMobileLayout();
 
   const project = useProjectStore((s) => s.project);
   const mapImageBlob = useProjectStore((s) => s.mapImageBlob);
@@ -754,7 +756,7 @@ export function Toolbar() {
             </section>
           )}
 
-          <CommentPanel />
+          {!mobile && <CommentPanel />}
 
           {showPlan && (
             <section className="panel">

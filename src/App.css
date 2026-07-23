@@ -788,18 +788,18 @@ button.btn-skip {
   display: none;
 }
 
-.comment-sheet-host--open {
-  pointer-events: auto;
-}
-
 .comment-sheet-backdrop {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: calc(var(--sheet-bottom, 0px) + var(--sheet-keyboard-pad, 0px));
   border: none;
   padding: 0;
   margin: 0;
   background: rgba(0, 0, 0, 0.35);
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .comment-sheet-lift {

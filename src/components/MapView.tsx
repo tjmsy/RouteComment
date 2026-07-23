@@ -238,8 +238,9 @@ export function MapView() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: OPENFREEMAP_STYLE,
-      center: [0, 20],
-      zoom: 1.5,
+      // Mid-Atlantic; high zoom → ocean blue only (avoids world-map flash).
+      center: [0, 0],
+      zoom: 12,
       maxPitch: 0,
       attributionControl: { compact: true },
     });

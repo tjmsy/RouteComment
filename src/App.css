@@ -1451,6 +1451,105 @@ button.btn-skip {
 
   .toolbar-collapse-toggle {
     display: inline-flex;
+    min-height: 44px;
+    min-width: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .mode-row button {
+    min-height: 44px;
+    padding: 0.55rem 0.35rem;
+    font-size: 0.8rem;
+  }
+
+  .animation-bar button {
+    min-height: 44px;
+    min-width: 64px;
+    padding: 0.5rem 1rem;
+  }
+
+  .comment-editor-header .btn-done,
+  .btn-delete-confirm,
+  .comment-delete-confirm button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 0.85rem !important;
+    font-size: 0.85rem !important;
+  }
+
+  .btn-delete {
+    min-height: 44px;
+    padding: 0.5rem 0 !important;
+    font-size: 0.85rem !important;
+  }
+
+  .plan-remove {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.25rem;
+  }
+
+  .plan-list-item input[type="color"] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .comment-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .comment-icon-danmaku {
+    width: 40px;
+    height: 40px;
+  }
+
+  .comment-icon-map svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .comment-icon-danmaku svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .comment-maplibre-popup .maplibregl-popup-close-button {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+    line-height: 34px;
+    top: 0;
+    right: 0;
+  }
+
+  .comment-map-popup-resize {
+    width: 28px;
+    height: 28px;
+  }
+
+  .georef-align-marker {
+    width: 36px;
+    height: 36px;
+    font-size: 0.85rem;
+  }
+
+  .plan-vertex-handle {
+    width: 20px;
+    height: 20px;
+  }
+
+  .plan-midpoint-handle {
+    width: 16px;
+    height: 16px;
+  }
+
+  .profile-charts-resize-handle {
+    height: 16px;
   }
 
   .map-legend--layers {
@@ -1460,10 +1559,6 @@ button.btn-skip {
   .map-legend--speed {
     bottom: 12px;
     left: max(12px, env(safe-area-inset-left));
-  }
-
-  .georef-align-marker {
-    width: 22px;
   }
 
   .animation-bar {

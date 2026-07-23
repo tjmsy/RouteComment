@@ -778,14 +778,40 @@ button.btn-skip {
   position: absolute;
   left: 0;
   right: 0;
+  top: 0;
   bottom: 0;
   z-index: 12;
   pointer-events: none;
 }
 
-.comment-sheet-host:empty,
-.comment-sheet-host:not(:has(.comment-sheet)) {
+.comment-sheet-host[hidden] {
   display: none;
+}
+
+.comment-sheet-host--open {
+  pointer-events: auto;
+}
+
+.comment-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.comment-sheet-lift {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--sheet-bottom, 0px) + var(--sheet-keyboard-pad, 0px));
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  max-height: min(48vh, 420px);
 }
 
 .comment-sheet {
@@ -800,6 +826,16 @@ button.btn-skip {
   border-bottom: none;
   background: rgba(26, 33, 28, 0.97);
   box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.comment-sheet::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(154, 171, 158, 0.45);
+  margin: 0 auto 0.65rem;
 }
 
 .comment-side-panel textarea {

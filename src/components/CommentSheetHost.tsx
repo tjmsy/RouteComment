@@ -1,0 +1,106 @@
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { useUiStore } from "../store/uiStore";
+
+type Props = {
+  children: ReactNode;
+};
+
+/**
+ * Mobile host for CommentPanel: backdrop dismiss, sits above bottom chrome,
+ * and pads for the on-screen keyboard via visualViewport.
+ */
+export function CommentSheetHost({ children }: Props) {
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const clearExpandedComments = useUiStore((s) => s.clearExpandedComments);
+  const mode = useUiStore((s) => s.mode);
+  const [keyboardPad, setKeyboardPad] = useState(0);
+  const [bottomChrome, setBottomChrome] = useState(0);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const open = expandedCommentIds.length > 0;
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      const overlap = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      setKeyboardPad(overlap);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const main = hostRef.current?.closest(".main");
+    if (!main) return;
+    const measure = () => {
+      const anim = main.querySelector(".animation-bar");
+      const profile = main.querySelector(".profile-charts");
+      let h = 0;
+      if (
+        anim instanceof HTMLElement &&
+        getComputedStyle(anim).display !== "none"
+      ) {
+        h += anim.offsetHeight;
+      }
+      if (
+        profile instanceof HTMLElement &&
+        getComputedStyle(profile).display !== "none"
+      ) {
+        h += profile.offsetHeight;
+      }
+      setBottomChrome(h);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(main);
+    const anim = main.querySelector(".animation-bar");
+    const profile = main.querySelector(".profile-charts");
+    if (anim) ro.observe(anim);
+    if (profile) ro.observe(profile);
+    return () => ro.disconnect();
+  }, [mode, open]);
+
+  return (
+    <div
+      ref={hostRef}
+      className={
+        open
+          ? "comment-sheet-host comment-sheet-host--open"
+          : "comment-sheet-host"
+      }
+      hidden={!open}
+      style={
+        {
+          "--sheet-bottom": `${bottomChrome}px`,
+          "--sheet-keyboard-pad": `${keyboardPad}px`,
+        } as CSSProperties
+      }
+    >
+      {open && (
+        <>
+          <button
+            type="button"
+            className="comment-sheet-backdrop"
+            aria-label="Close comment"
+            onClick={() => clearExpandedComments()}
+          />
+          <div className="comment-sheet-lift">{children}</div>
+        </>
+      )}
+    </div>
+  );
+}

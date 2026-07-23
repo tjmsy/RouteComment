@@ -5,6 +5,7 @@ import { AnimationControls } from "./components/AnimationControls";
 import { DanmakuOverlay } from "./components/DanmakuOverlay";
 import { TrackProfileCharts } from "./components/TrackProfileCharts";
 import { CommentPanel } from "./components/CommentPanel";
+import { CommentSheetHost } from "./components/CommentSheetHost";
 import { StatusToast } from "./components/StatusToast";
 import { useMobileLayout } from "./hooks/useMobileLayout";
 import { MOBILE_MQ, MOBILE_PROFILE_HEIGHT_PX } from "./lib/mobile";
@@ -46,9 +47,9 @@ export default function App() {
         <TrackProfileCharts />
         <AnimationControls />
         {mobile && (
-          <div className="comment-sheet-host">
+          <CommentSheetHost>
             <CommentPanel variant="sheet" />
-          </div>
+          </CommentSheetHost>
         )}
       </main>
     </div>

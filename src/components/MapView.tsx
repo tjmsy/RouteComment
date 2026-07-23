@@ -19,7 +19,7 @@ import {
   formatPaceValue,
   mpsToPaceMinPerKm,
 } from "../lib/trackSpeed";
-import { trackDragHitPx, pointerVerb } from "../lib/mobile";
+import { trackDragHitPx, pointerVerb, isMobileViewport } from "../lib/mobile";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
@@ -1386,7 +1386,8 @@ export function MapView() {
             text: "",
             popupWidth: DEFAULT_POPUP_WIDTH,
             popupHeight: DEFAULT_POPUP_HEIGHT,
-            popupOpen: true,
+            // Phones edit in the bottom sheet; keep the map clear.
+            popupOpen: !isMobileViewport(),
           });
           setCommentExpanded(id, true);
           return;

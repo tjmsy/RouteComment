@@ -1564,5 +1564,18 @@ button.btn-skip {
   .animation-bar {
     flex-wrap: wrap;
     justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .maplibregl-ctrl-top-right {
+    top: 8px;
+    right: max(8px, env(safe-area-inset-right));
+  }
+
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    margin-bottom: max(0px, env(safe-area-inset-bottom));
   }
 }

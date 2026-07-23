@@ -10,6 +10,8 @@ import {
   MIN_POPUP_WIDTH,
 } from "../lib/types";
 import { interpolateTrackPosition, nearestTrackPoint } from "../lib/gpx";
+import { useMobileLayout } from "../hooks/useMobileLayout";
+import { isMobileViewport } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 
@@ -24,7 +26,11 @@ export function CommentMarkers({ map }: Props) {
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const mode = useUiStore((s) => s.mode);
   const editTool = useUiStore((s) => s.editTool);
+  const mobile = useMobileLayout();
   const commentEditing = mode === "edit" && editTool === "comment";
+  const showTrackComments = commentEditing || mode === "view";
+  /** Desktop edit: inline map popup. Mobile / view: sheet or side panel. */
+  const mapPopupEditable = commentEditing && !mobile;
 
   if (!map) return null;
 
@@ -38,23 +44,25 @@ export function CommentMarkers({ map }: Props) {
             comment={comment}
             popupOpen={comment.popupOpen !== false}
             draggable={commentEditing}
-            editable={commentEditing}
+            editable={mapPopupEditable}
           />
-        ) : comment.kind === "follow" && commentEditing ? (
+        ) : comment.kind === "follow" && showTrackComments ? (
           <FollowRangeMarker
             key={comment.id}
             map={map}
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
+            useMapPopup={mapPopupEditable}
             onToggle={() => toggleCommentExpanded(comment.id)}
             onClose={() => setCommentExpanded(comment.id, false)}
           />
-        ) : comment.kind === "danmaku" && commentEditing ? (
+        ) : comment.kind === "danmaku" && showTrackComments ? (
           <DanmakuMarker
             key={comment.id}
             map={map}
             comment={comment}
             selected={expandedCommentIds.includes(comment.id)}
+            draggable={commentEditing}
             onSelect={() => setCommentExpanded(comment.id, true)}
           />
         ) : null,
@@ -186,8 +194,13 @@ function MapPinMarker({
         suppressClickRef.current = false;
         return;
       }
-      updateComment(comment.id, { popupOpen: true });
-      setCommentExpanded(comment.id, true);
+      // Mobile: sheet only. Desktop: open map popup (+ side panel).
+      if (isMobileViewport()) {
+        setCommentExpanded(comment.id, true);
+      } else {
+        updateComment(comment.id, { popupOpen: true });
+        setCommentExpanded(comment.id, true);
+      }
     };
     icon.addEventListener("click", onIconClick);
 
@@ -332,12 +345,15 @@ function FollowRangeMarker({
   map,
   comment,
   expanded,
+  useMapPopup,
   onToggle,
   onClose,
 }: {
   map: maplibregl.Map;
   comment: Comment;
   expanded: boolean;
+  /** When false, selection is shown via icon + side panel / sheet only. */
+  useMapPopup: boolean;
   onToggle: () => void;
   onClose: () => void;
 }) {
@@ -356,30 +372,12 @@ function FollowRangeMarker({
     const icon = document.createElement("button");
     icon.type = "button";
     icon.className = "comment-icon comment-icon-follow";
-    icon.title = "Follow comment — click to edit text / show range";
+    icon.title = useMapPopup
+      ? "Follow comment — click to edit text / show range"
+      : "Follow comment — tap to open";
     icon.textContent = RUNNER_ICON;
     icon.setAttribute("aria-label", "Follow comment");
     iconRef.current = icon;
-
-    const content = document.createElement("div");
-    content.className = "comment-popup-content comment-follow-popup-content";
-    content.style.width = "160px";
-    content.style.height = "72px";
-
-    const body = document.createElement("textarea");
-    body.className = "comment-map-popup-body comment-map-popup-edit";
-    body.value = comment.text;
-    body.placeholder = "Write a follow comment…";
-    body.addEventListener("input", () => {
-      updateComment(comment.id, { text: body.value });
-    });
-    content.appendChild(body);
-    bodyRef.current = body;
-
-    const popup = createCommentPopup(
-      "comment-maplibre-popup comment-maplibre-popup-follow",
-    );
-    popup.setDOMContent(content).setLngLat([comment.lng, comment.lat]);
 
     const marker = new maplibregl.Marker({
       element: icon,
@@ -393,26 +391,60 @@ function FollowRangeMarker({
     };
     icon.addEventListener("click", onIconClick);
 
-    const onPopupClose = () => {
-      if (suppressCloseRef.current) return;
-      onClose();
-    };
-    popup.on("close", onPopupClose);
-
     markerRef.current = marker;
-    popupRef.current = popup;
 
-    if (expandedRef.current) {
-      popup.addTo(map);
-    } else {
-      marker.addTo(map);
+    if (useMapPopup) {
+      const content = document.createElement("div");
+      content.className = "comment-popup-content comment-follow-popup-content";
+      content.style.width = "160px";
+      content.style.height = "72px";
+
+      const body = document.createElement("textarea");
+      body.className = "comment-map-popup-body comment-map-popup-edit";
+      body.value = comment.text;
+      body.placeholder = "Write a follow comment…";
+      body.addEventListener("input", () => {
+        updateComment(comment.id, { text: body.value });
+      });
+      content.appendChild(body);
+      bodyRef.current = body;
+
+      const popup = createCommentPopup(
+        "comment-maplibre-popup comment-maplibre-popup-follow",
+      );
+      popup.setDOMContent(content).setLngLat([comment.lng, comment.lat]);
+
+      const onPopupClose = () => {
+        if (suppressCloseRef.current) return;
+        onClose();
+      };
+      popup.on("close", onPopupClose);
+      popupRef.current = popup;
+
+      if (expandedRef.current) {
+        popup.addTo(map);
+      } else {
+        marker.addTo(map);
+      }
+
+      return () => {
+        suppressCloseRef.current = true;
+        icon.removeEventListener("click", onIconClick);
+        popup.off("close", onPopupClose);
+        popup.remove();
+        marker.remove();
+        markerRef.current = null;
+        popupRef.current = null;
+        iconRef.current = null;
+        bodyRef.current = null;
+      };
     }
 
+    marker.addTo(map);
+    icon.classList.toggle("comment-icon-selected", expandedRef.current);
+
     return () => {
-      suppressCloseRef.current = true;
       icon.removeEventListener("click", onIconClick);
-      popup.off("close", onPopupClose);
-      popup.remove();
       marker.remove();
       markerRef.current = null;
       popupRef.current = null;
@@ -420,7 +452,7 @@ function FollowRangeMarker({
       bodyRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, comment.id]);
+  }, [map, comment.id, useMapPopup]);
 
   useEffect(() => {
     markerRef.current?.setLngLat([comment.lng, comment.lat]);
@@ -428,6 +460,14 @@ function FollowRangeMarker({
   }, [comment.lng, comment.lat]);
 
   useEffect(() => {
+    if (!useMapPopup) {
+      if (!markerRef.current?.getElement().isConnected) {
+        markerRef.current?.addTo(map);
+      }
+      iconRef.current?.classList.toggle("comment-icon-selected", expanded);
+      return;
+    }
+
     const marker = markerRef.current;
     const popup = popupRef.current;
     if (!marker || !popup) return;
@@ -443,7 +483,7 @@ function FollowRangeMarker({
       suppressCloseRef.current = false;
       marker.addTo(map);
     }
-  }, [expanded, map]);
+  }, [expanded, map, useMapPopup]);
 
   useEffect(() => {
     const body = bodyRef.current;
@@ -458,11 +498,13 @@ function DanmakuMarker({
   map,
   comment,
   selected,
+  draggable,
   onSelect,
 }: {
   map: maplibregl.Map;
   comment: Comment;
   selected: boolean;
+  draggable: boolean;
   onSelect: () => void;
 }) {
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -476,7 +518,9 @@ function DanmakuMarker({
     const el = document.createElement("button");
     el.type = "button";
     el.className = "comment-icon comment-icon-danmaku";
-    el.title = "Danmaku — drag along track to set time";
+    el.title = draggable
+      ? "Danmaku — drag along track to set time"
+      : "Danmaku — tap to open";
     el.innerHTML = DANMAKU_ICON_SVG;
     el.setAttribute("aria-label", "Danmaku comment");
     elRef.current = el;
@@ -484,7 +528,7 @@ function DanmakuMarker({
     const marker = new maplibregl.Marker({
       element: el,
       anchor: "bottom",
-      draggable: true,
+      draggable,
     })
       .setLngLat([comment.lng, comment.lat])
       .addTo(map);
@@ -504,11 +548,13 @@ function DanmakuMarker({
     };
 
     marker.on("dragstart", () => {
+      if (!draggable) return;
       draggingRef.current = true;
       suppressClickRef.current = false;
       map.dragPan.disable();
     });
     marker.on("drag", () => {
+      if (!draggable) return;
       suppressClickRef.current = true;
       const ll = marker.getLngLat();
       const pts = useProjectStore.getState().project.track.points;
@@ -516,6 +562,7 @@ function DanmakuMarker({
       if (hit) marker.setLngLat([hit.lng, hit.lat]);
     });
     marker.on("dragend", () => {
+      if (!draggable) return;
       map.dragPan.enable();
       draggingRef.current = false;
       snapToTrack();
@@ -540,7 +587,17 @@ function DanmakuMarker({
       elRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, comment.id]);
+  }, [map, comment.id, draggable]);
+
+  useEffect(() => {
+    markerRef.current?.setDraggable(draggable);
+    if (elRef.current) {
+      elRef.current.title = draggable
+        ? "Danmaku — drag along track to set time"
+        : "Danmaku — tap to open";
+      elRef.current.classList.toggle("comment-icon-nodrag", !draggable);
+    }
+  }, [draggable]);
 
   useEffect(() => {
     if (draggingRef.current) return;

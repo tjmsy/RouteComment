@@ -5,6 +5,7 @@ import { AnimationControls } from "./components/AnimationControls";
 import { DanmakuOverlay } from "./components/DanmakuOverlay";
 import { TrackProfileCharts } from "./components/TrackProfileCharts";
 import { CommentPanel } from "./components/CommentPanel";
+import { StatusToast } from "./components/StatusToast";
 import { useMobileLayout } from "./hooks/useMobileLayout";
 import { MOBILE_MQ, MOBILE_PROFILE_HEIGHT_PX } from "./lib/mobile";
 import { useUiStore } from "./store/uiStore";
@@ -40,6 +41,7 @@ export default function App() {
         <div className="main-map">
           <MapView />
           <DanmakuOverlay />
+          <StatusToast />
         </div>
         <TrackProfileCharts />
         <AnimationControls />

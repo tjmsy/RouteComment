@@ -398,6 +398,51 @@ button.btn-skip {
   line-height: 1.35;
 }
 
+.status-toast {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  top: auto;
+  z-index: 8;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(26, 33, 28, 0.94);
+  border: 1px solid rgba(196, 245, 66, 0.35);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.status-toast-text {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  color: var(--accent);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.status-toast-dismiss {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.status-toast-dismiss:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .main {
   position: relative;
   min-width: 0;

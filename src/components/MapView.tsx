@@ -190,7 +190,6 @@ export function MapView() {
   const trackPoints = useProjectStore((s) => s.project.track.points);
   const routePlans = useProjectStore((s) => s.project.routePlans);
   const appendPlanCoordinate = useProjectStore((s) => s.appendPlanCoordinate);
-  const addRoutePlan = useProjectStore((s) => s.addRoutePlan);
   const addComment = useProjectStore((s) => s.addComment);
   const updateComment = useProjectStore((s) => s.updateComment);
 
@@ -1321,7 +1320,7 @@ export function MapView() {
             setGeorefPin(null);
             setGeorefStep(0);
             setStatusMessage(
-              "Aligned. Repeat the 2-point cycle to fine-tune, or switch mode when done.",
+              "Aligned. Repeat the 2-point cycle to fine-tune, or tap Done when finished.",
             );
           } else {
             clearAlignMarkers();
@@ -1335,12 +1334,12 @@ export function MapView() {
       }
 
       if (currentMode === "edit" && currentEditTool === "plan") {
-        let planId =
+        const planId =
           useUiStore.getState().activeRoutePlanId ??
           useProjectStore.getState().project.routePlans[0]?.id;
         if (!planId) {
-          planId = addRoutePlan();
-          setActiveRoutePlanId(planId);
+          setStatusMessage("Add a plan first, then tap the map to draw.");
+          return;
         }
         appendPlanCoordinate(planId, [lngLat.lng, lngLat.lat]);
         return;
@@ -1466,7 +1465,6 @@ export function MapView() {
   }, [
     mapInstance,
     appendPlanCoordinate,
-    addRoutePlan,
     addComment,
     updateComment,
     setPose,
@@ -1478,7 +1476,6 @@ export function MapView() {
     addAlignMarker,
     setCommentExpanded,
     setFollowRangeStartMs,
-    setActiveRoutePlanId,
     setStatusMessage,
   ]);
 

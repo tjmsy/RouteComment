@@ -1765,3 +1765,246 @@ button.btn-skip {
     margin-bottom: max(0px, env(safe-area-inset-bottom));
   }
 }
+
+/* ?? Review hub shell (IA v6) ?? */
+.app--hub {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  position: relative;
+}
+
+.app--hub > .main {
+  min-height: 0;
+  min-width: 0;
+}
+
+.empty-project {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background: var(--bg);
+  padding: 1.5rem;
+}
+
+.empty-project-lead {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.75rem;
+}
+
+.empty-project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.create-wizard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 45;
+  max-height: min(42vh, 320px);
+  overflow: auto;
+  padding: 0.75rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-edge);
+  box-shadow: var(--shadow);
+}
+
+.create-wizard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.create-wizard-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.review-chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  padding-top: max(0.35rem, env(safe-area-inset-top));
+  background: rgba(26, 33, 28, 0.88);
+  border-bottom: 1px solid var(--panel-edge);
+  backdrop-filter: blur(8px);
+}
+
+.review-chrome button {
+  min-height: 36px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.review-chrome button.active {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.review-chrome-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.review-chrome-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.tool-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 32;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  padding-top: max(0.4rem, env(safe-area-inset-top));
+  background: rgba(26, 33, 28, 0.92);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.tool-bar-name {
+  min-width: 6rem;
+  max-width: 10rem;
+}
+
+.tool-bar-hint,
+.tool-bar-subhint {
+  margin: 0;
+  font-size: 0.75rem;
+  flex: 1 1 100%;
+}
+
+.georef-opacity {
+  min-width: 8rem;
+}
+
+.btn-done {
+  background: var(--accent) !important;
+  color: #1a211c !important;
+  border: none !important;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0.3rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-dismiss {
+  background: transparent;
+  border: 1px solid var(--panel-edge);
+  color: var(--text);
+  min-height: 36px;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.panel-host-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.panel-host {
+  position: absolute;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  box-shadow: var(--shadow);
+  max-height: min(70dvh, 520px);
+}
+
+.panel-host--side {
+  top: 2.75rem;
+  right: 0.5rem;
+  width: min(320px, calc(100% - 1rem));
+  border-radius: 10px;
+}
+
+.panel-host--sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: min(55dvh, 420px);
+  border-radius: 14px 14px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.panel-host-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.panel-host-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.panel-host-body {
+  overflow-y: auto;
+  padding: 0.75rem 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.btn-row-stack {
+  flex-direction: column;
+}
+
+.btn-row-stack button {
+  width: 100%;
+}
+
+.app--hub .main-map {
+  padding-top: 2.5rem;
+}
+
+.app--hub .status-toast {
+  z-index: 35;
+}

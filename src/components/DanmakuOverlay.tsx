@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Comment } from "../lib/types";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import { isReviewChrome } from "../ui/machine";
 
 /** Inspired by sweet-danmaku / rc-danmaku lane allocation. */
 const FONT_SIZE = 26;
@@ -91,7 +92,8 @@ function pickLane(
 }
 
 export function DanmakuOverlay() {
-  const mode = useUiStore((s) => s.mode);
+  const screen = useUiStore((s) => s.screen);
+  const review = isReviewChrome(screen);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const comments = useProjectStore((s) => s.project.comments);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,17 +108,15 @@ export function DanmakuOverlay() {
     firedRef.current.clear();
   };
 
-  // Entering view: sync cursor without back-filling past comments.
-  // At t=0 use -1 so the first advance can still fire comments at 0.
-  // Leaving view: tear down the stage.
+  // Entering review chrome: sync cursor without back-filling past comments.
   useEffect(() => {
     clearStage();
     const t = useUiStore.getState().animationTimeMs;
-    lastTimeRef.current = mode === "view" && t <= 0 ? -1 : t;
-  }, [mode]);
+    lastTimeRef.current = review && t <= 0 ? -1 : t;
+  }, [review]);
 
   useEffect(() => {
-    if (mode !== "view") return;
+    if (!review) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -144,7 +144,7 @@ export function DanmakuOverlay() {
     }
 
     lastTimeRef.current = next;
-  }, [animationTimeMs, comments, mode]);
+  }, [animationTimeMs, comments, review]);
 
   function spawn(
     comment: Comment & { timeStartMs: number },
@@ -190,7 +190,7 @@ export function DanmakuOverlay() {
     el.addEventListener("animationend", onEnd);
   }
 
-  if (mode !== "view") return null;
+  if (!review) return null;
 
   return (
     <div ref={containerRef} className="danmaku-overlay" aria-hidden="true" />

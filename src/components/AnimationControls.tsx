@@ -3,6 +3,7 @@ import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 import { trackDurationMs } from "../lib/gpx";
 import { useMobileLayout } from "../hooks/useMobileLayout";
+import { isReviewChrome } from "../ui/machine";
 
 const SPEED_OPTIONS = [1, 5, 10, 30, 60, 120] as const;
 
@@ -23,7 +24,8 @@ export function AnimationControls() {
   const setIsPlaying = useUiStore((s) => s.setIsPlaying);
   const setPlaybackSpeed = useUiStore((s) => s.setPlaybackSpeed);
   const setHeadingUp = useUiStore((s) => s.setHeadingUp);
-  const mode = useUiStore((s) => s.mode);
+  const dispatch = useUiStore((s) => s.dispatch);
+  const screen = useUiStore((s) => s.screen);
 
   const points = useProjectStore((s) => s.project.track.points);
   const duration = trackDurationMs(points);
@@ -62,7 +64,7 @@ export function AnimationControls() {
     };
   }, [isPlaying, duration, playbackSpeed, setAnimationTimeMs, setIsPlaying]);
 
-  if (mode !== "view" || points.length === 0) return null;
+  if (!isReviewChrome(screen) || points.length === 0) return null;
 
   // Keep label width stable so the range does not jitter as digits change.
   const minuteDigits = Math.max(
@@ -122,7 +124,29 @@ export function AnimationControls() {
           >
             Head-up
           </button>
+          {screen.kind === "review" && (
+            <button
+              type="button"
+              className="animation-chip"
+              onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
+              title="Playback settings"
+              aria-label="Playback settings"
+            >
+              ⋯
+            </button>
+          )}
         </div>
+      )}
+      {!mobile && screen.kind === "review" && (
+        <button
+          type="button"
+          className="animation-chip"
+          onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
+          title="Playback settings"
+          aria-label="Playback settings"
+        >
+          ⋯
+        </button>
       )}
     </div>
   );

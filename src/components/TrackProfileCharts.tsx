@@ -257,7 +257,6 @@ export function TrackProfileCharts() {
   const points = useProjectStore((s) => s.project.track.points);
   const setTrack = useProjectStore((s) => s.setTrack);
   const comments = useProjectStore((s) => s.project.comments);
-  const mode = useUiStore((s) => s.mode);
   const showProfileCharts = useUiStore((s) => s.showProfileCharts);
   const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
@@ -657,7 +656,7 @@ export function TrackProfileCharts() {
     };
   };
 
-  if (mode !== "view" || points.length === 0 || !showProfileCharts) return null;
+  if (points.length === 0 || !showProfileCharts) return null;
   if (rows.length === 0 && !demLoading) return null;
 
   const activeFollow = comments.filter((c) =>

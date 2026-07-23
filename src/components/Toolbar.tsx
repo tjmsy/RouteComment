@@ -264,7 +264,7 @@ export function Toolbar() {
           aria-expanded={!toolbarCollapsed}
           onClick={() => setToolbarCollapsed(!toolbarCollapsed)}
         >
-          {toolbarCollapsed ? "Menu" : "Hide menu"}
+          {toolbarCollapsed ? "Menu" : "Close"}
         </button>
       </div>
 

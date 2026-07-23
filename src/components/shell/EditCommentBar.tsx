@@ -4,18 +4,12 @@ import { useUiStore } from "../../store/uiStore";
 import { CommentPanel } from "../CommentPanel";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
 
-export function EditCommentBar() {
+function CommentToolControls() {
   const dispatch = useUiStore((s) => s.dispatch);
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
   const clearExpandedComments = useUiStore((s) => s.clearExpandedComments);
-  const comments = useProjectStore((s) => s.project.comments);
-  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
-  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
-  const removeComment = useProjectStore((s) => s.removeComment);
-  const mobile = useMobileLayout();
   const verb = pointerVerb();
-  const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
 
   const pickTool = (tool: "map" | "follow" | "danmaku") => {
     setCommentTool(tool);
@@ -24,7 +18,7 @@ export function EditCommentBar() {
 
   return (
     <>
-      <div className="tool-bar">
+      <div className="comment-tool-controls">
         <button
           type="button"
           className="btn-done"
@@ -35,17 +29,17 @@ export function EditCommentBar() {
         <div className="mode-row comment-tool-row">
           <button
             type="button"
-            className={commentTool === "map" ? "active" : ""}
-            onClick={() => pickTool("map")}
-          >
-            Map
-          </button>
-          <button
-            type="button"
             className={commentTool === "follow" ? "active" : ""}
             onClick={() => pickTool("follow")}
           >
             Follow
+          </button>
+          <button
+            type="button"
+            className={commentTool === "map" ? "active" : ""}
+            onClick={() => pickTool("map")}
+          >
+            Map
           </button>
           <button
             type="button"
@@ -55,16 +49,35 @@ export function EditCommentBar() {
             Danmaku
           </button>
         </div>
-        <span className="hint tool-bar-hint">
-          {commentTool === "follow"
-            ? `${verb} or drag on the GPS track to set a time range`
-            : commentTool === "danmaku"
-              ? `${verb} the track to place a scrolling comment`
-              : `${verb} the map to place a comment bubble (× collapses long text)`}
-        </span>
       </div>
-      {!mobile && (
+      <p className="hint comment-tool-hint">
+        {commentTool === "follow"
+          ? `${verb} or drag on the GPS track to set a time range`
+          : commentTool === "danmaku"
+            ? `${verb} the track to place a scrolling comment`
+            : `${verb} the map to place a comment bubble (× collapses long text)`}
+      </p>
+    </>
+  );
+}
+
+export function EditCommentBar() {
+  const comments = useProjectStore((s) => s.project.comments);
+  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const removeComment = useProjectStore((s) => s.removeComment);
+  const mobile = useMobileLayout();
+  const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+
+  return (
+    <>
+      {mobile ? (
+        <div className="tool-bar tool-bar--comment-right">
+          <CommentToolControls />
+        </div>
+      ) : (
         <aside className="comment-float-panel comment-float-panel--right">
+          <CommentToolControls />
           <h3 className="comment-float-title">Comments</h3>
           {comments.length === 0 ? (
             <p className="hint">No comments yet.</p>

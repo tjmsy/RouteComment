@@ -39,8 +39,8 @@ export function ReviewChrome() {
       timeStartMs: t,
     });
     setCommentExpanded(id, true);
-    useUiStore.getState().setCommentTool("danmaku");
     dispatch({ type: "SELECT_COMMENT" });
+    useUiStore.getState().setCommentTool("danmaku");
     setStatusMessage("Danmaku added at the current playback time. Edit text below.");
   };
 

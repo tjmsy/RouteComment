@@ -100,6 +100,8 @@ export function DanmakuOverlay() {
   const lastTimeRef = useRef(animationTimeMs);
   const firedRef = useRef(new Set<string>());
   const activeRef = useRef<ActiveBullet[]>([]);
+  /** Last non-empty text seen per id — detect late text fill at the playhead. */
+  const textSeenRef = useRef(new Map<string, string>());
 
   const clearStage = () => {
     const root = containerRef.current;
@@ -111,6 +113,7 @@ export function DanmakuOverlay() {
   // Entering review chrome: sync cursor without back-filling past comments.
   useEffect(() => {
     clearStage();
+    textSeenRef.current.clear();
     const t = useUiStore.getState().animationTimeMs;
     lastTimeRef.current = review && t <= 0 ? -1 : t;
   }, [review]);
@@ -136,11 +139,26 @@ export function DanmakuOverlay() {
         c.text.trim().length > 0,
     );
 
+    /** Playhead proximity — covers paused add / late text fill. */
+    const NEAR_MS = 400;
+
     for (const c of danmaku) {
+      const text = c.text.trim();
+      const prevText = textSeenRef.current.get(c.id);
+      const textJustFilled = (prevText == null || prevText === "") && text !== "";
+      textSeenRef.current.set(c.id, text);
+
       if (firedRef.current.has(c.id)) continue;
-      if (c.timeStartMs > prev && c.timeStartMs <= next) {
+
+      const crossed = c.timeStartMs > prev && c.timeStartMs <= next;
+      const nearPlayhead = Math.abs(c.timeStartMs - next) <= NEAR_MS;
+      if (crossed || (textJustFilled && nearPlayhead)) {
         spawn(c, root);
       }
+    }
+
+    for (const id of [...textSeenRef.current.keys()]) {
+      if (!comments.some((c) => c.id === id)) textSeenRef.current.delete(id);
     }
 
     lastTimeRef.current = next;

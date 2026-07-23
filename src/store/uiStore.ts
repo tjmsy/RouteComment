@@ -151,11 +151,18 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
       editingComment || isReviewReadonly(screen)
         ? prev.expandedCommentIds
         : [],
+    commentTool:
+      editingComment && !wasEditingComment ? "follow" : prev.commentTool,
     statusMessage:
       mode === "georef"
         ? georefHint(0)
         : mode === "edit"
-          ? editToolHint(editTool, prev.commentTool)
+          ? editToolHint(
+              editTool,
+              editingComment && !wasEditingComment
+                ? "follow"
+                : prev.commentTool,
+            )
           : prev.statusMessage,
   };
 }
@@ -186,7 +193,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   isPlaying: false,
   playbackSpeed: 30,
   headingUp: false,
-  commentTool: "map",
+  commentTool: "follow",
   followRangeStartMs: null,
   activeRoutePlanId: null,
   showTrack: true,
@@ -319,7 +326,7 @@ export const useUiStore = create<UiState>((set, get) => ({
         tool === "follow"
           ? `${pointerVerb()} or drag along the GPS track to set the range`
           : tool === "danmaku"
-            ? "Use Add danmaku to place a scrolling comment at the current playback time"
+            ? `${pointerVerb()} the GPS track to place a scrolling comment`
             : `${pointerVerb()} the map to place a comment bubble`,
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),

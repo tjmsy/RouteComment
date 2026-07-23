@@ -720,7 +720,7 @@ button.btn-skip {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  z-index: 3;
+  z-index: 5;
 }
 
 .danmaku-bullet {
@@ -1936,6 +1936,35 @@ button.btn-skip {
   padding-top: max(0.4rem, env(safe-area-inset-top));
   background: rgba(26, 33, 28, 0.92);
   border-bottom: 1px solid var(--panel-edge);
+}
+
+.tool-bar--comment-right {
+  left: auto;
+  right: 0;
+  width: min(100%, 22rem);
+  flex-direction: column;
+  align-items: stretch;
+  border-left: 1px solid var(--panel-edge);
+  border-bottom-left-radius: 10px;
+}
+
+.comment-tool-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.comment-tool-controls .comment-tool-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.comment-tool-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .tool-bar-name {

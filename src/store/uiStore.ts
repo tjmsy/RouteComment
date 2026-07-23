@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ChartKind } from "../lib/chartScales";
+import { pointerVerb } from "../lib/mobile";
 import type { AppMode, EditTool } from "../lib/types";
 
 /** Two-point fine-tune steps (streetview-o style). */
@@ -89,15 +90,16 @@ type UiState = {
 };
 
 const georefHint = (step: GeorefStep): string => {
+  const verb = pointerVerb().toLowerCase();
   switch (step) {
     case 0:
-      return "Georef: click a feature on the map image overlay";
+      return `Georef: ${verb} a feature on the map image overlay`;
     case 1:
-      return "Georef: click the matching point on the basemap";
+      return `Georef: ${verb} the matching point on the basemap`;
     case 2:
-      return "Georef: click a second feature on the overlay";
+      return `Georef: ${verb} a second feature on the overlay`;
     case 3:
-      return "Georef: click the matching second point on the basemap";
+      return `Georef: ${verb} the matching second point on the basemap`;
   }
 };
 
@@ -105,12 +107,14 @@ const editToolHint = (
   tool: EditTool,
   commentTool: "map" | "follow" | "danmaku",
 ): string => {
+  const verb = pointerVerb();
   if (tool === "setup") return "";
-  if (tool === "plan") return "Click the map to draw the route plan";
-  if (commentTool === "follow") return "Click the GPS track to set the range start";
+  if (tool === "plan") return `${verb} the map to draw the route plan`;
+  if (commentTool === "follow")
+    return `${verb} or drag along the GPS track to set the range`;
   if (commentTool === "danmaku")
-    return "Click Add danmaku at the current playback time";
-  return "Click the map to place a comment";
+    return `${verb} Add danmaku at the current playback time`;
+  return `${verb} the map to place a comment`;
 };
 
 export const useUiStore = create<UiState>((set, get) => ({
@@ -249,10 +253,10 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       statusMessage:
         tool === "follow"
-          ? "Click the GPS track to set the range start, then the end"
+          ? `${pointerVerb()} or drag along the GPS track to set the range`
           : tool === "danmaku"
             ? "Use Add danmaku to place a scrolling comment at the current playback time"
-            : "Click the map to place a pin comment",
+            : `${pointerVerb()} the map to place a pin comment`,
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),

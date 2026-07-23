@@ -19,6 +19,7 @@ import {
   formatPaceValue,
   mpsToPaceMinPerKm,
 } from "../lib/trackSpeed";
+import { trackDragHitPx, pointerVerb } from "../lib/mobile";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
@@ -137,13 +138,14 @@ function isNearTrack(
   points: { lng: number; lat: number }[],
   lng: number,
   lat: number,
-  maxPx = 28,
+  maxPx?: number,
 ): ReturnType<typeof nearestTrackPoint> {
+  const limit = maxPx ?? trackHitPx();
   const hit = nearestTrackPoint(points, lng, lat);
   if (!hit) return null;
   const a = map.project([hit.lng, hit.lat]);
   const b = map.project([lng, lat]);
-  if (Math.hypot(a.x - b.x, a.y - b.y) > maxPx) return null;
+  if (Math.hypot(a.x - b.x, a.y - b.y) > limit) return null;
   return hit;
 }
 
@@ -1094,7 +1096,9 @@ export function MapView() {
       setStatusMessage("Follow comment added. Edit text in the panel.");
     };
 
-    const onMove = (e: maplibregl.MapMouseEvent) => {
+    type LngLatEvent = { lngLat: { lng: number; lat: number } };
+
+    const onMove = (e: LngLatEvent) => {
       const ui = useUiStore.getState();
       if (
         ui.mode !== "edit" ||
@@ -1105,7 +1109,13 @@ export function MapView() {
       const startMs = ui.followRangeStartMs ?? dragStartMsRef.current;
       if (startMs == null) return;
       const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
+      const hit = isNearTrack(
+        map,
+        pts,
+        e.lngLat.lng,
+        e.lngLat.lat,
+        trackDragHitPx(),
+      );
       if (hit?.timeOffsetMs == null) return;
       followHoverMsRef.current = hit.timeOffsetMs;
       if (ui.followRangeStartMs == null && dragStartMsRef.current != null) {
@@ -1114,7 +1124,7 @@ export function MapView() {
       syncTrackRangeHighlight(hit.timeOffsetMs);
     };
 
-    const onMouseDown = (e: maplibregl.MapMouseEvent) => {
+    const onDown = (e: LngLatEvent) => {
       const ui = useUiStore.getState();
       if (
         ui.mode !== "edit" ||
@@ -1131,7 +1141,7 @@ export function MapView() {
       map.dragPan.disable();
     };
 
-    const onMouseUp = (e: maplibregl.MapMouseEvent) => {
+    const onUp = (e: LngLatEvent) => {
       map.dragPan.enable();
       const dragStart = dragStartMsRef.current;
       dragStartMsRef.current = null;
@@ -1145,7 +1155,13 @@ export function MapView() {
       )
         return;
       const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(map, pts, e.lngLat.lng, e.lngLat.lat, 40);
+      const hit = isNearTrack(
+        map,
+        pts,
+        e.lngLat.lng,
+        e.lngLat.lat,
+        trackDragHitPx(),
+      );
       if (hit?.timeOffsetMs == null) return;
       if (Math.abs(hit.timeOffsetMs - dragStart) < 300) {
         return;
@@ -1157,14 +1173,32 @@ export function MapView() {
       applyFollowRange(timeStartMs, timeEndMs, pts, hit.lng, hit.lat);
     };
 
+    const onTouchMove = (e: maplibregl.MapTouchEvent) => {
+      if (e.points.length !== 1) return;
+      onMove(e);
+    };
+    const onTouchStart = (e: maplibregl.MapTouchEvent) => {
+      if (e.points.length !== 1) return;
+      onDown(e);
+    };
+    const onTouchEnd = (e: maplibregl.MapTouchEvent) => {
+      onUp(e);
+    };
+
     map.on("mousemove", onMove);
-    map.on("mousedown", onMouseDown);
-    map.on("mouseup", onMouseUp);
+    map.on("mousedown", onDown);
+    map.on("mouseup", onUp);
+    map.on("touchmove", onTouchMove);
+    map.on("touchstart", onTouchStart);
+    map.on("touchend", onTouchEnd);
     return () => {
       map.dragPan.enable();
       map.off("mousemove", onMove);
-      map.off("mousedown", onMouseDown);
-      map.off("mouseup", onMouseUp);
+      map.off("mousedown", onDown);
+      map.off("mouseup", onUp);
+      map.off("touchmove", onTouchMove);
+      map.off("touchstart", onTouchStart);
+      map.off("touchend", onTouchEnd);
     };
   }, [
     mapInstance,
@@ -1181,7 +1215,9 @@ export function MapView() {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
 
-    const onProfileMove = (e: maplibregl.MapMouseEvent) => {
+    const onProfileMove = (e: {
+      lngLat: { lng: number; lat: number };
+    }) => {
       const ui = useUiStore.getState();
       if (ui.mode !== "view" || ui.isPlaying || !ui.showProfileCharts) return;
       const pts = useProjectStore.getState().project.track.points;
@@ -1192,9 +1228,16 @@ export function MapView() {
       ui.setAnimationTimeMs(hit.timeOffsetMs);
     };
 
+    const onProfileTouchMove = (e: maplibregl.MapTouchEvent) => {
+      if (e.points.length !== 1) return;
+      onProfileMove(e);
+    };
+
     map.on("mousemove", onProfileMove);
+    map.on("touchmove", onProfileTouchMove);
     return () => {
       map.off("mousemove", onProfileMove);
+      map.off("touchmove", onProfileTouchMove);
     };
   }, [mapInstance, showProfileCharts, isPlaying]);
 
@@ -1316,7 +1359,9 @@ export function MapView() {
           }
           const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
           if (!hit || hit.timeOffsetMs == null) {
-            setStatusMessage("Click near the GPS track to place a danmaku.");
+            setStatusMessage(
+              `${pointerVerb()} near the GPS track to place a danmaku.`,
+            );
             return;
           }
           const id = addComment({
@@ -1358,7 +1403,9 @@ export function MapView() {
         }
         const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
         if (!hit || hit.timeOffsetMs == null) {
-          setStatusMessage("Click near the GPS track to set the range.");
+          setStatusMessage(
+            `${pointerVerb()} near the GPS track to set the range.`,
+          );
           return;
         }
 
@@ -1366,7 +1413,7 @@ export function MapView() {
         if (pendingStart == null) {
           setFollowRangeStartMs(hit.timeOffsetMs);
           setStatusMessage(
-            "Range start set. Click the track again to set the end.",
+            `Range start set. ${pointerVerb()} the track again to set the end.`,
           );
           return;
         }

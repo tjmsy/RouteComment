@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMobileLayout } from "../hooks/useMobileLayout";
+import { pointerVerb } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 
@@ -208,7 +209,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
 
       {!editable && isMap && (
         <p className="hint">
-          Click the pin icon on the map to open the popup. Switch to Comment
+          {pointerVerb()} the pin icon on the map to open it. Switch to Comment
           mode to edit or move the pin.
         </p>
       )}

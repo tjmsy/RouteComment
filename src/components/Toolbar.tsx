@@ -8,6 +8,7 @@ import {
   saveProjectZip,
 } from "../lib/projectZip";
 import { PLAN_COLORS, type EditTool } from "../lib/types";
+import { pointerVerb } from "../lib/mobile";
 import { formatDistanceKm } from "../lib/trackProfile";
 import {
   buildTrackSummary,
@@ -660,10 +661,10 @@ export function Toolbar() {
               </div>
               <p className="hint">
                 {commentTool === "map"
-                  ? "Click the map to place a pin. Popup opens by default; use × to collapse to an icon."
+                  ? `${pointerVerb()} the map to place a pin. Popup opens by default; use × to collapse to an icon.`
                   : commentTool === "follow"
-                    ? "Click or drag along the GPS track to set a time range. Click the runner icon to edit text on the map."
-                    : "Click the GPS track to place a danmaku, or drag its marker to adjust timing."}
+                    ? `${pointerVerb()} or drag along the GPS track to set a time range. ${pointerVerb()} the runner icon to edit text on the map.`
+                    : `${pointerVerb()} the GPS track to place a danmaku, or drag its marker to adjust timing.`}
               </p>
               {commentTool === "danmaku" && (
                 <>

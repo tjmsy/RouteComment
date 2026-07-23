@@ -131,7 +131,7 @@ function buildMarkers(opts: {
         index,
         lngLat: coord,
         color,
-        title: "Drag to move · double-click to delete",
+        title: "Drag to move · double-click or long-press to delete",
         markersRef,
         draggingRef,
         planIdRef,
@@ -228,18 +228,64 @@ function createHandle(opts: {
     e.preventDefault();
     e.stopPropagation();
   });
-  el.addEventListener("pointerdown", (e) => e.stopPropagation());
 
-  el.addEventListener("dblclick", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const LONG_PRESS_MS = 550;
+  const MOVE_CANCEL_PX = 10;
+  let longPressTimer: number | null = null;
+  let pressX = 0;
+  let pressY = 0;
+  let longPressFired = false;
+
+  const clearLongPress = () => {
+    if (longPressTimer != null) {
+      window.clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  const deleteVertex = () => {
     if (tracked.kind !== "vertex") return;
     const id = planIdRef.current;
     if (!id) return;
     removeRef.current(id, tracked.index);
+  };
+
+  el.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    if (tracked.kind !== "vertex") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    longPressFired = false;
+    pressX = e.clientX;
+    pressY = e.clientY;
+    clearLongPress();
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = null;
+      longPressFired = true;
+      deleteVertex();
+    }, LONG_PRESS_MS);
+  });
+
+  el.addEventListener("pointermove", (e) => {
+    if (longPressTimer == null) return;
+    if (
+      Math.hypot(e.clientX - pressX, e.clientY - pressY) > MOVE_CANCEL_PX
+    ) {
+      clearLongPress();
+    }
+  });
+
+  el.addEventListener("pointerup", clearLongPress);
+  el.addEventListener("pointercancel", clearLongPress);
+
+  el.addEventListener("dblclick", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (longPressFired) return;
+    deleteVertex();
   });
 
   marker.on("dragstart", () => {
+    clearLongPress();
     draggingRef.current = true;
     map.dragPan.disable();
 
@@ -252,7 +298,7 @@ function createHandle(opts: {
       tracked.kind = "vertex";
       tracked.index = insertAt;
       el.className = "plan-vertex-handle";
-      el.title = "Drag to move · double-click to delete";
+      el.title = "Drag to move · double-click or long-press to delete";
       el.setAttribute("aria-label", `Plan vertex ${insertAt + 1}`);
 
       for (const m of markersRef.current) {

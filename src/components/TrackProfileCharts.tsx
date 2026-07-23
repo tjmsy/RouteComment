@@ -22,6 +22,10 @@ import {
   type ChartKind,
 } from "../lib/chartScales";
 import { formatPaceValue, clampPace } from "../lib/trackSpeed";
+import {
+  isMobileViewport,
+  MOBILE_PROFILE_MAX_HEIGHT_RATIO,
+} from "../lib/mobile";
 
 const CURSOR_SYNC_KEY = "profile";
 /** Reserve the same bottom space as a visible x-axis on every chart. */
@@ -67,8 +71,14 @@ const MIN_CHART_HEIGHT = 40;
 /** Matches `.profile-chart-row` margin-bottom. */
 const CHART_ROW_GAP_PX = 2;
 
+function profileMaxHeightRatio(): number {
+  return isMobileViewport()
+    ? MOBILE_PROFILE_MAX_HEIGHT_RATIO
+    : PROFILE_MAX_HEIGHT_RATIO;
+}
+
 function clampProfileHeight(h: number): number {
-  const max = Math.floor(window.innerHeight * PROFILE_MAX_HEIGHT_RATIO);
+  const max = Math.floor(window.innerHeight * profileMaxHeightRatio());
   return Math.min(max, Math.max(PROFILE_MIN_HEIGHT, Math.round(h)));
 }
 

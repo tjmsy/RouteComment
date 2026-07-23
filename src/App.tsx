@@ -10,7 +10,7 @@ import { StatusToast } from "./components/StatusToast";
 import { useMobileLayout } from "./hooks/useMobileLayout";
 import { MOBILE_MQ, MOBILE_PROFILE_HEIGHT_PX } from "./lib/mobile";
 import { useUiStore } from "./store/uiStore";
-import { isReviewChrome } from "./ui/machine";
+import { isGeorefActive, isReviewChrome } from "./ui/machine";
 import "./App.css";
 
 function useMobileShellDefaults() {
@@ -33,8 +33,8 @@ export default function App() {
   const mobile = useMobileLayout();
   useMobileShellDefaults();
   const screen = useUiStore((s) => s.screen);
-  const showMapWorkspace =
-    screen.kind !== "empty" && screen.kind !== "createWizard";
+  /** One MapView for wizard + review so camera/overlay survive WIZARD_DONE. */
+  const showMap = screen.kind !== "empty";
   const showReviewChrome = isReviewChrome(screen);
   const showPlayback =
     showReviewChrome &&
@@ -47,15 +47,19 @@ export default function App() {
       screen.kind === "playback" ||
       screen.kind === "editComment" ||
       screen.kind === "chooseComment");
+  const wizardGeoref =
+    screen.kind === "createWizard" && screen.step === "georef";
 
   return (
     <div className="app app--hub">
       <AppShell />
-      {showMapWorkspace && (
-        <main className="main">
+      {showMap && (
+        <main
+          className={`main${screen.kind === "createWizard" ? " main--wizard" : ""}`}
+        >
           <div className="main-map">
             <MapView />
-            <DanmakuOverlay />
+            {!isGeorefActive(screen) && !wizardGeoref && <DanmakuOverlay />}
             <StatusToast />
           </div>
           {showProfile && <TrackProfileCharts />}
@@ -65,14 +69,6 @@ export default function App() {
               <CommentPanel variant="sheet" />
             </CommentSheetHost>
           )}
-        </main>
-      )}
-      {screen.kind === "createWizard" && (
-        <main className="main">
-          <div className="main-map">
-            <MapView />
-            <StatusToast />
-          </div>
         </main>
       )}
     </div>

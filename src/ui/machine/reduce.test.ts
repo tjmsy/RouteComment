@@ -35,9 +35,15 @@ describe("reduceUiState flow", () => {
     s = reduceUiState(s, { type: "WIZARD_NEXT" });
     expect(s).toEqual({ kind: "createWizard", step: "map" });
     s = reduceUiState(s, { type: "WIZARD_SKIP" });
-    expect(s).toEqual({ kind: "createWizard", step: "georef" });
-    s = reduceUiState(s, { type: "WIZARD_DONE" });
     expect(s).toEqual({ kind: "review" });
+  });
+
+  it("wizard: skip map finishes without georef; back from georef", () => {
+    let s: UiState = { kind: "createWizard", step: "map" };
+    s = reduceUiState(s, { type: "WIZARD_NEXT" });
+    expect(s).toEqual({ kind: "createWizard", step: "georef" });
+    s = reduceUiState(s, { type: "WIZARD_BACK" });
+    expect(s).toEqual({ kind: "createWizard", step: "map" });
   });
 
   it("empty → LOAD_ZIP_SUCCESS → review", () => {

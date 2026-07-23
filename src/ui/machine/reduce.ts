@@ -14,6 +14,12 @@ function stateForKind(kind: UiState["kind"]): UiState {
   return { kind } as UiState;
 }
 
+function prevWizardStep(step: WizardStep): WizardStep | null {
+  const i = WIZARD_ORDER.indexOf(step);
+  if (i <= 0) return null;
+  return WIZARD_ORDER[i - 1]!;
+}
+
 /**
  * Pure UI screen-mode reducer. Side effects (status text, playback stop)
  * belong in the store wrapper, not here.
@@ -22,13 +28,22 @@ export function reduceUiState(state: UiState, event: UiEvent): UiState {
   // Flow: create wizard steps
   if (state.kind === "createWizard") {
     switch (event.type) {
-      case "WIZARD_NEXT":
-      case "WIZARD_SKIP": {
+      case "WIZARD_NEXT": {
         const next = nextWizardStep(state.step);
         if (next === "done") return { kind: "review" };
-        // After map skip/next, georef only makes sense with a map — still allow step;
-        // UI may skip georef via WIZARD_DONE / WIZARD_SKIP from georef.
         return { kind: "createWizard", step: next };
+      }
+      case "WIZARD_SKIP": {
+        // Skipping map means no image → finish (do not enter georef).
+        if (state.step === "map") return { kind: "review" };
+        const next = nextWizardStep(state.step);
+        if (next === "done") return { kind: "review" };
+        return { kind: "createWizard", step: next };
+      }
+      case "WIZARD_BACK": {
+        const prev = prevWizardStep(state.step);
+        if (!prev) return state;
+        return { kind: "createWizard", step: prev };
       }
       case "WIZARD_DONE":
         return { kind: "review" };

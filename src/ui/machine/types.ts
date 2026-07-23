@@ -25,6 +25,7 @@ export type UiEvent =
   | { type: "CLEAR_PROJECT" }
   | { type: "WIZARD_NEXT" }
   | { type: "WIZARD_SKIP" }
+  | { type: "WIZARD_BACK" }
   | { type: "WIZARD_DONE" }
   | { type: "OPEN_PROJECT" }
   | { type: "OPEN_LAYERS" }

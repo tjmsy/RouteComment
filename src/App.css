@@ -1794,8 +1794,11 @@ button.btn-skip {
 
 .empty-project-lead {
   margin: 0;
-  font-family: var(--display);
-  font-size: 1.75rem;
+  font-family: var(--font);
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-align: center;
 }
 
 .empty-project-actions {
@@ -1803,6 +1806,23 @@ button.btn-skip {
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: center;
+}
+
+.empty-cta {
+  min-height: 44px;
+  min-width: 9rem;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #1a211c;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.empty-cta:hover {
+  background: #d4ff6a;
 }
 
 .create-wizard {
@@ -2003,6 +2023,10 @@ button.btn-skip {
 
 .app--hub .main-map {
   padding-top: 2.5rem;
+}
+
+.app--hub .main--wizard .main-map {
+  padding-top: min(42vh, 320px);
 }
 
 .app--hub .status-toast {

@@ -13,7 +13,9 @@ export function CreateWizard() {
   const markSetupMapDone = useUiStore((s) => s.markSetupMapDone);
   const completeSetup = useUiStore((s) => s.completeSetup);
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
+  const setStatusMessage = useUiStore((s) => s.setStatusMessage);
   const project = useProjectStore((s) => s.project);
+  const clearMapImage = useProjectStore((s) => s.clearMapImage);
   const { gpxInputRef, mapInputRef, hiddenInputs } = useProjectIO();
 
   const wizardStep = screen.kind === "createWizard" ? screen.step : null;
@@ -33,17 +35,21 @@ export function CreateWizard() {
     dispatch({ type: "WIZARD_DONE" });
   };
 
+  const cancelMapImage = () => {
+    clearMapImage();
+    setStatusMessage("Map image removed. Load another, or skip map.");
+    dispatch({ type: "WIZARD_BACK" });
+  };
+
   return (
     <div className="create-wizard">
       <header className="create-wizard-header">
         <h1>Create project</h1>
-        <button
-          type="button"
-          className="btn-done"
-          onClick={finish}
-        >
-          Done
-        </button>
+        {step !== "georef" && (
+          <button type="button" className="btn-done" onClick={finish}>
+            Done
+          </button>
+        )}
       </header>
 
       {step === "gpx" && (
@@ -89,6 +95,7 @@ export function CreateWizard() {
               className="btn-skip"
               onClick={() => {
                 markSetupMapDone();
+                completeSetup();
                 dispatch({ type: "WIZARD_SKIP" });
               }}
             >
@@ -102,35 +109,29 @@ export function CreateWizard() {
         <section className="panel">
           <p className="hint">
             Two-point align: {verb.toLowerCase()} overlay feature → basemap,
-            then a second pair. Or skip and georeference later from Project.
+            then a second pair. When finished, tap Done.
           </p>
-          {!project.mapImage ? (
-            <button type="button" className="btn-skip" onClick={finish}>
-              Skip georef
-            </button>
-          ) : (
-            <>
-              <label className="field">
-                <span>Map opacity</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={mapOpacity}
-                  onChange={(e) => setMapOpacity(Number(e.target.value))}
-                />
-              </label>
-              <div className="btn-row">
-                <button type="button" className="btn-skip" onClick={finish}>
-                  Skip georef
-                </button>
-                <button type="button" className="btn-done" onClick={finish}>
-                  Done
-                </button>
-              </div>
-            </>
+          {project.mapImage && (
+            <label className="field">
+              <span>Map opacity</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={mapOpacity}
+                onChange={(e) => setMapOpacity(Number(e.target.value))}
+              />
+            </label>
           )}
+          <div className="btn-row">
+            <button type="button" className="btn-skip" onClick={cancelMapImage}>
+              Cancel map image
+            </button>
+            <button type="button" className="btn-done" onClick={finish}>
+              Done
+            </button>
+          </div>
         </section>
       )}
 

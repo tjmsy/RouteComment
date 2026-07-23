@@ -1158,6 +1158,31 @@ button.btn-skip {
   min-width: 120px;
 }
 
+.animation-bar-extras {
+  display: none;
+  grid-column: 1 / -1;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.animation-chip {
+  min-height: 40px;
+  padding: 0.35rem 0.75rem !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--muted) !important;
+  font-weight: 500 !important;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.animation-chip.active {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  background: rgba(196, 245, 66, 0.12) !important;
+}
+
 .time-label {
   font-size: 0.8rem;
   color: var(--muted);
@@ -1648,6 +1673,10 @@ button.btn-skip {
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .animation-bar--mobile .animation-bar-extras {
+    display: flex;
   }
 
   .maplibregl-ctrl-top-right {

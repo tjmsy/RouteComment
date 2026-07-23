@@ -10,12 +10,15 @@ import { PlaybackPanel } from "./PlaybackPanel";
 import { ProjectPanel } from "./ProjectPanel";
 import { ReviewChrome } from "./ReviewChrome";
 
-/** Wires Review-hub chrome, panels, tools from UiState.kind. */
+/**
+ * Wires Review-hub chrome, panels, tools from UiState.kind.
+ * Single overlay root so fragments never become CSS-grid siblings of <main>.
+ */
 export function AppShell() {
   const kind = useUiStore((s) => s.screen.kind);
 
   return (
-    <>
+    <div className="app-shell-overlay" aria-live="polite">
       {kind === "empty" && <EmptyProject />}
       {kind === "createWizard" && <CreateWizard />}
       <ReviewChrome />
@@ -27,6 +30,6 @@ export function AppShell() {
       {kind === "editPlan" && <EditPlanBar />}
       {kind === "editComment" && <EditCommentBar />}
       {kind === "georef" && <GeorefBar />}
-    </>
+    </div>
   );
 }

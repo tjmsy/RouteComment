@@ -7,10 +7,17 @@ type Props = {
   children: ReactNode;
   /** information → 閉じる; action → 閉じる after pick often handled by parent */
   role?: "information" | "action";
+  /** Desktop dock side (Project opens near the Project button). */
+  side?: "left" | "right";
 };
 
 /** Shared panel host: bottom sheet on mobile, side panel on desktop. */
-export function PanelHost({ title, children, role = "information" }: Props) {
+export function PanelHost({
+  title,
+  children,
+  role = "information",
+  side = "left",
+}: Props) {
   const mobile = useMobileLayout();
   const dispatch = useUiStore((s) => s.dispatch);
 
@@ -23,7 +30,7 @@ export function PanelHost({ title, children, role = "information" }: Props) {
         onClick={() => dispatch({ type: "DISMISS" })}
       />
       <aside
-        className={`panel-host${mobile ? " panel-host--sheet" : " panel-host--side"}${
+        className={`panel-host${mobile ? " panel-host--sheet" : ` panel-host--side panel-host--${side}`}${
           role === "action" ? " panel-host--action" : ""
         }`}
       >

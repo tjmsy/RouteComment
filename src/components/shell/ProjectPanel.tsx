@@ -32,7 +32,7 @@ export function ProjectPanel() {
     trackSummary.elevGainM == null;
 
   return (
-    <PanelHost title="Project">
+    <PanelHost title="Project" side="left">
       <label className="field">
         <span>Project name</span>
         <input

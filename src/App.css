@@ -1176,6 +1176,11 @@ button.btn-skip {
   justify-content: center;
 }
 
+.animation-bar--mobile .animation-bar-extras,
+.animation-bar--desktop .animation-bar-extras {
+  display: flex;
+}
+
 .animation-chip {
   min-height: 40px;
   padding: 0.35rem 0.75rem !important;
@@ -1777,6 +1782,18 @@ button.btn-skip {
 .app--hub > .main {
   min-height: 0;
   min-width: 0;
+  grid-area: 1 / 1;
+}
+
+.app-shell-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.app-shell-overlay > * {
+  pointer-events: auto;
 }
 
 .empty-project {
@@ -1921,11 +1938,44 @@ button.btn-skip {
   max-width: 10rem;
 }
 
+.tool-bar-plan-select {
+  max-width: 12rem;
+}
+
 .tool-bar-hint,
 .tool-bar-subhint {
   margin: 0;
   font-size: 0.75rem;
   flex: 1 1 100%;
+}
+
+.comment-float-panel {
+  position: absolute;
+  top: 3.25rem;
+  left: 0.5rem;
+  width: min(300px, calc(100% - 1rem));
+  max-height: min(70dvh, 520px);
+  overflow: auto;
+  z-index: 32;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(26, 33, 28, 0.96);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.comment-float-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.comment-float-panel .cp-list button.active {
+  border-color: var(--accent-dim);
+  color: var(--accent);
 }
 
 .georef-opacity {
@@ -1975,9 +2025,18 @@ button.btn-skip {
 
 .panel-host--side {
   top: 2.75rem;
-  right: 0.5rem;
   width: min(320px, calc(100% - 1rem));
   border-radius: 10px;
+}
+
+.panel-host--left {
+  left: 0.5rem;
+  right: auto;
+}
+
+.panel-host--right {
+  right: 0.5rem;
+  left: auto;
 }
 
 .panel-host--sheet {

@@ -66,7 +66,6 @@ export function AnimationControls() {
 
   if (!isReviewChrome(screen) || points.length === 0) return null;
 
-  // Keep label width stable so the range does not jitter as digits change.
   const minuteDigits = Math.max(
     1,
     String(Math.floor(Math.max(duration, 0) / 60_000)).length,
@@ -80,8 +79,16 @@ export function AnimationControls() {
     setPlaybackSpeed(next);
   };
 
+  const showExtras = screen.kind === "review" || screen.kind === "playback";
+
   return (
-    <div className={mobile ? "animation-bar animation-bar--mobile" : "animation-bar"}>
+    <div
+      className={
+        mobile
+          ? "animation-bar animation-bar--mobile"
+          : "animation-bar animation-bar--desktop"
+      }
+    >
       <button
         type="button"
         onClick={() => setIsPlaying(!isPlaying)}
@@ -105,7 +112,7 @@ export function AnimationControls() {
         {formatTime(animationTimeMs, minuteDigits)} /{" "}
         {formatTime(duration, minuteDigits)}
       </span>
-      {mobile && (
+      {showExtras && (
         <div className="animation-bar-extras">
           <button
             type="button"
@@ -124,29 +131,16 @@ export function AnimationControls() {
           >
             Head-up
           </button>
-          {screen.kind === "review" && (
-            <button
-              type="button"
-              className="animation-chip"
-              onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
-              title="Playback settings"
-              aria-label="Playback settings"
-            >
-              ⋯
-            </button>
-          )}
+          <button
+            type="button"
+            className="animation-chip"
+            onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
+            title="More playback settings (Terrain 3D…)"
+            aria-label="More playback settings"
+          >
+            ⋯
+          </button>
         </div>
-      )}
-      {!mobile && screen.kind === "review" && (
-        <button
-          type="button"
-          className="animation-chip"
-          onClick={() => dispatch({ type: "OPEN_PLAYBACK" })}
-          title="Playback settings"
-          aria-label="Playback settings"
-        >
-          ⋯
-        </button>
       )}
     </div>
   );

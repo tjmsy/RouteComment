@@ -8,8 +8,13 @@ export function EditCommentBar() {
   const dispatch = useUiStore((s) => s.dispatch);
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
+  const comments = useProjectStore((s) => s.project.comments);
+  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
+  const removeComment = useProjectStore((s) => s.removeComment);
   const mobile = useMobileLayout();
   const verb = pointerVerb();
+  const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
 
   return (
     <>
@@ -52,17 +57,41 @@ export function EditCommentBar() {
               : `${verb} the map to place a pin`}
         </span>
       </div>
-      {!mobile && <CommentPanel />}
-      {/* Keep project store subscribed for list updates */}
-      <CommentListHint />
+      {!mobile && (
+        <aside className="comment-float-panel">
+          <h3 className="comment-float-title">Comments</h3>
+          {comments.length === 0 ? (
+            <p className="hint">No comments yet.</p>
+          ) : (
+            <ul className="cp-list">
+              {comments.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className={c.id === activeId ? "active" : ""}
+                    onClick={() => setCommentExpanded(c.id, true)}
+                  >
+                    <span className="cp-kind">{c.kind}</span>
+                    {c.text.trim() || "(No text)"}
+                  </button>
+                  <button
+                    type="button"
+                    className="cp-delete"
+                    title="Delete"
+                    onClick={() => {
+                      removeComment(c.id);
+                      if (c.id === activeId) setCommentExpanded(c.id, false);
+                    }}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <CommentPanel variant="sidebar" />
+        </aside>
+      )}
     </>
-  );
-}
-
-function CommentListHint() {
-  const n = useProjectStore((s) => s.project.comments.length);
-  if (n === 0) return null;
-  return (
-    <p className="hint tool-bar-subhint">{n} comment(s) — tap markers to edit</p>
   );
 }

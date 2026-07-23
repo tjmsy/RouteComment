@@ -15,7 +15,8 @@ export function EditPlanBar() {
 
   const activePlan =
     project.routePlans.find((p) => p.id === activeRoutePlanId) ??
-    project.routePlans[0];
+    project.routePlans[0] ??
+    null;
 
   return (
     <div className="tool-bar">
@@ -42,6 +43,20 @@ export function EditPlanBar() {
       >
         Add plan
       </button>
+      {project.routePlans.length > 0 && (
+        <select
+          className="tool-bar-plan-select"
+          value={activePlan?.id ?? ""}
+          onChange={(e) => setActiveRoutePlanId(e.target.value || null)}
+          aria-label="Active plan"
+        >
+          {project.routePlans.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} ({p.coordinates.length})
+            </option>
+          ))}
+        </select>
+      )}
       {activePlan && (
         <>
           <input
@@ -73,8 +88,12 @@ export function EditPlanBar() {
           <button
             type="button"
             onClick={() => {
-              removeRoutePlan(activePlan.id);
-              setActiveRoutePlanId(null);
+              const id = activePlan.id;
+              removeRoutePlan(id);
+              const rest = useProjectStore
+                .getState()
+                .project.routePlans.filter((p) => p.id !== id);
+              setActiveRoutePlanId(rest[0]?.id ?? null);
             }}
           >
             Delete

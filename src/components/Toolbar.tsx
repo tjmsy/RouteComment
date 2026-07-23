@@ -238,11 +238,20 @@ export function Toolbar() {
   };
 
   return (
-    <aside
-      className={
-        toolbarCollapsed ? "toolbar toolbar-collapsed" : "toolbar"
-      }
-    >
+    <>
+      {mobile && !toolbarCollapsed && (
+        <button
+          type="button"
+          className="toolbar-drawer-backdrop"
+          aria-label="Close menu"
+          onClick={() => setToolbarCollapsed(true)}
+        />
+      )}
+      <aside
+        className={
+          toolbarCollapsed ? "toolbar toolbar-collapsed" : "toolbar"
+        }
+      >
       <div className="toolbar-chrome">
         <div className="brand">
           <h1>RouteComment</h1>
@@ -288,7 +297,7 @@ export function Toolbar() {
       </div>
 
       {!toolbarCollapsed && (
-        <>
+        <div className="toolbar-body">
           {inEdit && (
             <div className="mode-row edit-tool-row">
               {EDIT_TOOLS.map((t) => (
@@ -661,9 +670,11 @@ export function Toolbar() {
               </div>
               <p className="hint">
                 {commentTool === "map"
-                  ? `${pointerVerb()} the map to place a pin. Popup opens by default; use × to collapse to an icon.`
+                  ? mobile
+                    ? `${pointerVerb()} the map to place a pin. Edit text in the sheet below.`
+                    : `${pointerVerb()} the map to place a pin. Popup opens by default; use × to collapse to an icon.`
                   : commentTool === "follow"
-                    ? `${pointerVerb()} or drag along the GPS track to set a time range. ${pointerVerb()} the runner icon to edit text on the map.`
+                    ? `${pointerVerb()} or drag along the GPS track to set a time range. ${pointerVerb()} the runner icon to edit text.`
                     : `${pointerVerb()} the GPS track to place a danmaku, or drag its marker to adjust timing.`}
               </p>
               {commentTool === "danmaku" && (
@@ -875,8 +886,9 @@ export function Toolbar() {
           )}
 
           {statusMessage && <p className="status">{statusMessage}</p>}
-        </>
+        </div>
       )}
     </aside>
+    </>
   );
 }

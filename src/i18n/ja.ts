@@ -131,6 +131,7 @@ export const ja: Record<MessageKey, string> = {
   "comment.kindDanmaku": "テロップ",
   "comment.kindMap": "ノート",
   "comment.placeholder": "コメントを書く…",
+  "comment.danmakuPlaceholder": "1行のテロップ…",
   "comment.followPlaceholder": "つぶやきを書く…",
   "comment.editInPopup": "地図上のポップアップでテキストを編集できます。",
   "comment.start": "開始",

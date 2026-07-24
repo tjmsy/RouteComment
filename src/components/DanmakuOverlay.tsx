@@ -27,13 +27,17 @@ export function danmakuActiveAt(
   if (comment.timeStartMs == null || !Number.isFinite(comment.timeStartMs)) {
     return false;
   }
-  if (!comment.text.trim()) return false;
+  if (!singleLineCaption(comment.text)) return false;
   const start = comment.timeStartMs;
   return timeMs >= start && timeMs < start + DANMAKU_ARM_MS;
 }
 
 function maxLanes(containerHeight: number): number {
   return Math.max(1, Math.floor((containerHeight * AREA_RATIO) / ROW_HEIGHT));
+}
+
+function singleLineCaption(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").trim();
 }
 
 function laneForId(id: string, laneCount: number): number {
@@ -101,7 +105,7 @@ export function DanmakuOverlay() {
 
       const tryArm = (c: Comment) => {
         if (armedIds.has(c.id)) return;
-        if (c.kind !== "danmaku" || !c.text.trim()) return;
+        if (c.kind !== "danmaku" || !singleLineCaption(c.text)) return;
         if (c.timeStartMs == null) return;
         list = [
           ...list,
@@ -123,7 +127,7 @@ export function DanmakuOverlay() {
       if (next > prev) {
         for (const c of comments) {
           if (c.kind !== "danmaku" || c.timeStartMs == null) continue;
-          if (!c.text.trim()) continue;
+          if (!singleLineCaption(c.text)) continue;
           if (c.timeStartMs > prev && c.timeStartMs <= next) tryArm(c);
         }
       }
@@ -151,7 +155,7 @@ export function DanmakuOverlay() {
       {armed.map((b) => (
         <DanmakuBullet
           key={`${b.comment.id}-${Math.round(b.armedAt)}`}
-          text={b.comment.text.trim()}
+          text={singleLineCaption(b.comment.text)}
           lane={b.lane}
         />
       ))}

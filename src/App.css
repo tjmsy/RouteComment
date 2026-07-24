@@ -900,6 +900,16 @@ button.btn-skip {
   color: var(--text);
 }
 
+.comment-side-panel .comment-danmaku-input {
+  width: 100%;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+}
+
 .comment-side-panel .comment-time {
   color: var(--muted);
   text-transform: none;

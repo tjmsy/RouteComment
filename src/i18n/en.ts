@@ -127,6 +127,7 @@ export const en = {
   "comment.kindDanmaku": "Captions",
   "comment.kindMap": "Map comment",
   "comment.placeholder": "Write a comment…",
+  "comment.danmakuPlaceholder": "One-line caption…",
   "comment.followPlaceholder": "Write a voice…",
   "comment.editInPopup": "Edit text in the map popup.",
   "comment.start": "Start",

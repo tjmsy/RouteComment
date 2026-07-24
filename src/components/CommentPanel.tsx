@@ -36,6 +36,11 @@ function kindLabel(kind: string): string {
   return t("comment.kindMap");
 }
 
+/** Captions scroll as one line — collapse newlines from paste / legacy data. */
+function singleLineText(value: string): string {
+  return value.replace(/[\r\n]+/g, " ");
+}
+
 /**
  * Selected comment editor / reader.
  * Comment mode: editable. View mode: read-only.
@@ -70,14 +75,29 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
       setEndDraft("");
       return;
     }
-    setDraft(comment.text);
+    if (comment.kind === "danmaku") {
+      const cleaned = singleLineText(comment.text);
+      setDraft(cleaned);
+      if (cleaned !== comment.text) {
+        updateComment(comment.id, { text: cleaned });
+      }
+    } else {
+      setDraft(comment.text);
+    }
     if (!startFocusedRef.current) {
       setStartDraft(formatHms(comment.timeStartMs));
     }
     if (!endFocusedRef.current) {
       setEndDraft(formatHms(comment.timeEndMs));
     }
-  }, [comment?.id, comment?.text, comment?.timeStartMs, comment?.timeEndMs]);
+  }, [
+    comment?.id,
+    comment?.text,
+    comment?.timeStartMs,
+    comment?.timeEndMs,
+    comment?.kind,
+    updateComment,
+  ]);
 
   if (!comment) return null;
   if (!editable && !isReviewReadonly(screen)) return null;
@@ -125,21 +145,26 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
         </button>
       </div>
 
-      {editable && !isFollow && !isMap ? (
-        <textarea
+      {editable && isDanmaku ? (
+        <input
+          type="text"
+          className="comment-danmaku-input"
           value={draft}
-          rows={variant === "sheet" ? 3 : 4}
-          placeholder={t("comment.placeholder")}
+          placeholder={t("comment.danmakuPlaceholder")}
           autoFocus={!mobile}
           onChange={(e) => {
-            const v = e.target.value;
+            const v = singleLineText(e.target.value);
             setDraft(v);
             updateComment(comment.id, { text: v });
           }}
         />
       ) : !editable ? (
         <p className="comment-readonly-text">
-          {comment.text.trim() ? comment.text : t("common.noText")}
+          {comment.text.trim()
+            ? isDanmaku
+              ? singleLineText(comment.text)
+              : comment.text
+            : t("common.noText")}
         </p>
       ) : isFollow ? (
         <p className="hint">{t("comment.editInPopup")}</p>

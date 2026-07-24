@@ -196,7 +196,8 @@ export function useProjectIO() {
         <input
           ref={gpxInputRef}
           type="file"
-          accept=".gpx,application/gpx+xml,text/xml"
+          // iOS: .gpx alone is often rejected; XML / octet-stream keeps it selectable.
+          accept=".gpx,.xml,application/gpx+xml,application/xml,text/xml,application/octet-stream"
           hidden
           onChange={(e) => {
             void onGpx(e.target.files?.[0]);

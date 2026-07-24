@@ -32,7 +32,20 @@ export function ProjectPanel() {
     trackSummary.elevGainM == null;
 
   return (
-    <PanelHost title="Project" side="left">
+    <PanelHost
+      title="Project"
+      side="left"
+      footer={
+        <div className="btn-row panel-host-footer-actions">
+          <button type="button" className="setup-primary" onClick={() => void onSave()}>
+            Save ZIP
+          </button>
+          <button type="button" onClick={() => zipInputRef.current?.click()}>
+            Load ZIP
+          </button>
+        </div>
+      }
+    >
       <label className="field">
         <span>Project name</span>
         <input
@@ -89,14 +102,6 @@ export function ProjectPanel() {
           }}
         >
           Georeference
-        </button>
-      </div>
-      <div className="btn-row">
-        <button type="button" onClick={() => void onSave()}>
-          Save ZIP
-        </button>
-        <button type="button" onClick={() => zipInputRef.current?.click()}>
-          Load ZIP
         </button>
       </div>
       {hiddenInputs}

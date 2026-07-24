@@ -2059,7 +2059,7 @@ button.btn-skip {
   background: var(--panel);
   border: 1px solid var(--panel-edge);
   box-shadow: var(--shadow);
-  max-height: min(70dvh, 520px);
+  max-height: min(75dvh, 560px);
 }
 
 .panel-host--side {
@@ -2083,8 +2083,12 @@ button.btn-skip {
   right: 0;
   bottom: 0;
   width: 100%;
-  max-height: min(55dvh, 420px);
+  /* Leave room for map; still tall enough that footer actions stay on-screen. */
+  max-height: min(72dvh, 560px);
   border-radius: 14px 14px 0 0;
+}
+
+.panel-host--sheet:not(:has(.panel-host-footer)) {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -2095,6 +2099,7 @@ button.btn-skip {
   gap: 0.5rem;
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--panel-edge);
+  flex-shrink: 0;
 }
 
 .panel-host-header h2 {
@@ -2109,6 +2114,24 @@ button.btn-skip {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.panel-host-footer {
+  flex-shrink: 0;
+  padding: 0.65rem 0.85rem;
+  padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--panel-edge);
+  background: var(--panel);
+}
+
+.panel-host-footer-actions {
+  margin: 0;
+}
+
+.panel-host-footer-actions .setup-primary {
+  flex: 1;
 }
 
 .btn-row-stack {

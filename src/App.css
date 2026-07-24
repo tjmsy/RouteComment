@@ -793,7 +793,7 @@ button.btn-skip {
   right: 0;
   top: 0;
   bottom: 0;
-  z-index: 12;
+  z-index: 34;
   pointer-events: none;
 }
 
@@ -1719,13 +1719,13 @@ button.btn-skip {
   }
 
   .plan-vertex-handle {
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
   }
 
   .plan-midpoint-handle {
-    width: 16px;
-    height: 16px;
+    width: 24px;
+    height: 24px;
   }
 
   .profile-charts-resize-handle {
@@ -1749,7 +1749,7 @@ button.btn-skip {
   }
 
   .map-legend--speed {
-    bottom: 12px;
+    bottom: 72px;
     left: max(12px, env(safe-area-inset-left));
   }
 
@@ -1901,6 +1901,12 @@ button.btn-skip {
   cursor: pointer;
 }
 
+.review-chrome--mobile button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.4rem 0.65rem;
+}
+
 .review-chrome button.active {
   border-color: var(--accent-dim);
   color: var(--accent);
@@ -1946,6 +1952,107 @@ button.btn-skip {
   align-items: stretch;
   border-left: 1px solid var(--panel-edge);
   border-bottom-left-radius: 10px;
+}
+
+.tool-bar--comment {
+  left: 0;
+  right: 0;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.comment-list-details {
+  margin: 0;
+  border-top: 1px solid var(--panel-edge);
+  padding-top: 0.35rem;
+}
+
+.comment-list-details > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  list-style: none;
+}
+
+.comment-list-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.comment-list-details > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  color: var(--muted);
+}
+
+.comment-list-details[open] > summary::before {
+  content: "▾";
+}
+
+.comment-list-details .cp-list {
+  max-height: min(40vh, 240px);
+  overflow-y: auto;
+  margin: 0.35rem 0 0;
+}
+
+.follow-range-confirm-bar {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  top: calc(4.75rem + env(safe-area-inset-top));
+  z-index: 33;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(26, 33, 28, 0.96);
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.follow-range-confirm-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.follow-range-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.follow-range-confirm-actions button {
+  min-height: 44px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn-reselect-range {
+  min-height: 44px;
+  width: 100%;
+  margin-top: 0.15rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  border: 1px dashed var(--accent-dim);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
 }
 
 .comment-tool-controls {
@@ -2037,9 +2144,35 @@ button.btn-skip {
   border: 1px solid var(--panel-edge);
   color: var(--text);
   min-height: 36px;
-  padding: 0.25rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .btn-dismiss {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 0.85rem;
+  }
+
+  .follow-range-confirm-bar {
+    top: calc(5.5rem + env(safe-area-inset-top));
+  }
+
+  .tool-bar--comment .comment-tool-controls .btn-done,
+  .tool-bar--comment .mode-row button {
+    min-height: 44px;
+  }
+
+  .tool-bar button {
+    min-height: 44px;
+  }
+
+  .comment-list-details .cp-delete {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .panel-host-backdrop {

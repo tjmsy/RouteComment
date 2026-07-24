@@ -183,6 +183,7 @@ function MapPinMarker({
       suppressClickRef.current = true;
     });
     marker.on("dragend", () => {
+      // Restore pan; follow-range pick only locks pan for its own gesture.
       map.dragPan.enable();
       draggingRef.current = false;
       const ll = marker.getLngLat();

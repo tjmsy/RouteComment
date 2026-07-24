@@ -23,6 +23,8 @@ export function CommentSheetHost({ children }: Props) {
   const screen = useUiStore((s) => s.screen);
   const commentTool = useUiStore((s) => s.commentTool);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
+  const followDraftRange = useUiStore((s) => s.followDraftRange);
+  const followRangeTargetId = useUiStore((s) => s.followRangeTargetId);
   const comments = useProjectStore((s) => s.project.comments);
   const [keyboardPad, setKeyboardPad] = useState(0);
   const [bottomChrome, setBottomChrome] = useState(0);
@@ -32,13 +34,15 @@ export function CommentSheetHost({ children }: Props) {
   const active = comments.find((c) => c.id === activeId) ?? null;
 
   /**
-   * Keep the map free while picking a follow range (two-click or drag).
+   * Keep the map free while picking or confirming a follow range.
    * Map comments edit on the bubble itself — never cover the map with a sheet.
    */
   const pickingFollow =
     isEditingComment(screen) &&
     commentTool === "follow" &&
-    followRangeStartMs != null;
+    (followRangeStartMs != null ||
+      followDraftRange != null ||
+      followRangeTargetId != null);
 
   const open =
     expandedCommentIds.length > 0 &&

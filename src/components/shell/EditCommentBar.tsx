@@ -9,11 +9,13 @@ function CommentToolControls() {
   const commentTool = useUiStore((s) => s.commentTool);
   const setCommentTool = useUiStore((s) => s.setCommentTool);
   const clearExpandedComments = useUiStore((s) => s.clearExpandedComments);
+  const clearFollowRangeSession = useUiStore((s) => s.clearFollowRangeSession);
   const verb = pointerVerb();
 
   const pickTool = (tool: "map" | "follow" | "danmaku") => {
     setCommentTool(tool);
     clearExpandedComments();
+    clearFollowRangeSession();
   };
 
   return (
@@ -61,53 +63,68 @@ function CommentToolControls() {
   );
 }
 
-export function EditCommentBar() {
+function CommentList() {
   const comments = useProjectStore((s) => s.project.comments);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const removeComment = useProjectStore((s) => s.removeComment);
-  const mobile = useMobileLayout();
+  const clearFollowRangeSession = useUiStore((s) => s.clearFollowRangeSession);
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
+
+  if (comments.length === 0) {
+    return <p className="hint">No comments yet.</p>;
+  }
+
+  return (
+    <ul className="cp-list">
+      {comments.map((c) => (
+        <li key={c.id}>
+          <button
+            type="button"
+            className={c.id === activeId ? "active" : ""}
+            onClick={() => {
+              clearFollowRangeSession();
+              setCommentExpanded(c.id, true);
+            }}
+          >
+            <span className="cp-kind">{c.kind}</span>
+            {c.text.trim() || "(No text)"}
+          </button>
+          <button
+            type="button"
+            className="cp-delete"
+            title="Delete"
+            onClick={() => {
+              removeComment(c.id);
+              if (c.id === activeId) setCommentExpanded(c.id, false);
+            }}
+          >
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function EditCommentBar() {
+  const mobile = useMobileLayout();
 
   return (
     <>
       {mobile ? (
-        <div className="tool-bar tool-bar--comment-right">
+        <div className="tool-bar tool-bar--comment">
           <CommentToolControls />
+          <details className="comment-list-details">
+            <summary>Comments</summary>
+            <CommentList />
+          </details>
         </div>
       ) : (
         <aside className="comment-float-panel comment-float-panel--right">
           <CommentToolControls />
           <h3 className="comment-float-title">Comments</h3>
-          {comments.length === 0 ? (
-            <p className="hint">No comments yet.</p>
-          ) : (
-            <ul className="cp-list">
-              {comments.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={c.id === activeId ? "active" : ""}
-                    onClick={() => setCommentExpanded(c.id, true)}
-                  >
-                    <span className="cp-kind">{c.kind}</span>
-                    {c.text.trim() || "(No text)"}
-                  </button>
-                  <button
-                    type="button"
-                    className="cp-delete"
-                    title="Delete"
-                    onClick={() => {
-                      removeComment(c.id);
-                      if (c.id === activeId) setCommentExpanded(c.id, false);
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CommentList />
           <CommentPanel variant="sidebar" />
         </aside>
       )}

@@ -48,6 +48,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
   const removeComment = useProjectStore((s) => s.removeComment);
   const expandedCommentIds = useUiStore((s) => s.expandedCommentIds);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
+  const beginFollowReselect = useUiStore((s) => s.beginFollowReselect);
 
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
   const comment = comments.find((c) => c.id === activeId) ?? null;
@@ -116,52 +117,61 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
       {isFollow && (
         <>
           {editable ? (
-            <div className="comment-range-row">
-              <label className="comment-time">
-                <span>Start</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="hh:mm:ss"
-                  value={startDraft}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setStartDraft(v);
-                    const ms = parseHms(v);
-                    if (ms != null) {
-                      updateComment(comment.id, { timeStartMs: ms });
-                    }
-                  }}
-                  onBlur={() => {
-                    const ms = parseHms(startDraft);
-                    if (ms != null) setStartDraft(formatHms(ms));
-                    else setStartDraft(formatHms(comment.timeStartMs));
-                  }}
-                />
-              </label>
-              <label className="comment-time">
-                <span>End</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="hh:mm:ss"
-                  value={endDraft}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setEndDraft(v);
-                    const ms = parseHms(v);
-                    if (ms != null) {
-                      updateComment(comment.id, { timeEndMs: ms });
-                    }
-                  }}
-                  onBlur={() => {
-                    const ms = parseHms(endDraft);
-                    if (ms != null) setEndDraft(formatHms(ms));
-                    else setEndDraft(formatHms(comment.timeEndMs));
-                  }}
-                />
-              </label>
-            </div>
+            <>
+              <div className="comment-range-row">
+                <label className="comment-time">
+                  <span>Start</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="hh:mm:ss"
+                    value={startDraft}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setStartDraft(v);
+                      const ms = parseHms(v);
+                      if (ms != null) {
+                        updateComment(comment.id, { timeStartMs: ms });
+                      }
+                    }}
+                    onBlur={() => {
+                      const ms = parseHms(startDraft);
+                      if (ms != null) setStartDraft(formatHms(ms));
+                      else setStartDraft(formatHms(comment.timeStartMs));
+                    }}
+                  />
+                </label>
+                <label className="comment-time">
+                  <span>End</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="hh:mm:ss"
+                    value={endDraft}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEndDraft(v);
+                      const ms = parseHms(v);
+                      if (ms != null) {
+                        updateComment(comment.id, { timeEndMs: ms });
+                      }
+                    }}
+                    onBlur={() => {
+                      const ms = parseHms(endDraft);
+                      if (ms != null) setEndDraft(formatHms(ms));
+                      else setEndDraft(formatHms(comment.timeEndMs));
+                    }}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                className="btn-reselect-range"
+                onClick={() => beginFollowReselect(comment.id)}
+              >
+                Re-select range on map
+              </button>
+            </>
           ) : (
             <p className="hint comment-range-readonly">
               {formatHms(comment.timeStartMs)} – {formatHms(comment.timeEndMs)}

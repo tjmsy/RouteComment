@@ -12,6 +12,7 @@ import {
   type UiEvent,
   type UiState as ScreenState,
 } from "../ui/machine";
+import { useProjectStore } from "./projectStore";
 
 /** Two-point fine-tune steps (streetview-o style). */
 export type GeorefStep = 0 | 1 | 2 | 3;
@@ -19,6 +20,16 @@ export type GeorefStep = 0 | 1 | 2 | 3;
 type LngLat = { lng: number; lat: number };
 
 export type ProfileChartCollapsed = Record<ChartKind, boolean>;
+
+/** Draft follow range awaiting explicit Confirm (not yet written / expanded). */
+export type FollowDraftRange = {
+  timeStartMs: number;
+  timeEndMs: number;
+  lng: number;
+  lat: number;
+  /** Existing follow to update; null = create on confirm. */
+  targetId: string | null;
+};
 
 const DEFAULT_PROFILE_CHART_COLLAPSED: ProfileChartCollapsed = {
   ele: false,
@@ -41,6 +52,10 @@ type UiState = {
   headingUp: boolean;
   commentTool: "map" | "follow" | "danmaku";
   followRangeStartMs: number | null;
+  /** Provisional range; Confirm writes comment and opens editor. */
+  followDraftRange: FollowDraftRange | null;
+  /** Prefer this id when applying / confirming a follow range (reselect). */
+  followRangeTargetId: string | null;
   activeRoutePlanId: string | null;
   showTrack: boolean;
   colorTrackBySpeed: boolean;
@@ -72,6 +87,16 @@ type UiState = {
   setHeadingUp: (on: boolean) => void;
   setCommentTool: (tool: "map" | "follow" | "danmaku") => void;
   setFollowRangeStartMs: (ms: number | null) => void;
+  setFollowDraftRange: (draft: FollowDraftRange | null) => void;
+  setFollowRangeTargetId: (id: string | null) => void;
+  /** Clear start + draft + target (keep expanded as-is). */
+  clearFollowRangeSession: () => void;
+  /** Hide sheet and pick a new range for an existing follow. */
+  beginFollowReselect: (commentId: string) => void;
+  /** Write draft to project and open the comment editor. */
+  confirmFollowDraft: () => string | null;
+  /** Discard draft and start over. */
+  redoFollowDraft: () => void;
   setActiveRoutePlanId: (id: string | null) => void;
   setShowTrack: (show: boolean) => void;
   setColorTrackBySpeed: (on: boolean) => void;
@@ -147,6 +172,12 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
           ? prev.followRangeStartMs
           : null
         : null,
+    followDraftRange: editingComment
+      ? prev.followDraftRange
+      : null,
+    followRangeTargetId: editingComment
+      ? prev.followRangeTargetId
+      : null,
     expandedCommentIds:
       editingComment || isReviewReadonly(screen)
         ? prev.expandedCommentIds
@@ -195,6 +226,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   headingUp: false,
   commentTool: "follow",
   followRangeStartMs: null,
+  followDraftRange: null,
+  followRangeTargetId: null,
   activeRoutePlanId: null,
   showTrack: true,
   colorTrackBySpeed: true,
@@ -254,6 +287,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPin: null,
       georefPendingFrom: null,
       followRangeStartMs: null,
+      followDraftRange: null,
+      followRangeTargetId: null,
       expandedCommentIds:
         mode === "edit" && editTool === "comment"
           ? prev.expandedCommentIds
@@ -294,6 +329,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPin: null,
       georefPendingFrom: null,
       followRangeStartMs: null,
+      followDraftRange: null,
+      followRangeTargetId: null,
       expandedCommentIds: tool === "comment" ? prev.expandedCommentIds : [],
       statusMessage: editToolHint(tool, commentTool),
     });
@@ -303,13 +340,30 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   toggleCommentExpanded: (id) => {
     const cur = get().expandedCommentIds;
+    const collapsing = cur.length === 1 && cur[0] === id;
     set({
-      expandedCommentIds: cur.length === 1 && cur[0] === id ? [] : [id],
+      expandedCommentIds: collapsing ? [] : [id],
+      ...(collapsing
+        ? {}
+        : {
+            followRangeStartMs: null,
+            followDraftRange: null,
+            followRangeTargetId: null,
+          }),
     });
   },
 
   setCommentExpanded: (id, expanded) => {
-    set({ expandedCommentIds: expanded ? [id] : [] });
+    set({
+      expandedCommentIds: expanded ? [id] : [],
+      ...(expanded
+        ? {
+            followRangeStartMs: null,
+            followDraftRange: null,
+            followRangeTargetId: null,
+          }
+        : {}),
+    });
   },
 
   clearExpandedComments: () => set({ expandedCommentIds: [] }),
@@ -322,6 +376,8 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       commentTool: tool,
       followRangeStartMs: null,
+      followDraftRange: null,
+      followRangeTargetId: null,
       statusMessage:
         tool === "follow"
           ? `${pointerVerb()} or drag along the GPS track to set the range`
@@ -330,6 +386,57 @@ export const useUiStore = create<UiState>((set, get) => ({
             : `${pointerVerb()} the map to place a comment bubble`,
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
+  setFollowDraftRange: (draft) => set({ followDraftRange: draft }),
+  setFollowRangeTargetId: (id) => set({ followRangeTargetId: id }),
+  clearFollowRangeSession: () =>
+    set({
+      followRangeStartMs: null,
+      followDraftRange: null,
+      followRangeTargetId: null,
+    }),
+  beginFollowReselect: (commentId) =>
+    set({
+      commentTool: "follow",
+      followRangeTargetId: commentId,
+      followRangeStartMs: null,
+      followDraftRange: null,
+      expandedCommentIds: [],
+      statusMessage: `${pointerVerb()} or drag on the GPS track to set a new range`,
+    }),
+  confirmFollowDraft: () => {
+    const draft = get().followDraftRange;
+    if (!draft) return null;
+    const patch = {
+      lng: draft.lng,
+      lat: draft.lat,
+      timeStartMs: draft.timeStartMs,
+      timeEndMs: draft.timeEndMs,
+    };
+    let id = draft.targetId;
+    if (id) {
+      useProjectStore.getState().updateComment(id, patch);
+    } else {
+      id = useProjectStore.getState().addComment({
+        kind: "follow",
+        text: "",
+        ...patch,
+      });
+    }
+    set({
+      followDraftRange: null,
+      followRangeStartMs: null,
+      followRangeTargetId: null,
+      expandedCommentIds: [id],
+      statusMessage: "Follow comment saved. Edit text below.",
+    });
+    return id;
+  },
+  redoFollowDraft: () =>
+    set({
+      followDraftRange: null,
+      followRangeStartMs: null,
+      statusMessage: `${pointerVerb()} or drag along the GPS track to set the range`,
+    }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
   setColorTrackBySpeed: (on) => set({ colorTrackBySpeed: on }),

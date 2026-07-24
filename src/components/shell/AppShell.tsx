@@ -4,6 +4,7 @@ import { CreateWizard } from "./CreateWizard";
 import { EditCommentBar } from "./EditCommentBar";
 import { EditPlanBar } from "./EditPlanBar";
 import { EmptyProject } from "./EmptyProject";
+import { FollowRangeConfirmBar } from "./FollowRangeConfirmBar";
 import { GeorefBar } from "./GeorefBar";
 import { LayersPanel } from "./LayersPanel";
 import { ProjectPanel } from "./ProjectPanel";
@@ -25,7 +26,12 @@ export function AppShell() {
       {kind === "layers" && <LayersPanel />}
       {kind === "chooseEdit" && <ChooseEditMenu />}
       {kind === "editPlan" && <EditPlanBar />}
-      {kind === "editComment" && <EditCommentBar />}
+      {kind === "editComment" && (
+        <>
+          <EditCommentBar />
+          <FollowRangeConfirmBar />
+        </>
+      )}
       {kind === "georef" && <GeorefBar />}
     </div>
   );

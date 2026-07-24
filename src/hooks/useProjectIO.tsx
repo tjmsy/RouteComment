@@ -7,6 +7,7 @@ import {
 } from "../lib/projectZip";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import { t } from "../i18n";
 
 async function readImageSize(
   url: string,
@@ -15,7 +16,7 @@ async function readImageSize(
     const img = new Image();
     img.onload = () =>
       resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => reject(new Error("Failed to load image"));
+    img.onerror = () => reject(new Error(t("io.failedLoadImage")));
     img.src = url;
   });
 }
@@ -49,18 +50,18 @@ export function useProjectIO() {
       try {
         const points = parseGpx(text);
         if (points.length === 0) {
-          setStatusMessage("No track points found in GPX.");
+          setStatusMessage(t("io.noTrackPoints"));
           return;
         }
         setTrack(points);
         setAnimationTimeMs(0);
         markSetupGpxDone();
-        setStatusMessage(`Loaded ${points.length} track points.`);
+        setStatusMessage(t("io.loadedTrackPoints", { count: points.length }));
         if (screen.kind === "createWizard") {
           dispatch({ type: "WIZARD_NEXT" });
         }
       } catch {
-        setStatusMessage("Failed to parse GPX.");
+        setStatusMessage(t("io.failedParseGpx"));
       }
     },
     [
@@ -81,7 +82,7 @@ export function useProjectIO() {
         const size = await readImageSize(url);
         setMapImage(file, url, file.name, size);
         markSetupMapDone();
-        setStatusMessage("Map image placed on the map.");
+        setStatusMessage(t("io.mapPlaced"));
         if (screen.kind === "createWizard") {
           dispatch({ type: "WIZARD_NEXT" });
         } else if (enterGeoref) {
@@ -90,7 +91,7 @@ export function useProjectIO() {
         }
       } catch {
         URL.revokeObjectURL(url);
-        setStatusMessage("Failed to load map image.");
+        setStatusMessage(t("io.failedLoadMap"));
       }
     },
     [
@@ -106,11 +107,14 @@ export function useProjectIO() {
   const onSave = useCallback(async () => {
     try {
       const blob = await saveProjectZip(project, mapImageBlob);
-      const name = (project.name || "project").replace(/[^\w-]+/g, "_");
+      const name = (project.name || t("common.projectFallback")).replace(
+        /[^\w-]+/g,
+        "_",
+      );
       downloadBlob(blob, `${name}.zip`);
-      setStatusMessage("Project saved.");
+      setStatusMessage(t("io.projectSaved"));
     } catch {
-      setStatusMessage("Failed to save project.");
+      setStatusMessage(t("io.failedSave"));
     }
   }, [mapImageBlob, project, setStatusMessage]);
 
@@ -135,10 +139,10 @@ export function useProjectIO() {
         setAnimationTimeMs(0);
         completeSetup();
         dispatch({ type: "LOAD_ZIP_SUCCESS" });
-        setStatusMessage("Project loaded.");
+        setStatusMessage(t("io.projectLoaded"));
       } catch (e) {
         setStatusMessage(
-          e instanceof Error ? e.message : "Failed to load project ZIP.",
+          e instanceof Error ? e.message : t("io.failedLoadZip"),
         );
       }
     },

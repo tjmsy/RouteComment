@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { ChartKind } from "../lib/chartScales";
 import { pointerVerb } from "../lib/mobile";
 import type { AppMode, EditTool } from "../lib/types";
+import { t } from "../i18n";
 import {
   deriveLegacyEditTool,
   deriveLegacyMode,
@@ -135,13 +136,13 @@ const georefHint = (step: GeorefStep): string => {
   const verb = pointerVerb().toLowerCase();
   switch (step) {
     case 0:
-      return `Georef: ${verb} a feature on the map image overlay`;
+      return t("status.georef0", { verb });
     case 1:
-      return `Georef: ${verb} the matching point on the basemap`;
+      return t("status.georef1", { verb });
     case 2:
-      return `Georef: ${verb} a second feature on the overlay`;
+      return t("status.georef2", { verb });
     case 3:
-      return `Georef: ${verb} the matching second point on the basemap`;
+      return t("status.georef3", { verb });
   }
 };
 
@@ -151,13 +152,12 @@ const editToolHint = (
 ): string => {
   const verb = pointerVerb();
   if (tool === "setup") return "";
-  if (tool === "plan")
-    return `Add a plan first, then ${verb.toLowerCase()} the map to draw`;
+  if (tool === "plan") return t("status.editPlan", { verb: verb.toLowerCase() });
   if (commentTool === "follow")
-    return `${verb} or drag along the GPS track to set the range`;
+    return t("status.editFollow", { verb });
   if (commentTool === "danmaku")
-    return `${verb} Add danmaku at the current playback time`;
-  return `${verb} the map to place a comment bubble`;
+    return t("status.editDanmaku", { verb });
+  return t("status.editMap", { verb });
 };
 
 function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
@@ -255,8 +255,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   georefStep: 0,
   georefPin: null,
   georefPendingFrom: null,
-  statusMessage:
-    "Start with GPX so the map jumps to the competition area, then add the map image.",
+  statusMessage: t("status.startWithGpx"),
 
   dispatch: (event) => {
     const prev = get();
@@ -274,8 +273,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       if (mode === "view") {
         set({
           statusMessage: !setupGpxDone
-            ? "Finish Setup: load GPX (or Skip), then map image (or Skip)."
-            : "Finish Setup: add a map image (or Skip) to continue.",
+            ? t("status.finishSetupGpx")
+            : t("status.finishSetupMap"),
         });
         return;
       }
@@ -320,8 +319,8 @@ export const useUiStore = create<UiState>((set, get) => ({
     if (!setupComplete && tool !== "setup") {
       set({
         statusMessage: !setupGpxDone
-          ? "Finish Setup: load GPX (or Skip), then map image (or Skip)."
-          : "Finish Setup: add a map image (or Skip) to continue.",
+          ? t("status.finishSetupGpx")
+          : t("status.finishSetupMap"),
       });
       return;
     }
@@ -391,10 +390,10 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeTargetId: null,
       statusMessage:
         tool === "follow"
-          ? `${pointerVerb()} the GPS track twice to set start and end`
+          ? t("status.commentFollow", { verb: pointerVerb() })
           : tool === "danmaku"
-            ? `${pointerVerb()} the GPS track to place a scrolling comment`
-            : `${pointerVerb()} the map to place a comment bubble`,
+            ? t("status.commentDanmaku", { verb: pointerVerb() })
+            : t("status.commentMap", { verb: pointerVerb() }),
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setFollowDraftRange: (draft) => set({ followDraftRange: draft }),
@@ -412,7 +411,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followDraftRange: null,
       expandedCommentIds: [],
-      statusMessage: `${pointerVerb()} the GPS track twice to set a new range`,
+      statusMessage: t("status.followReselect", { verb: pointerVerb() }),
     }),
   confirmFollowDraft: () => {
     const draft = get().followDraftRange;
@@ -439,7 +438,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followRangeTargetId: null,
       expandedCommentIds: [id],
-      statusMessage: "Follow comment saved. Edit text in the map popup.",
+      statusMessage: t("status.followSaved"),
     });
     return id;
   },
@@ -447,7 +446,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       followDraftRange: null,
       followRangeStartMs: null,
-      statusMessage: `${pointerVerb()} the GPS track twice to set start and end`,
+      statusMessage: t("status.commentFollow", { verb: pointerVerb() }),
     }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
@@ -471,14 +470,13 @@ export const useUiStore = create<UiState>((set, get) => ({
       setupGpxDone: true,
       statusMessage: get().setupMapDone
         ? get().statusMessage
-        : "Add a map image to georeference, or Skip to continue without one.",
+        : t("status.addMapImage"),
     }),
   markSetupMapDone: () => set({ setupMapDone: true }),
   skipSetupGpx: () =>
     set({
       setupGpxDone: true,
-      statusMessage:
-        "GPX skipped. Add a map image to georeference, or Skip to continue without one.",
+      statusMessage: t("status.gpxSkipped"),
     }),
   skipSetupMap: () =>
     set({
@@ -486,8 +484,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       mode: "view",
       screen: { kind: "review" },
       editTool: deriveLegacyEditTool({ kind: "review" }),
-      statusMessage:
-        "Setup complete. You can add a map image later in Edit → Setup.",
+      statusMessage: t("status.setupComplete"),
     }),
   completeSetup: () =>
     set({

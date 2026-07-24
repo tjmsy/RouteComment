@@ -1,6 +1,7 @@
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
+import { t } from "../../i18n";
 
 /** Stacked layers — common map UI affordance. */
 function LayersIcon() {
@@ -54,16 +55,16 @@ export function ReviewChrome() {
           )
         }
       >
-        Project
+        {t("review.project")}
       </button>
       <span className="review-chrome-name" title={name}>
-        {name || "Untitled"}
+        {name || t("common.untitled")}
       </span>
       <div className="review-chrome-actions">
         <button
           type="button"
-          title="Layers"
-          aria-label="Layers"
+          title={t("review.layers")}
+          aria-label={t("review.layers")}
           className={screen.kind === "layers" ? "active" : ""}
           onClick={() =>
             dispatch(
@@ -77,8 +78,8 @@ export function ReviewChrome() {
         </button>
         <button
           type="button"
-          title="Edit"
-          aria-label="Edit"
+          title={t("review.edit")}
+          aria-label={t("review.edit")}
           onClick={() => dispatch({ type: "OPEN_EDIT_MENU" })}
         >
           ✎

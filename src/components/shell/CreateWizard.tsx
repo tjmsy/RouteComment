@@ -3,6 +3,7 @@ import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
 import { useProjectIO } from "../../hooks/useProjectIO";
 import { pointerVerb } from "../../lib/mobile";
+import { t } from "../../i18n";
 
 export function CreateWizard() {
   const screen = useUiStore((s) => s.screen);
@@ -37,31 +38,31 @@ export function CreateWizard() {
 
   const cancelMapImage = () => {
     clearMapImage();
-    setStatusMessage("Map image removed. Load another, or skip map.");
+    setStatusMessage(t("wizard.mapRemoved"));
     dispatch({ type: "WIZARD_BACK" });
   };
 
   return (
     <div className="create-wizard">
       <header className="create-wizard-header">
-        <h1>Create project</h1>
+        <h1>{t("wizard.title")}</h1>
         {step !== "georef" && (
           <button type="button" className="btn-done" onClick={finish}>
-            Done
+            {t("common.done")}
           </button>
         )}
       </header>
 
       {step === "gpx" && (
         <section className="panel">
-          <p className="hint">Load a GPX so the map jumps to the course area.</p>
+          <p className="hint">{t("wizard.gpxHint")}</p>
           <div className="btn-row">
             <button
               type="button"
               className="setup-primary"
               onClick={() => gpxInputRef.current?.click()}
             >
-              GPX
+              {t("wizard.gpx")}
             </button>
             <button
               type="button"
@@ -71,7 +72,7 @@ export function CreateWizard() {
                 dispatch({ type: "WIZARD_SKIP" });
               }}
             >
-              Skip GPX
+              {t("wizard.skipGpx")}
             </button>
           </div>
         </section>
@@ -80,7 +81,7 @@ export function CreateWizard() {
       {step === "map" && (
         <section className="panel">
           <p className="hint">
-            Add a map image to georeference, or skip to continue without one.
+            {t("wizard.mapHint")}
           </p>
           <div className="btn-row">
             <button
@@ -88,7 +89,7 @@ export function CreateWizard() {
               className="setup-primary"
               onClick={() => mapInputRef.current?.click()}
             >
-              Map image
+              {t("wizard.mapImage")}
             </button>
             <button
               type="button"
@@ -99,7 +100,7 @@ export function CreateWizard() {
                 dispatch({ type: "WIZARD_SKIP" });
               }}
             >
-              Skip map
+              {t("wizard.skipMap")}
             </button>
           </div>
         </section>
@@ -108,12 +109,11 @@ export function CreateWizard() {
       {step === "georef" && (
         <section className="panel">
           <p className="hint">
-            Two-point align: {verb.toLowerCase()} overlay feature → basemap,
-            then a second pair. When finished, tap Done.
+            {t("wizard.georefHint", { verb: verb.toLowerCase() })}
           </p>
           {project.mapImage && (
             <label className="field">
-              <span>Map opacity</span>
+              <span>{t("wizard.mapOpacity")}</span>
               <input
                 type="range"
                 min={0}
@@ -126,10 +126,10 @@ export function CreateWizard() {
           )}
           <div className="btn-row">
             <button type="button" className="btn-skip" onClick={cancelMapImage}>
-              Cancel map image
+              {t("wizard.cancelMap")}
             </button>
             <button type="button" className="btn-done" onClick={finish}>
-              Done
+              {t("common.done")}
             </button>
           </div>
         </section>

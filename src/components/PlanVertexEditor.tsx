@@ -2,6 +2,7 @@ import { useEffect, useRef, type MutableRefObject } from "react";
 import maplibregl from "maplibre-gl";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
+import { t } from "../i18n";
 
 type Props = {
   map: maplibregl.Map | null;
@@ -131,7 +132,7 @@ function buildMarkers(opts: {
         index,
         lngLat: coord,
         color,
-        title: "Drag to move · double-click or long-press to delete",
+        title: t("plan.vertexTitle"),
         markersRef,
         draggingRef,
         planIdRef,
@@ -153,7 +154,7 @@ function buildMarkers(opts: {
         index: i,
         lngLat: mid,
         color,
-        title: "Drag to add a vertex",
+        title: t("plan.midTitle"),
         markersRef,
         draggingRef,
         planIdRef,
@@ -203,7 +204,9 @@ function createHandle(opts: {
   el.title = title;
   el.setAttribute(
     "aria-label",
-    kind === "vertex" ? `Plan vertex ${index + 1}` : "Add plan vertex",
+    kind === "vertex"
+      ? t("plan.vertexAria", { n: index + 1 })
+      : t("plan.midAria"),
   );
   el.style.setProperty("--plan-handle-color", color);
 
@@ -298,8 +301,11 @@ function createHandle(opts: {
       tracked.kind = "vertex";
       tracked.index = insertAt;
       el.className = "plan-vertex-handle";
-      el.title = "Drag to move · double-click or long-press to delete";
-      el.setAttribute("aria-label", `Plan vertex ${insertAt + 1}`);
+      el.title = t("plan.vertexTitle");
+      el.setAttribute(
+        "aria-label",
+        t("plan.vertexAria", { n: insertAt + 1 }),
+      );
 
       for (const m of markersRef.current) {
         if (m !== tracked && m.kind === "mid") {

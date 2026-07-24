@@ -1,5 +1,6 @@
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 import { PanelHost } from "./PanelHost";
 
 export function LayersPanel() {
@@ -19,13 +20,11 @@ export function LayersPanel() {
   const elevationStatus = useUiStore((s) => s.elevationStatus);
 
   return (
-    <PanelHost title="Layers" side="right">
+    <PanelHost title={t("layers.title")} side="right">
       {(project.track.points.length > 0 || project.mapImage) && (
         <label
           className={`check${isPlaying ? " check--disabled" : ""}`}
-          title={
-            isPlaying ? "Pause playback to toggle the basemap" : undefined
-          }
+          title={isPlaying ? t("layers.pauseBasemap") : undefined}
         >
           <input
             type="checkbox"
@@ -33,7 +32,7 @@ export function LayersPanel() {
             disabled={isPlaying}
             onChange={(e) => setShowBasemap(e.target.checked)}
           />
-          Basemap
+          {t("layers.basemap")}
         </label>
       )}
       {project.track.points.length > 0 && (
@@ -43,7 +42,7 @@ export function LayersPanel() {
             checked={showTrack}
             onChange={(e) => setShowTrack(e.target.checked)}
           />
-          GPS track
+          {t("layers.gpsTrack")}
         </label>
       )}
       {project.track.points.length > 0 && showTrack && (
@@ -53,12 +52,12 @@ export function LayersPanel() {
             checked={colorTrackBySpeed}
             onChange={(e) => setColorTrackBySpeed(e.target.checked)}
           />
-          Color by speed
+          {t("layers.colorBySpeed")}
         </label>
       )}
       {project.track.points.length > 0 && showTrack && (
         <label className="field">
-          <span>Track width ({trackLineWidth})</span>
+          <span>{t("layers.trackWidth", { width: trackLineWidth })}</span>
           <input
             type="range"
             min={1}
@@ -76,11 +75,11 @@ export function LayersPanel() {
             checked={showProfileCharts}
             onChange={(e) => setShowProfileCharts(e.target.checked)}
           />
-          Profile charts
+          {t("layers.profileCharts")}
         </label>
       )}
       {elevationStatus === "failed" && (
-        <p className="hint">Elevation fetch failed.</p>
+        <p className="hint">{t("layers.elevationFailed")}</p>
       )}
       {project.routePlans.map((plan) => (
         <label key={plan.id} className="check plan-layer-row">

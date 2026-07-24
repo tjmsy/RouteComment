@@ -4,6 +4,7 @@ import { pointerVerb } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 import { isEditingComment, isReviewReadonly } from "../ui/machine";
+import { t } from "../i18n";
 
 function formatHms(ms: number | undefined): string {
   if (ms == null) return "";
@@ -30,9 +31,9 @@ function parseHms(v: string): number | undefined {
 }
 
 function kindLabel(kind: string): string {
-  if (kind === "follow") return "Follow comment";
-  if (kind === "danmaku") return "Danmaku comment";
-  return "Map comment";
+  if (kind === "follow") return t("comment.kindFollow");
+  if (kind === "danmaku") return t("comment.kindDanmaku");
+  return t("comment.kindMap");
 }
 
 /**
@@ -120,7 +121,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
           className="btn-done"
           onClick={() => setCommentExpanded(comment.id, false)}
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
 
@@ -128,7 +129,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
         <textarea
           value={draft}
           rows={variant === "sheet" ? 3 : 4}
-          placeholder="Write a comment…"
+          placeholder={t("comment.placeholder")}
           autoFocus={!mobile}
           onChange={(e) => {
             const v = e.target.value;
@@ -138,10 +139,10 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
         />
       ) : !editable ? (
         <p className="comment-readonly-text">
-          {comment.text.trim() ? comment.text : "(No text)"}
+          {comment.text.trim() ? comment.text : t("common.noText")}
         </p>
       ) : isFollow ? (
-        <p className="hint">Edit text in the map popup.</p>
+        <p className="hint">{t("comment.editInPopup")}</p>
       ) : null}
 
       {isFollow && (
@@ -150,11 +151,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
             <>
               <div className="comment-range-row">
                 <label className="comment-time">
-                  <span>Start</span>
+                  <span>{t("comment.start")}</span>
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="hh:mm:ss"
+                    placeholder={t("comment.timePlaceholder")}
                     value={startDraft}
                     onFocus={() => {
                       startFocusedRef.current = true;
@@ -164,11 +165,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                   />
                 </label>
                 <label className="comment-time">
-                  <span>End</span>
+                  <span>{t("comment.end")}</span>
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="hh:mm:ss"
+                    placeholder={t("comment.timePlaceholder")}
                     value={endDraft}
                     onFocus={() => {
                       endFocusedRef.current = true;
@@ -183,7 +184,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                 className="btn-reselect-range"
                 onClick={() => beginFollowReselect(comment.id)}
               >
-                Re-select range on map
+                {t("comment.reselectRange")}
               </button>
             </>
           ) : (
@@ -198,11 +199,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
         <>
           {editable ? (
             <label className="comment-time">
-              <span>Trigger time</span>
+              <span>{t("comment.triggerTime")}</span>
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="hh:mm:ss"
+                placeholder={t("comment.timePlaceholder")}
                 value={startDraft}
                 onFocus={() => {
                   startFocusedRef.current = true;
@@ -213,7 +214,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
             </label>
           ) : (
             <p className="hint comment-range-readonly">
-              At {formatHms(comment.timeStartMs)}
+              {t("comment.atTime", { time: formatHms(comment.timeStartMs) })}
             </p>
           )}
         </>
@@ -221,14 +222,13 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
 
       {!editable && isMap && (
         <p className="hint">
-          {pointerVerb()} the pin icon on the map to open it. Switch to Comment
-          mode to edit or move the pin.
+          {t("comment.mapReadonlyHint", { verb: pointerVerb() })}
         </p>
       )}
 
       {!editable && isDanmaku && (
         <p className="hint">
-          Scrolls right-to-left once when playback reaches the trigger time.
+          {t("comment.danmakuReadonlyHint")}
         </p>
       )}
 
@@ -240,11 +240,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
               className="btn-delete"
               onClick={() => setConfirmDelete(true)}
             >
-              Delete comment…
+              {t("comment.delete")}
             </button>
           ) : (
             <div className="comment-delete-confirm">
-              <span>Delete permanently?</span>
+              <span>{t("comment.deleteConfirm")}</span>
               <button
                 type="button"
                 className="btn-delete-confirm"
@@ -253,10 +253,10 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                   setCommentExpanded(comment.id, false);
                 }}
               >
-                Confirm delete
+                {t("comment.confirmDelete")}
               </button>
               <button type="button" onClick={() => setConfirmDelete(false)}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}

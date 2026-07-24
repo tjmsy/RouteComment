@@ -6,6 +6,7 @@ import {
   buildTrackSummary,
   formatSummaryTime,
 } from "../../lib/trackSummary";
+import { t } from "../../i18n";
 import { PanelHost } from "./PanelHost";
 
 export function ProjectPanel() {
@@ -33,51 +34,55 @@ export function ProjectPanel() {
 
   return (
     <PanelHost
-      title="Project"
+      title={t("project.title")}
       side="left"
       footer={
         <div className="btn-row panel-host-footer-actions">
           <button type="button" className="setup-primary" onClick={() => void onSave()}>
-            Save ZIP
+            {t("project.saveZip")}
           </button>
           <button type="button" onClick={() => zipInputRef.current?.click()}>
-            Load ZIP
+            {t("project.loadZip")}
           </button>
         </div>
       }
     >
       <label className="field">
-        <span>Project name</span>
+        <span>{t("project.name")}</span>
         <input
           type="text"
           value={project.name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Local meet 2026"
+          placeholder={t("project.namePlaceholder")}
         />
       </label>
 
       {trackSummary && (
         <dl className="summary-stats">
           <div className="summary-stat">
-            <dt>Distance</dt>
+            <dt>{t("project.distance")}</dt>
             <dd>{formatDistanceKm(trackSummary.totalDistanceM)}</dd>
           </div>
           <div className="summary-stat">
-            <dt>Time</dt>
+            <dt>{t("project.time")}</dt>
             <dd>{formatSummaryTime(trackSummary.durationMs)}</dd>
           </div>
           {(trackSummary.elevGainM != null || elevGainLoading) && (
             <div className="summary-stat">
-              <dt>Elev gain</dt>
+              <dt>{t("project.elevGain")}</dt>
               <dd>
-                {elevGainLoading ? "…" : `${trackSummary.elevGainM}\u00a0m`}
+                {elevGainLoading
+                  ? "…"
+                  : `${trackSummary.elevGainM}\u00a0${t("project.unitM")}`}
               </dd>
             </div>
           )}
           {trackSummary.avgHeartRate != null && (
             <div className="summary-stat">
-              <dt>Avg HR</dt>
-              <dd>{trackSummary.avgHeartRate}&nbsp;bpm</dd>
+              <dt>{t("project.avgHr")}</dt>
+              <dd>
+                {trackSummary.avgHeartRate}&nbsp;{t("project.unitBpm")}
+              </dd>
             </div>
           )}
         </dl>
@@ -85,10 +90,10 @@ export function ProjectPanel() {
 
       <div className="btn-row">
         <button type="button" onClick={() => gpxInputRef.current?.click()}>
-          GPX
+          {t("project.gpx")}
         </button>
         <button type="button" onClick={() => mapInputRef.current?.click()}>
-          Map image
+          {t("project.mapImage")}
         </button>
       </div>
       <div className="btn-row">
@@ -101,7 +106,7 @@ export function ProjectPanel() {
             dispatch({ type: "START_GEOREF" });
           }}
         >
-          Georeference
+          {t("project.georeference")}
         </button>
       </div>
       {hiddenInputs}

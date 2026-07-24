@@ -1,4 +1,5 @@
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 
 /** Thin action bar while a follow range draft awaits Confirm / Redo. */
 export function FollowRangeConfirmBar() {
@@ -15,16 +16,18 @@ export function FollowRangeConfirmBar() {
     const restoreId = draft?.targetId ?? targetId;
     clearFollowRangeSession();
     if (restoreId) setCommentExpanded(restoreId, true);
-    useUiStore.getState().setStatusMessage("Follow range cancelled.");
+    useUiStore.getState().setStatusMessage(t("followBar.cancelled"));
   };
 
   if (!draft) {
     return (
       <div className="follow-range-confirm-bar" role="status">
-        <p className="follow-range-confirm-hint">Re-selecting range…</p>
+        <p className="follow-range-confirm-hint">
+          {t("followBar.reselecting")}
+        </p>
         <div className="follow-range-confirm-actions">
           <button type="button" className="btn-dismiss" onClick={cancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       </div>
@@ -34,21 +37,21 @@ export function FollowRangeConfirmBar() {
   return (
     <div className="follow-range-confirm-bar" role="status">
       <p className="follow-range-confirm-hint">
-        Drag A/B markers, then Confirm
+        {t("followBar.dragConfirm")}
       </p>
       <div className="follow-range-confirm-actions">
         <button type="button" onClick={() => redoFollowDraft()}>
-          Redo
+          {t("common.redo")}
         </button>
         <button
           type="button"
           className="btn-done"
           onClick={() => confirmFollowDraft()}
         >
-          Confirm
+          {t("common.confirm")}
         </button>
         <button type="button" className="btn-dismiss" onClick={cancel}>
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>

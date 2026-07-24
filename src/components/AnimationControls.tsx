@@ -4,6 +4,7 @@ import { useUiStore } from "../store/uiStore";
 import { trackDurationMs } from "../lib/gpx";
 import { useMobileLayout } from "../hooks/useMobileLayout";
 import { isReviewChrome } from "../ui/machine";
+import { t } from "../i18n";
 
 const SPEED_OPTIONS = [1, 5, 10, 30, 60, 120] as const;
 
@@ -98,7 +99,7 @@ export function AnimationControls() {
         onClick={() => setIsPlaying(!isPlaying)}
         disabled={duration <= 0}
       >
-        {isPlaying ? "Pause" : "Play"}
+        {isPlaying ? t("anim.pause") : t("anim.play")}
       </button>
       <input
         type="range"
@@ -122,7 +123,7 @@ export function AnimationControls() {
             type="button"
             className="animation-chip"
             onClick={cycleSpeed}
-            title="Playback speed"
+            title={t("anim.speedTitle")}
           >
             {playbackSpeed}×
           </button>
@@ -130,19 +131,19 @@ export function AnimationControls() {
             type="button"
             className={headingUp ? "animation-chip active" : "animation-chip"}
             onClick={() => setHeadingUp(!headingUp)}
-            title="Heading up"
+            title={t("anim.headingTitle")}
             aria-pressed={headingUp}
           >
-            Head-up
+            {t("anim.headingLabel")}
           </button>
           <button
             type="button"
             className={terrain3d ? "animation-chip active" : "animation-chip"}
             onClick={() => setTerrain3d(!terrain3d)}
-            title="Terrain 3D"
+            title={t("anim.terrainTitle")}
             aria-pressed={terrain3d}
           >
-            3D
+            {t("anim.terrainLabel")}
           </button>
         </div>
       )}

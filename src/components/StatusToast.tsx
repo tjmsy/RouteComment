@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useUiStore } from "../store/uiStore";
+import { t } from "../i18n";
 
 /** Floating status banner over the map (hub shell). */
 export function StatusToast() {
@@ -27,7 +28,7 @@ export function StatusToast() {
       <button
         type="button"
         className="status-toast-dismiss"
-        aria-label="Dismiss"
+        aria-label={t("toast.dismiss")}
         onClick={() => {
           setVisible(false);
           setStatusMessage("");

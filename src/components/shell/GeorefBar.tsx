@@ -1,6 +1,7 @@
 import { pointerVerb } from "../../lib/mobile";
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 
 export function GeorefBar() {
   const dispatch = useUiStore((s) => s.dispatch);
@@ -16,14 +17,12 @@ export function GeorefBar() {
         className="btn-done"
         onClick={() => dispatch({ type: "GEOREF_DONE" })}
       >
-        Done
+        {t("common.done")}
       </button>
-      <p className="hint">
-        {verb} overlay → basemap, then a second pair to rotate/scale.
-      </p>
+      <p className="hint">{t("georef.hint", { verb })}</p>
       {project.mapImage && (
         <label className="field georef-opacity">
-          <span>Opacity</span>
+          <span>{t("georef.opacity")}</span>
           <input
             type="range"
             min={0}

@@ -3,6 +3,7 @@ import { pointerVerb } from "../../lib/mobile";
 import { PLAN_COLORS } from "../../lib/types";
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 
 type ConfirmAction = null | "clear" | "delete";
 
@@ -67,14 +68,14 @@ export function EditPlanBar() {
         className="btn-done"
         onClick={() => dispatch({ type: "TOOL_DONE" })}
       >
-        Done
+        {t("plan.done")}
       </button>
       <button
         type="button"
         disabled={!activePlan || activePlan.coordinates.length === 0}
         onClick={() => activePlan && undoPlanCoordinate(activePlan.id)}
       >
-        Undo
+        {t("plan.undo")}
       </button>
       <button
         type="button"
@@ -83,7 +84,7 @@ export function EditPlanBar() {
           setActiveRoutePlanId(id);
         }}
       >
-        Add plan
+        {t("plan.add")}
       </button>
       {project.routePlans.length > 0 && (
         <div className="plan-picker" ref={planMenuRef}>
@@ -92,7 +93,7 @@ export function EditPlanBar() {
             className="plan-picker-trigger"
             aria-haspopup="listbox"
             aria-expanded={planMenuOpen}
-            aria-label="Active plan"
+            aria-label={t("plan.activeAria")}
             onClick={() => {
               setPlanMenuOpen((o) => !o);
               setColorOpen(false);
@@ -106,7 +107,7 @@ export function EditPlanBar() {
               />
             )}
             <span className="plan-picker-label">
-              {activePlan?.name ?? "Select plan"}
+              {activePlan?.name ?? t("plan.select")}
             </span>
             <span className="plan-picker-caret" aria-hidden>
               ▾
@@ -155,7 +156,7 @@ export function EditPlanBar() {
             <button
               type="button"
               className="plan-color-trigger"
-              aria-label="Plan color"
+              aria-label={t("plan.colorAria")}
               aria-haspopup="true"
               aria-expanded={colorOpen}
               onClick={() => {
@@ -172,7 +173,11 @@ export function EditPlanBar() {
               </span>
             </button>
             {colorOpen && (
-              <div className="plan-color-popover" role="listbox" aria-label="Plan colors">
+              <div
+                className="plan-color-popover"
+                role="listbox"
+                aria-label={t("plan.colorsAria")}
+              >
                 {PLAN_COLORS.map((c) => (
                   <button
                     key={c}
@@ -184,7 +189,7 @@ export function EditPlanBar() {
                     }
                     style={{ background: c }}
                     title={c}
-                    aria-label={`Color ${c}`}
+                    aria-label={t("plan.colorSwatchAria", { color: c })}
                     aria-selected={c === activePlan.color}
                     onClick={() => {
                       updateRoutePlan(activePlan.id, { color: c });
@@ -202,15 +207,15 @@ export function EditPlanBar() {
                 disabled={activePlan.coordinates.length === 0}
                 onClick={() => setConfirmAction("clear")}
               >
-                Clear path…
+                {t("plan.clearPath")}
               </button>
               <button type="button" onClick={() => setConfirmAction("delete")}>
-                Delete plan…
+                {t("plan.deletePlan")}
               </button>
             </>
           ) : confirmAction === "clear" ? (
             <div className="plan-action-confirm">
-              <span>Clear all points?</span>
+              <span>{t("plan.clearConfirm")}</span>
               <button
                 type="button"
                 className="btn-delete-confirm"
@@ -219,24 +224,24 @@ export function EditPlanBar() {
                   setConfirmAction(null);
                 }}
               >
-                Confirm
+                {t("common.confirm")}
               </button>
               <button type="button" onClick={() => setConfirmAction(null)}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           ) : (
             <div className="plan-action-confirm">
-              <span>Delete permanently?</span>
+              <span>{t("plan.deleteConfirm")}</span>
               <button
                 type="button"
                 className="btn-delete-confirm"
                 onClick={deleteActivePlan}
               >
-                Confirm
+                {t("common.confirm")}
               </button>
               <button type="button" onClick={() => setConfirmAction(null)}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -244,13 +249,15 @@ export function EditPlanBar() {
       )}
       {!activePlan && (
         <span className="hint">
-          Add a plan first, then {verb.toLowerCase()} the map to draw.
+          {t("plan.hintNoPlan", { verb: verb.toLowerCase() })}
         </span>
       )}
       {activePlan && (
         <span className="hint tool-bar-hint">
-          Editing {activePlan.name} — {verb.toLowerCase()} map to add · drag
-          handles to move · double-click / long-press a vertex to delete
+          {t("plan.hintEditing", {
+            name: activePlan.name,
+            verb: verb.toLowerCase(),
+          })}
         </span>
       )}
     </div>

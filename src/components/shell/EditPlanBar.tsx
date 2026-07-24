@@ -1,6 +1,10 @@
+import { useEffect, useState } from "react";
+import { pointerVerb } from "../../lib/mobile";
 import { PLAN_COLORS } from "../../lib/types";
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
+
+type ConfirmAction = null | "clear" | "delete";
 
 export function EditPlanBar() {
   const dispatch = useUiStore((s) => s.dispatch);
@@ -12,11 +16,28 @@ export function EditPlanBar() {
   const clearPlanCoordinates = useProjectStore((s) => s.clearPlanCoordinates);
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const verb = pointerVerb();
 
   const activePlan =
     project.routePlans.find((p) => p.id === activeRoutePlanId) ??
     project.routePlans[0] ??
     null;
+
+  useEffect(() => {
+    setConfirmAction(null);
+  }, [activePlan?.id]);
+
+  const deleteActivePlan = () => {
+    if (!activePlan) return;
+    const id = activePlan.id;
+    removeRoutePlan(id);
+    const rest = useProjectStore
+      .getState()
+      .project.routePlans.filter((p) => p.id !== id);
+    setActiveRoutePlanId(rest[0]?.id ?? null);
+    setConfirmAction(null);
+  };
 
   return (
     <div className="tool-bar">
@@ -47,12 +68,15 @@ export function EditPlanBar() {
         <select
           className="tool-bar-plan-select"
           value={activePlan?.id ?? ""}
-          onChange={(e) => setActiveRoutePlanId(e.target.value || null)}
+          onChange={(e) => {
+            setConfirmAction(null);
+            setActiveRoutePlanId(e.target.value || null);
+          }}
           aria-label="Active plan"
         >
           {project.routePlans.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} ({p.coordinates.length})
+              {p.name}
             </option>
           ))}
         </select>
@@ -66,46 +90,80 @@ export function EditPlanBar() {
               updateRoutePlan(activePlan.id, { name: e.target.value })
             }
           />
-          <select
-            value={activePlan.color}
-            onChange={(e) =>
-              updateRoutePlan(activePlan.id, { color: e.target.value })
-            }
-            aria-label="Plan color"
-          >
+          <div className="plan-color-swatches" role="group" aria-label="Plan color">
             {PLAN_COLORS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <button
+                key={c}
+                type="button"
+                className={
+                  c === activePlan.color
+                    ? "plan-color-swatch plan-color-swatch--active"
+                    : "plan-color-swatch"
+                }
+                style={{ background: c }}
+                title={c}
+                aria-label={`Color ${c}`}
+                aria-pressed={c === activePlan.color}
+                onClick={() => updateRoutePlan(activePlan.id, { color: c })}
+              />
             ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => clearPlanCoordinates(activePlan.id)}
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const id = activePlan.id;
-              removeRoutePlan(id);
-              const rest = useProjectStore
-                .getState()
-                .project.routePlans.filter((p) => p.id !== id);
-              setActiveRoutePlanId(rest[0]?.id ?? null);
-            }}
-          >
-            Delete
-          </button>
+          </div>
+          {confirmAction == null ? (
+            <>
+              <button
+                type="button"
+                disabled={activePlan.coordinates.length === 0}
+                onClick={() => setConfirmAction("clear")}
+              >
+                Clear path…
+              </button>
+              <button type="button" onClick={() => setConfirmAction("delete")}>
+                Delete plan…
+              </button>
+            </>
+          ) : confirmAction === "clear" ? (
+            <div className="plan-action-confirm">
+              <span>Clear all points?</span>
+              <button
+                type="button"
+                className="btn-delete-confirm"
+                onClick={() => {
+                  clearPlanCoordinates(activePlan.id);
+                  setConfirmAction(null);
+                }}
+              >
+                Confirm
+              </button>
+              <button type="button" onClick={() => setConfirmAction(null)}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="plan-action-confirm">
+              <span>Delete permanently?</span>
+              <button
+                type="button"
+                className="btn-delete-confirm"
+                onClick={deleteActivePlan}
+              >
+                Confirm
+              </button>
+              <button type="button" onClick={() => setConfirmAction(null)}>
+                Cancel
+              </button>
+            </div>
+          )}
         </>
       )}
       {!activePlan && (
-        <span className="hint">Add a plan first, then tap the map to draw.</span>
+        <span className="hint">
+          Add a plan first, then {verb.toLowerCase()} the map to draw.
+        </span>
       )}
       {activePlan && (
         <span className="hint tool-bar-hint">
-          Editing {activePlan.name} — tap the map to add vertices.
+          Editing {activePlan.name} — {verb.toLowerCase()} map to add · drag
+          handles to move · double-click / long-press a vertex to delete
         </span>
       )}
     </div>

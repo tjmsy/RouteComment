@@ -1,4 +1,5 @@
 import type { OMapPose } from "./omapPose";
+import { t } from "../i18n";
 
 export type { OMapPose };
 
@@ -96,7 +97,7 @@ export function nextPlanColor(existing: RoutePlan[]): string {
   return free ?? PLAN_COLORS[existing.length % PLAN_COLORS.length];
 }
 
-export function createEmptyProject(name = "Untitled"): ProjectData {
+export function createEmptyProject(name = t("common.untitled")): ProjectData {
   return {
     version: 1,
     name,

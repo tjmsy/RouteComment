@@ -17,6 +17,7 @@ import {
   isEditingComment,
   isReviewReadonly,
 } from "../ui/machine";
+import { t } from "../i18n";
 
 type Props = {
   map: maplibregl.Map | null;
@@ -127,9 +128,9 @@ function MapPinMarker({
     const icon = document.createElement("button");
     icon.type = "button";
     icon.className = "comment-icon comment-icon-map";
-    icon.title = "Show map comment";
+    icon.title = t("marker.showMap");
     icon.innerHTML = MAP_FOLD_SVG;
-    icon.setAttribute("aria-label", "Show map comment");
+    icon.setAttribute("aria-label", t("marker.showMap"));
     iconRef.current = icon;
 
     const content = document.createElement("div");
@@ -144,12 +145,12 @@ function MapPinMarker({
     if (editable) {
       const ta = body as HTMLTextAreaElement;
       ta.value = comment.text;
-      ta.placeholder = "Write a comment…";
+      ta.placeholder = t("comment.placeholder");
       ta.addEventListener("input", () => {
         updateComment(comment.id, { text: ta.value });
       });
     } else {
-      body.textContent = comment.text.trim() ? comment.text : "(No text)";
+      body.textContent = comment.text.trim() ? comment.text : t("common.noText");
     }
     content.appendChild(body);
 
@@ -157,7 +158,7 @@ function MapPinMarker({
     if (editable) {
       handle = document.createElement("div");
       handle.className = "comment-map-popup-resize";
-      handle.title = "Drag to resize";
+      handle.title = t("marker.dragResize");
       content.appendChild(handle);
     }
 
@@ -300,8 +301,8 @@ function MapPinMarker({
     markerRef.current?.setDraggable(draggable);
     if (iconRef.current) {
       iconRef.current.title = draggable
-        ? "Folded map comment (drag to move)"
-        : "Folded map comment — tap to expand";
+        ? t("marker.foldedDrag")
+        : t("marker.foldedTap");
       iconRef.current.classList.toggle("comment-icon-nodrag", !draggable);
     }
   }, [draggable]);
@@ -343,7 +344,7 @@ function MapPinMarker({
     if (body instanceof HTMLTextAreaElement) {
       if (document.activeElement !== body) body.value = comment.text;
     } else {
-      body.textContent = comment.text.trim() ? comment.text : "(No text)";
+      body.textContent = comment.text.trim() ? comment.text : t("common.noText");
     }
   }, [comment.text]);
 
@@ -378,9 +379,9 @@ function FollowRangeMarker({
     const icon = document.createElement("button");
     icon.type = "button";
     icon.className = "comment-icon comment-icon-follow";
-    icon.title = "Follow comment — click to edit text / show range";
+    icon.title = t("marker.followTitle");
     icon.textContent = RUNNER_ICON;
-    icon.setAttribute("aria-label", "Follow comment");
+    icon.setAttribute("aria-label", t("marker.followAria"));
     iconRef.current = icon;
 
     const marker = new maplibregl.Marker({
@@ -405,7 +406,7 @@ function FollowRangeMarker({
     const body = document.createElement("textarea");
     body.className = "comment-map-popup-body comment-map-popup-edit";
     body.value = comment.text;
-    body.placeholder = "Write a follow comment…";
+    body.placeholder = t("comment.followPlaceholder");
     body.addEventListener("input", () => {
       updateComment(comment.id, { text: body.value });
     });
@@ -569,8 +570,8 @@ function FollowEndpointHandle({
     el.type = "button";
     el.className = "follow-endpoint-marker";
     el.textContent = label;
-    el.title = "Drag along the track to adjust";
-    el.setAttribute("aria-label", `Follow range endpoint ${label}`);
+    el.title = t("marker.endpointTitle");
+    el.setAttribute("aria-label", t("marker.endpointAria", { label }));
 
     const pos = interpolateTrackPosition(trackPointsRef.current, timeMs);
     const marker = new maplibregl.Marker({
@@ -657,10 +658,10 @@ function DanmakuMarker({
     el.type = "button";
     el.className = "comment-icon comment-icon-danmaku";
     el.title = draggable
-      ? "Danmaku — drag along track to set time"
-      : "Danmaku — tap to open";
+      ? t("marker.danmakuDrag")
+      : t("marker.danmakuTap");
     el.innerHTML = DANMAKU_ICON_SVG;
-    el.setAttribute("aria-label", "Danmaku comment");
+    el.setAttribute("aria-label", t("marker.danmakuAria"));
     elRef.current = el;
 
     const marker = new maplibregl.Marker({
@@ -731,8 +732,8 @@ function DanmakuMarker({
     markerRef.current?.setDraggable(draggable);
     if (elRef.current) {
       elRef.current.title = draggable
-        ? "Danmaku — drag along track to set time"
-        : "Danmaku — tap to open";
+        ? t("marker.danmakuDrag")
+        : t("marker.danmakuTap");
       elRef.current.classList.toggle("comment-icon-nodrag", !draggable);
     }
   }, [draggable]);

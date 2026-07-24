@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /** Matches `@media (max-width: 800px)` in App.css */
 export const MOBILE_MQ = "(max-width: 800px)";
 
@@ -29,7 +31,7 @@ export function trackDragHitPx(base = 40): number {
   return isCoarsePointer() ? Math.max(base, 56) : base;
 }
 
-/** "Tap" on touch-first devices, otherwise "Click". */
-export function pointerVerb(): "Tap" | "Click" {
-  return isCoarsePointer() ? "Tap" : "Click";
+/** Localized "Tap" / "Click" for touch-first vs mouse. */
+export function pointerVerb(): string {
+  return t(isCoarsePointer() ? "pointer.tap" : "pointer.click");
 }

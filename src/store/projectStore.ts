@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { t } from "../i18n";
 import type {
   Comment,
   OMapPose,
@@ -131,7 +132,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => {
       const plan: RoutePlan = {
         id,
-        name: "Plan",
+        name: t("plan.defaultName"),
         coordinates: [],
         visible: true,
         color: nextPlanColor(s.project.routePlans),

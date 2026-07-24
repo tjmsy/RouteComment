@@ -1,5 +1,6 @@
 import { useProjectIO } from "../../hooks/useProjectIO";
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 
 export function EmptyProject() {
   const dispatch = useUiStore((s) => s.dispatch);
@@ -7,21 +8,21 @@ export function EmptyProject() {
 
   return (
     <div className="empty-project">
-      <p className="empty-project-lead">Open or start a competition project</p>
+      <p className="empty-project-lead">{t("empty.lead")}</p>
       <div className="empty-project-actions">
         <button
           type="button"
           className="empty-cta"
           onClick={() => zipInputRef.current?.click()}
         >
-          Load ZIP
+          {t("empty.loadZip")}
         </button>
         <button
           type="button"
           className="empty-cta"
           onClick={() => dispatch({ type: "START_CREATE" })}
         >
-          Create Project
+          {t("empty.createProject")}
         </button>
       </div>
       {hiddenInputs}

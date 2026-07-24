@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { t } from "../i18n";
 import type { OMapPose, ProjectData } from "./types";
 import {
   createEmptyProject,
@@ -55,7 +56,7 @@ export async function loadProjectZip(file: Blob): Promise<LoadedProject> {
   const zip = await JSZip.loadAsync(file);
   const projectFile = zip.file("project.json");
   if (!projectFile) {
-    throw new Error("project.json not found in ZIP");
+    throw new Error(t("io.projectJsonMissing"));
   }
 
   const jsonText = await projectFile.async("string");
@@ -91,7 +92,7 @@ function normalizeProject(
     georef?: { pose?: unknown; controlPoints?: unknown };
   },
 ): ProjectData {
-  const base = createEmptyProject(parsed.name ?? "Untitled");
+  const base = createEmptyProject(parsed.name ?? t("common.untitled"));
   const pose = isPose(parsed.georef?.pose) ? parsed.georef.pose : null;
   return {
     version: 1,

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
 import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
 
 type Props = {
   title: string;
@@ -29,7 +30,7 @@ export function PanelHost({
       <button
         type="button"
         className="panel-host-backdrop"
-        aria-label="閉じる"
+        aria-label={t("panel.close")}
         onClick={() => dispatch({ type: "DISMISS" })}
       />
       <aside
@@ -44,7 +45,7 @@ export function PanelHost({
             className="btn-dismiss"
             onClick={() => dispatch({ type: "DISMISS" })}
           >
-            閉じる
+            {t("panel.close")}
           </button>
         </header>
         <div className="panel-host-body">{children}</div>

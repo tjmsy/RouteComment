@@ -3,6 +3,13 @@ import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
 import { CommentPanel } from "../CommentPanel";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
+import { t } from "../../i18n";
+
+function commentToolLabel(kind: "map" | "follow" | "danmaku"): string {
+  if (kind === "follow") return t("commentTool.kindFollow");
+  if (kind === "danmaku") return t("commentTool.kindDanmaku");
+  return t("commentTool.kindMap");
+}
 
 function CommentToolControls() {
   const dispatch = useUiStore((s) => s.dispatch);
@@ -26,7 +33,7 @@ function CommentToolControls() {
           className="btn-done"
           onClick={() => dispatch({ type: "TOOL_DONE" })}
         >
-          Done
+          {t("common.done")}
         </button>
         <div className="mode-row comment-tool-row">
           <button
@@ -34,30 +41,30 @@ function CommentToolControls() {
             className={commentTool === "follow" ? "active" : ""}
             onClick={() => pickTool("follow")}
           >
-            Follow
+            {t("commentTool.follow")}
           </button>
           <button
             type="button"
             className={commentTool === "map" ? "active" : ""}
             onClick={() => pickTool("map")}
           >
-            Map
+            {t("commentTool.map")}
           </button>
           <button
             type="button"
             className={commentTool === "danmaku" ? "active" : ""}
             onClick={() => pickTool("danmaku")}
           >
-            Danmaku
+            {t("commentTool.danmaku")}
           </button>
         </div>
       </div>
       <p className="hint comment-tool-hint">
         {commentTool === "follow"
-          ? `${verb} the GPS track twice for start/end, then drag the markers`
+          ? t("commentTool.hintFollow", { verb })
           : commentTool === "danmaku"
-            ? `${verb} the track to place a scrolling comment`
-            : `${verb} the map to place a comment bubble (× collapses long text)`}
+            ? t("commentTool.hintDanmaku", { verb })
+            : t("commentTool.hintMap", { verb })}
       </p>
     </>
   );
@@ -72,7 +79,7 @@ function CommentList() {
   const activeId = expandedCommentIds[expandedCommentIds.length - 1] ?? null;
 
   if (comments.length === 0) {
-    return <p className="hint">No comments yet.</p>;
+    return <p className="hint">{t("commentTool.noComments")}</p>;
   }
 
   return (
@@ -87,13 +94,13 @@ function CommentList() {
               setCommentExpanded(c.id, true);
             }}
           >
-            <span className="cp-kind">{c.kind}</span>
-            {c.text.trim() || "(No text)"}
+            <span className="cp-kind">{commentToolLabel(c.kind)}</span>
+            {c.text.trim() || t("common.noText")}
           </button>
           <button
             type="button"
             className="cp-delete"
-            title="Delete"
+            title={t("common.delete")}
             onClick={() => {
               removeComment(c.id);
               if (c.id === activeId) setCommentExpanded(c.id, false);
@@ -116,14 +123,14 @@ export function EditCommentBar() {
         <div className="tool-bar tool-bar--comment">
           <CommentToolControls />
           <details className="comment-list-details">
-            <summary>Comments</summary>
+            <summary>{t("commentTool.comments")}</summary>
             <CommentList />
           </details>
         </div>
       ) : (
         <aside className="comment-float-panel comment-float-panel--right">
           <CommentToolControls />
-          <h3 className="comment-float-title">Comments</h3>
+          <h3 className="comment-float-title">{t("commentTool.comments")}</h3>
           <CommentList />
           <CommentPanel variant="sidebar" />
         </aside>

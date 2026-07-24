@@ -26,6 +26,7 @@ import {
   isMobileViewport,
   MOBILE_PROFILE_MAX_HEIGHT_RATIO,
 } from "../lib/mobile";
+import { t } from "../i18n";
 
 const CURSOR_SYNC_KEY = "profile";
 /** Reserve the same bottom space as a visible x-axis on every chart. */
@@ -39,30 +40,33 @@ type ChartRow = {
   formatValue: (v: number) => string;
 };
 
-const CHART_ROWS: ChartRow[] = [
-  {
-    kind: "ele",
-    label: "Elevation",
-    color: "#38bdf8",
-    getValue: (s) => s.ele,
-    formatValue: (v) => `${v.toFixed(0)} m`,
-  },
-  {
-    kind: "hr",
-    label: "Heart rate",
-    color: "#f472b6",
-    getValue: (s) => s.heartRate,
-    formatValue: (v) => `${Math.round(v)} bpm`,
-  },
-  {
-    kind: "speed",
-    label: "Pace",
-    color: "#a3e635",
-    getValue: (s) =>
-      s.paceMinPerKm != null ? clampPace(s.paceMinPerKm) : undefined,
-    formatValue: (v) => `${formatPaceValue(v)} min/km`,
-  },
-];
+function getChartRows(): ChartRow[] {
+  return [
+    {
+      kind: "ele",
+      label: t("profile.elevation"),
+      color: "#38bdf8",
+      getValue: (s) => s.ele,
+      formatValue: (v) => t("profile.valueM", { value: v.toFixed(0) }),
+    },
+    {
+      kind: "hr",
+      label: t("profile.heartRate"),
+      color: "#f472b6",
+      getValue: (s) => s.heartRate,
+      formatValue: (v) => t("profile.valueBpm", { value: Math.round(v) }),
+    },
+    {
+      kind: "speed",
+      label: t("profile.pace"),
+      color: "#a3e635",
+      getValue: (s) =>
+        s.paceMinPerKm != null ? clampPace(s.paceMinPerKm) : undefined,
+      formatValue: (v) =>
+        t("profile.valuePace", { value: formatPaceValue(v) }),
+    },
+  ];
+}
 
 const PROFILE_HEADER_MIN_H = 36;
 /** Matches `.profile-charts-resize-handle` (6px desktop / 12px mobile). */
@@ -225,7 +229,7 @@ function formatAxisTime(sec: number): string {
 }
 
 function visibleRows(profile: TrackProfile): ChartRow[] {
-  return CHART_ROWS.filter((row) => {
+  return getChartRows().filter((row) => {
     if (row.kind === "ele") return profile.hasElevation;
     if (row.kind === "hr") return profile.hasHeartRate;
     if (row.kind === "speed") return profile.hasSpeed;
@@ -683,7 +687,7 @@ export function TrackProfileCharts() {
         onPointerDown={onResizeHandleDown}
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Resize profile panel"
+        aria-label={t("profile.resizeAria")}
       />
       <div className="profile-charts-header">
         <button
@@ -692,7 +696,7 @@ export function TrackProfileCharts() {
           onClick={() => setPanelCollapsed((c) => !c)}
           aria-expanded={!panelCollapsed}
         >
-          {panelCollapsed ? "▸" : "▾"} Profile
+          {panelCollapsed ? "▸" : "▾"} {t("profile.title")}
         </button>
         {!panelCollapsed && rows.length > 0 && (
           <div
@@ -716,11 +720,11 @@ export function TrackProfileCharts() {
           </div>
         )}
         {demLoading && (
-          <span className="profile-charts-status">Loading elevation…</span>
+          <span className="profile-charts-status">{t("profile.loading")}</span>
         )}
         {!demLoading && !profile.hasElevation && needsDemElevation(points) && (
           <span className="profile-charts-status profile-charts-status--warn">
-            Elevation unavailable
+            {t("profile.unavailable")}
           </span>
         )}
         {activeFollow.length > 0 && (
@@ -733,7 +737,7 @@ export function TrackProfileCharts() {
         <div className="profile-charts-body" ref={bodyRef}>
           {expandedRows.length === 0 && rows.length > 0 && (
             <p className="profile-charts-empty">
-              Select a series above to show charts.
+              {t("profile.selectSeries")}
             </p>
           )}
           {expandedRows.map((row) => (
@@ -746,7 +750,7 @@ export function TrackProfileCharts() {
             </div>
           ))}
           {rows.length === 0 && demLoading && (
-            <p className="profile-charts-empty">Waiting for elevation data…</p>
+            <p className="profile-charts-empty">{t("profile.waiting")}</p>
           )}
           <div
             ref={tooltipRef}

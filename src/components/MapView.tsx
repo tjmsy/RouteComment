@@ -23,6 +23,7 @@ import { trackDragHitPx, trackHitPx, pointerVerb } from "../lib/mobile";
 import { CommentMarkers } from "./CommentMarkers";
 import { PlanVertexEditor } from "./PlanVertexEditor";
 import { DEFAULT_POPUP_HEIGHT, DEFAULT_POPUP_WIDTH } from "../lib/types";
+import { t } from "../i18n";
 
 const TRACK_SOLID_COLOR = "#e11d48";
 
@@ -1130,7 +1131,7 @@ export function MapView() {
       if (currentMode === "georef") {
         const currentPose = useProjectStore.getState().project.georef.pose;
         if (!currentPose) {
-          setStatusMessage("Load a map image first.");
+          setStatusMessage(t("status.loadMapFirst"));
           return;
         }
 
@@ -1177,15 +1178,11 @@ export function MapView() {
             setGeorefPendingFrom(null);
             setGeorefPin(null);
             setGeorefStep(0);
-            setStatusMessage(
-              "Aligned. Repeat the 2-point cycle to fine-tune, or tap Done when finished.",
-            );
+            setStatusMessage(t("status.aligned"));
           } else {
             clearAlignMarkers();
             resetGeorefAlign();
-            setStatusMessage(
-              "Points too close — pick features farther apart.",
-            );
+            setStatusMessage(t("status.pointsTooClose"));
           }
         }
         return;
@@ -1196,7 +1193,7 @@ export function MapView() {
           useUiStore.getState().activeRoutePlanId ??
           useProjectStore.getState().project.routePlans[0]?.id;
         if (!planId) {
-          setStatusMessage("Add a plan first, then tap the map to draw.");
+          setStatusMessage(t("status.addPlanFirst"));
           return;
         }
         appendPlanCoordinate(planId, [lngLat.lng, lngLat.lat]);
@@ -1209,15 +1206,13 @@ export function MapView() {
 
         if (tool === "danmaku") {
           if (pts.length === 0) {
-            setStatusMessage(
-              "Load a GPS track before adding a danmaku comment.",
-            );
+            setStatusMessage(t("status.loadTrackDanmaku"));
             return;
           }
           const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
           if (!hit || hit.timeOffsetMs == null) {
             setStatusMessage(
-              `${pointerVerb()} near the GPS track to place a danmaku.`,
+              t("status.placeDanmaku", { verb: pointerVerb() }),
             );
             return;
           }
@@ -1229,9 +1224,7 @@ export function MapView() {
             timeStartMs: hit.timeOffsetMs,
           });
           setCommentExpanded(id, true);
-          setStatusMessage(
-            "Danmaku added. Edit text in the panel, or drag the marker along the track.",
-          );
+          setStatusMessage(t("status.danmakuAdded"));
           return;
         }
 
@@ -1261,14 +1254,12 @@ export function MapView() {
 
         // follow: two track taps → endpoints; then drag markers to adjust
         if (pts.length === 0) {
-          setStatusMessage("Load a GPS track before adding a follow comment.");
+          setStatusMessage(t("status.loadTrackFollow"));
           return;
         }
         const draft = useUiStore.getState().followDraftRange;
         if (draft) {
-          setStatusMessage(
-            "Drag the endpoint markers to adjust, then Confirm.",
-          );
+          setStatusMessage(t("status.dragEndpoints"));
           return;
         }
         const hit = isNearTrack(
@@ -1283,12 +1274,12 @@ export function MapView() {
           if (pending != null) {
             setFollowRangeStartMs(null);
             setStatusMessage(
-              `${pointerVerb()} the GPS track twice to set start and end`,
+              t("status.commentFollow", { verb: pointerVerb() }),
             );
             return;
           }
           setStatusMessage(
-            `${pointerVerb()} near the GPS track to set the range.`,
+            t("status.nearTrackRange", { verb: pointerVerb() }),
           );
           return;
         }
@@ -1297,15 +1288,13 @@ export function MapView() {
         if (pendingStart == null) {
           setFollowRangeStartMs(hit.timeOffsetMs);
           setStatusMessage(
-            `Start set. ${pointerVerb()} the track again to set the end.`,
+            t("status.startSet", { verb: pointerVerb() }),
           );
           return;
         }
 
         if (Math.abs(hit.timeOffsetMs - pendingStart) < 300) {
-          setStatusMessage(
-            "End is too close to start — pick farther along the track.",
-          );
+          setStatusMessage(t("status.endTooClose"));
           return;
         }
         const mid = interpolateTrackPose(
@@ -1332,9 +1321,7 @@ export function MapView() {
           targetId,
         });
         setFollowRangeStartMs(null);
-        setStatusMessage(
-          "Drag markers to adjust, then Confirm — or Redo to pick again.",
-        );
+        setStatusMessage(t("status.dragConfirmRedo"));
       }
     };
 
@@ -1390,7 +1377,7 @@ export function MapView() {
       {showLayerLegend && (
         <div
           className="map-legend map-legend--layers"
-          aria-label="Map layer legend"
+          aria-label={t("map.legendAria")}
         >
           {showTrackInLegend && (
             <div className="map-legend-row">
@@ -1407,7 +1394,7 @@ export function MapView() {
                 }
                 aria-hidden
               />
-              <span className="map-legend-label">GPS track</span>
+              <span className="map-legend-label">{t("map.gpsTrack")}</span>
             </div>
           )}
           {legendPlans.map((plan) => (
@@ -1431,10 +1418,10 @@ export function MapView() {
         >
           <div
             className="maplibregl-ctrl map-legend map-legend--speed"
-            aria-label="Track pace scale (min/km)"
+            aria-label={t("map.paceScaleAria")}
           >
             <span className="map-legend-speed-label">
-              Slow
+              {t("map.slow")}
               <br />
               {formatPaceValue(
                 mpsToPaceMinPerKm(speedColoredTrack.minSpeedMps) ?? 0,
@@ -1442,10 +1429,12 @@ export function MapView() {
             </span>
             <div className="map-legend-speed-mid">
               <div className="map-legend-speed-bar" />
-              <span className="map-legend-speed-unit">min/km</span>
+              <span className="map-legend-speed-unit">
+                {t("map.paceUnit")}
+              </span>
             </div>
             <span className="map-legend-speed-label">
-              Fast
+              {t("map.fast")}
               <br />
               {formatPaceValue(
                 mpsToPaceMinPerKm(speedColoredTrack.maxSpeedMps) ?? 0,

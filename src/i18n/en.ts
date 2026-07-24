@@ -1,0 +1,250 @@
+/** English UI strings (source of truth for keys). */
+export const en = {
+  "app.title": "RouteComment",
+
+  "pointer.tap": "Tap",
+  "pointer.click": "Click",
+
+  "common.done": "Done",
+  "common.cancel": "Cancel",
+  "common.confirm": "Confirm",
+  "common.close": "Close",
+  "common.delete": "Delete",
+  "common.dismiss": "Dismiss",
+  "common.undo": "Undo",
+  "common.redo": "Redo",
+  "common.noText": "(No text)",
+  "common.untitled": "Untitled",
+  "common.projectFallback": "project",
+
+  "empty.lead": "Open or start a competition project",
+  "empty.loadZip": "Load ZIP",
+  "empty.createProject": "Create Project",
+
+  "choose.edit": "Edit",
+  "choose.plan": "Plan",
+  "choose.comment": "Comment",
+
+  "panel.close": "Close",
+
+  "review.project": "Project",
+  "review.layers": "Layers",
+  "review.edit": "Edit",
+
+  "georef.hint":
+    "{verb} overlay → basemap, then a second pair to rotate/scale.",
+  "georef.opacity": "Opacity",
+
+  "followBar.cancelled": "Follow range cancelled.",
+  "followBar.reselecting": "Re-selecting range…",
+  "followBar.dragConfirm": "Drag A/B markers, then Confirm",
+
+  "wizard.title": "Create project",
+  "wizard.gpxHint": "Load a GPX so the map jumps to the course area.",
+  "wizard.gpx": "GPX",
+  "wizard.skipGpx": "Skip GPX",
+  "wizard.mapHint":
+    "Add a map image to georeference, or skip to continue without one.",
+  "wizard.mapImage": "Map image",
+  "wizard.skipMap": "Skip map",
+  "wizard.georefHint":
+    "Two-point align: {verb} overlay feature → basemap, then a second pair. When finished, tap Done.",
+  "wizard.mapOpacity": "Map opacity",
+  "wizard.cancelMap": "Cancel map image",
+  "wizard.mapRemoved": "Map image removed. Load another, or skip map.",
+
+  "project.title": "Project",
+  "project.saveZip": "Save ZIP",
+  "project.loadZip": "Load ZIP",
+  "project.name": "Project name",
+  "project.namePlaceholder": "e.g. Local meet 2026",
+  "project.distance": "Distance",
+  "project.time": "Time",
+  "project.elevGain": "Elev gain",
+  "project.avgHr": "Avg HR",
+  "project.unitM": "m",
+  "project.unitBpm": "bpm",
+  "project.gpx": "GPX",
+  "project.mapImage": "Map image",
+  "project.georeference": "Georeference",
+
+  "layers.title": "Layers",
+  "layers.pauseBasemap": "Pause playback to toggle the basemap",
+  "layers.basemap": "Basemap",
+  "layers.gpsTrack": "GPS track",
+  "layers.colorBySpeed": "Color by speed",
+  "layers.trackWidth": "Track width ({width})",
+  "layers.profileCharts": "Profile charts",
+  "layers.elevationFailed": "Elevation fetch failed.",
+
+  "commentTool.follow": "Follow",
+  "commentTool.map": "Map",
+  "commentTool.danmaku": "Danmaku",
+  "commentTool.hintFollow":
+    "{verb} the GPS track twice for start/end, then drag the markers",
+  "commentTool.hintDanmaku": "{verb} the track to place a scrolling comment",
+  "commentTool.hintMap":
+    "{verb} the map to place a comment bubble (× collapses long text)",
+  "commentTool.noComments": "No comments yet.",
+  "commentTool.comments": "Comments",
+  "commentTool.kindFollow": "follow",
+  "commentTool.kindMap": "map",
+  "commentTool.kindDanmaku": "danmaku",
+
+  "plan.done": "Done",
+  "plan.undo": "Undo",
+  "plan.add": "Add plan",
+  "plan.activeAria": "Active plan",
+  "plan.select": "Select plan",
+  "plan.colorAria": "Plan color",
+  "plan.colorsAria": "Plan colors",
+  "plan.colorSwatchAria": "Color {color}",
+  "plan.clearPath": "Clear path…",
+  "plan.deletePlan": "Delete plan…",
+  "plan.clearConfirm": "Clear all points?",
+  "plan.deleteConfirm": "Delete permanently?",
+  "plan.hintNoPlan":
+    "Add a plan first, then {verb} the map to draw.",
+  "plan.hintEditing":
+    "Editing {name} — {verb} map to add · drag handles to move · double-click / long-press a vertex to delete",
+  "plan.defaultName": "Plan",
+  "plan.vertexTitle":
+    "Drag to move · double-click or long-press to delete",
+  "plan.midTitle": "Drag to add a vertex",
+  "plan.vertexAria": "Plan vertex {n}",
+  "plan.midAria": "Add plan vertex",
+
+  "anim.pause": "Pause",
+  "anim.play": "Play",
+  "anim.speedTitle": "Playback speed",
+  "anim.headingTitle": "Heading up",
+  "anim.headingLabel": "Head-up",
+  "anim.terrainTitle": "Terrain 3D",
+  "anim.terrainLabel": "3D",
+
+  "toast.dismiss": "Dismiss",
+  "sheet.closeComment": "Close comment",
+
+  "comment.kindFollow": "Follow comment",
+  "comment.kindDanmaku": "Danmaku comment",
+  "comment.kindMap": "Map comment",
+  "comment.placeholder": "Write a comment…",
+  "comment.followPlaceholder": "Write a follow comment…",
+  "comment.editInPopup": "Edit text in the map popup.",
+  "comment.start": "Start",
+  "comment.end": "End",
+  "comment.timePlaceholder": "hh:mm:ss",
+  "comment.reselectRange": "Re-select range on map",
+  "comment.triggerTime": "Trigger time",
+  "comment.atTime": "At {time}",
+  "comment.mapReadonlyHint":
+    "{verb} the pin icon on the map to open it. Switch to Comment mode to edit or move the pin.",
+  "comment.danmakuReadonlyHint":
+    "Scrolls right-to-left once when playback reaches the trigger time.",
+  "comment.delete": "Delete comment…",
+  "comment.deleteConfirm": "Delete permanently?",
+  "comment.confirmDelete": "Confirm delete",
+
+  "marker.showMap": "Show map comment",
+  "marker.dragResize": "Drag to resize",
+  "marker.foldedDrag": "Folded map comment (drag to move)",
+  "marker.foldedTap": "Folded map comment — tap to expand",
+  "marker.followTitle": "Follow comment — click to edit text / show range",
+  "marker.followAria": "Follow comment",
+  "marker.endpointTitle": "Drag along the track to adjust",
+  "marker.endpointAria": "Follow range endpoint {label}",
+  "marker.danmakuDrag": "Danmaku — drag along track to set time",
+  "marker.danmakuTap": "Danmaku — tap to open",
+  "marker.danmakuAria": "Danmaku comment",
+
+  "profile.elevation": "Elevation",
+  "profile.heartRate": "Heart rate",
+  "profile.pace": "Pace",
+  "profile.unitM": "m",
+  "profile.unitBpm": "bpm",
+  "profile.unitPace": "min/km",
+  "profile.valueM": "{value} m",
+  "profile.valueBpm": "{value} bpm",
+  "profile.valuePace": "{value} min/km",
+  "profile.resizeAria": "Resize profile panel",
+  "profile.title": "Profile",
+  "profile.loading": "Loading elevation…",
+  "profile.unavailable": "Elevation unavailable",
+  "profile.selectSeries": "Select a series above to show charts.",
+  "profile.waiting": "Waiting for elevation data…",
+
+  "map.legendAria": "Map layer legend",
+  "map.gpsTrack": "GPS track",
+  "map.paceScaleAria": "Track pace scale (min/km)",
+  "map.slow": "Slow",
+  "map.fast": "Fast",
+  "map.paceUnit": "min/km",
+
+  "io.failedLoadImage": "Failed to load image",
+  "io.noTrackPoints": "No track points found in GPX.",
+  "io.loadedTrackPoints": "Loaded {count} track points.",
+  "io.failedParseGpx": "Failed to parse GPX.",
+  "io.mapPlaced": "Map image placed on the map.",
+  "io.failedLoadMap": "Failed to load map image.",
+  "io.projectSaved": "Project saved.",
+  "io.failedSave": "Failed to save project.",
+  "io.projectLoaded": "Project loaded.",
+  "io.failedLoadZip": "Failed to load project ZIP.",
+  "io.projectJsonMissing": "project.json not found in ZIP",
+
+  "status.startWithGpx":
+    "Start with GPX so the map jumps to the competition area, then add the map image.",
+  "status.finishSetupGpx":
+    "Finish Setup: load GPX (or Skip), then map image (or Skip).",
+  "status.finishSetupMap":
+    "Finish Setup: add a map image (or Skip) to continue.",
+  "status.georef0": "Georef: {verb} a feature on the map image overlay",
+  "status.georef1": "Georef: {verb} the matching point on the basemap",
+  "status.georef2": "Georef: {verb} a second feature on the overlay",
+  "status.georef3": "Georef: {verb} the matching second point on the basemap",
+  "status.editPlan": "Add a plan first, then {verb} the map to draw",
+  "status.editFollow":
+    "{verb} or drag along the GPS track to set the range",
+  "status.editDanmaku": "{verb} Add danmaku at the current playback time",
+  "status.editMap": "{verb} the map to place a comment bubble",
+  "status.commentFollow":
+    "{verb} the GPS track twice to set start and end",
+  "status.commentDanmaku":
+    "{verb} the GPS track to place a scrolling comment",
+  "status.commentMap": "{verb} the map to place a comment bubble",
+  "status.followReselect":
+    "{verb} the GPS track twice to set a new range",
+  "status.followSaved": "Follow comment saved. Edit text in the map popup.",
+  "status.addMapImage":
+    "Add a map image to georeference, or Skip to continue without one.",
+  "status.gpxSkipped":
+    "GPX skipped. Add a map image to georeference, or Skip to continue without one.",
+  "status.setupComplete":
+    "Setup complete. You can add a map image later in Edit → Setup.",
+  "status.loadMapFirst": "Load a map image first.",
+  "status.aligned":
+    "Aligned. Repeat the 2-point cycle to fine-tune, or tap Done when finished.",
+  "status.pointsTooClose":
+    "Points too close — pick features farther apart.",
+  "status.addPlanFirst": "Add a plan first, then tap the map to draw.",
+  "status.loadTrackDanmaku":
+    "Load a GPS track before adding a danmaku comment.",
+  "status.placeDanmaku":
+    "{verb} near the GPS track to place a danmaku.",
+  "status.danmakuAdded":
+    "Danmaku added. Edit text in the panel, or drag the marker along the track.",
+  "status.loadTrackFollow":
+    "Load a GPS track before adding a follow comment.",
+  "status.dragEndpoints":
+    "Drag the endpoint markers to adjust, then Confirm.",
+  "status.nearTrackRange":
+    "{verb} near the GPS track to set the range.",
+  "status.startSet":
+    "Start set. {verb} the track again to set the end.",
+  "status.endTooClose":
+    "End is too close to start — pick farther along the track.",
+  "status.dragConfirmRedo":
+    "Drag markers to adjust, then Confirm — or Redo to pick again.",
+} as const;
+
+export type MessageKey = keyof typeof en;

@@ -8,6 +8,7 @@ import {
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 import { isEditingComment } from "../ui/machine";
+import { t } from "../i18n";
 
 type Props = {
   children: ReactNode;
@@ -121,7 +122,7 @@ export function CommentSheetHost({ children }: Props) {
           <button
             type="button"
             className="comment-sheet-backdrop"
-            aria-label="Close comment"
+            aria-label={t("sheet.closeComment")}
             onClick={() => clearExpandedComments()}
           />
           <div className="comment-sheet-lift">{children}</div>

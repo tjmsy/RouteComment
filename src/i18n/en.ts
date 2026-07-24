@@ -77,9 +77,9 @@ export const en = {
   "layers.profileCharts": "Profile charts",
   "layers.elevationFailed": "Elevation fetch failed.",
 
-  "commentTool.follow": "Follow",
-  "commentTool.map": "Map",
-  "commentTool.danmaku": "Danmaku",
+  "commentTool.follow": "Live Notes",
+  "commentTool.map": "Place Notes",
+  "commentTool.danmaku": "Captions",
   "commentTool.hintFollow":
     "{verb} the GPS track twice for start/end, then drag the markers",
   "commentTool.hintDanmaku": "{verb} the track to place a scrolling comment",
@@ -103,13 +103,11 @@ export const en = {
   "plan.deletePlan": "Delete plan…",
   "plan.clearConfirm": "Clear all points?",
   "plan.deleteConfirm": "Delete permanently?",
-  "plan.hintNoPlan":
-    "Add a plan first, then {verb} the map to draw.",
+  "plan.hintNoPlan": "Add a plan first, then {verb} the map to draw.",
   "plan.hintEditing":
     "Editing {name} — {verb} map to add · drag handles to move · double-click / long-press a vertex to delete",
   "plan.defaultName": "Plan",
-  "plan.vertexTitle":
-    "Drag to move · double-click or long-press to delete",
+  "plan.vertexTitle": "Drag to move · double-click or long-press to delete",
   "plan.midTitle": "Drag to add a vertex",
   "plan.vertexAria": "Plan vertex {n}",
   "plan.midAria": "Add plan vertex",
@@ -203,17 +201,13 @@ export const en = {
   "status.georef2": "Georef: {verb} a second feature on the overlay",
   "status.georef3": "Georef: {verb} the matching second point on the basemap",
   "status.editPlan": "Add a plan first, then {verb} the map to draw",
-  "status.editFollow":
-    "{verb} or drag along the GPS track to set the range",
+  "status.editFollow": "{verb} or drag along the GPS track to set the range",
   "status.editDanmaku": "{verb} Add danmaku at the current playback time",
   "status.editMap": "{verb} the map to place a comment bubble",
-  "status.commentFollow":
-    "{verb} the GPS track twice to set start and end",
-  "status.commentDanmaku":
-    "{verb} the GPS track to place a scrolling comment",
+  "status.commentFollow": "{verb} the GPS track twice to set start and end",
+  "status.commentDanmaku": "{verb} the GPS track to place a scrolling comment",
   "status.commentMap": "{verb} the map to place a comment bubble",
-  "status.followReselect":
-    "{verb} the GPS track twice to set a new range",
+  "status.followReselect": "{verb} the GPS track twice to set a new range",
   "status.followSaved": "Follow comment saved. Edit text in the map popup.",
   "status.addMapImage":
     "Add a map image to georeference, or Skip to continue without one.",
@@ -224,23 +218,17 @@ export const en = {
   "status.loadMapFirst": "Load a map image first.",
   "status.aligned":
     "Aligned. Repeat the 2-point cycle to fine-tune, or tap Done when finished.",
-  "status.pointsTooClose":
-    "Points too close — pick features farther apart.",
+  "status.pointsTooClose": "Points too close — pick features farther apart.",
   "status.addPlanFirst": "Add a plan first, then tap the map to draw.",
   "status.loadTrackDanmaku":
     "Load a GPS track before adding a danmaku comment.",
-  "status.placeDanmaku":
-    "{verb} near the GPS track to place a danmaku.",
+  "status.placeDanmaku": "{verb} near the GPS track to place a danmaku.",
   "status.danmakuAdded":
     "Danmaku added. Edit text in the panel, or drag the marker along the track.",
-  "status.loadTrackFollow":
-    "Load a GPS track before adding a follow comment.",
-  "status.dragEndpoints":
-    "Drag the endpoint markers to adjust, then Confirm.",
-  "status.nearTrackRange":
-    "{verb} near the GPS track to set the range.",
-  "status.startSet":
-    "Start set. {verb} the track again to set the end.",
+  "status.loadTrackFollow": "Load a GPS track before adding a follow comment.",
+  "status.dragEndpoints": "Drag the endpoint markers to adjust, then Confirm.",
+  "status.nearTrackRange": "{verb} near the GPS track to set the range.",
+  "status.startSet": "Start set. {verb} the track again to set the end.",
   "status.endTooClose":
     "End is too close to start — pick farther along the track.",
   "status.dragConfirmRedo":

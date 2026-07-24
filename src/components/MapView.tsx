@@ -58,9 +58,7 @@ function isAppOwnedLayer(id: string): boolean {
 }
 
 /** Remember each background layer's original color so we can restore it. */
-function captureBackgroundColors(
-  map: maplibregl.Map,
-): Record<string, unknown> {
+function captureBackgroundColors(map: maplibregl.Map): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const style = map.getStyle();
   style?.layers?.forEach((layer) => {
@@ -315,7 +313,11 @@ export function MapView() {
   }, []);
 
   const addAlignMarker = useCallback(
-    (lngLat: { lng: number; lat: number }, label: string, kind: "source" | "target") => {
+    (
+      lngLat: { lng: number; lat: number },
+      label: string,
+      kind: "source" | "target",
+    ) => {
       const map = mapRef.current;
       if (!map) return;
       const el = document.createElement("div");
@@ -364,8 +366,7 @@ export function MapView() {
       }
 
       const coordinates = cornersFromPose(currentPose);
-      const opacity =
-        useUiStore.getState().mode === "georef" ? mapOpacity : 1;
+      const opacity = useUiStore.getState().mode === "georef" ? mapOpacity : 1;
       const src = map.getSource(MAP_IMAGE_SOURCE) as
         | maplibregl.ImageSource
         | undefined;
@@ -397,7 +398,7 @@ export function MapView() {
         const corners = cornersFromPose(currentPose);
         const bounds = new maplibregl.LngLatBounds(corners[0], corners[0]);
         corners.forEach((c) => bounds.extend(c));
-        map.fitBounds(bounds, { padding: 48, maxZoom: 17, duration: 500 });
+        map.fitBounds(bounds, { padding: 48, maxZoom: 16, duration: 500 });
       }
     };
 
@@ -494,8 +495,7 @@ export function MapView() {
       // Heading-up jumpTo() calls stop() every frame and cancels easeTo. During
       // Play the main thread is busier so a timed pause is unreliable — set
       // pitch immediately whenever follow or playback would fight the ease.
-      const instant =
-        ui.isPlaying || (ui.headingUp && ui.mode === "view");
+      const instant = ui.isPlaying || (ui.headingUp && ui.mode === "view");
       if (instant) {
         map.setPitch(pitch);
       } else {
@@ -513,7 +513,7 @@ export function MapView() {
             tiles: ["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"],
             encoding: "terrarium",
             tileSize: 512,
-            maxzoom: 12,
+            maxzoom: 16,
             attribution:
               '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>',
           });
@@ -933,8 +933,7 @@ export function MapView() {
         const terrainOn = useUiStore.getState().terrain3d;
         const runnerPose = interpolateTrackPose(pts, t);
         if (runnerPose) {
-          const currentBearing =
-            headingBearingRef.current ?? map.getBearing();
+          const currentBearing = headingBearingRef.current ?? map.getBearing();
           // Higher alpha while scrubbing so the map snaps to the new heading faster
           const alpha = playing ? 0.14 : 0.35;
           const nextBearing = lerpBearing(
@@ -988,70 +987,68 @@ export function MapView() {
 
   // Preview highlight while picking a follow-comment range, draft, or selected follow
   const syncTrackRangeHighlight = useCallback(() => {
-      const map = mapRef.current;
-      if (!map || !map.isStyleLoaded()) return;
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
 
-      const ui = useUiStore.getState();
-      const pts = useProjectStore.getState().project.track.points;
-      let coords: [number, number][] = [];
+    const ui = useUiStore.getState();
+    const pts = useProjectStore.getState().project.track.points;
+    let coords: [number, number][] = [];
 
-      if (ui.followRangeStartMs != null && pts.length > 0) {
-        // Single endpoint: no span yet (markers show the start).
-        coords = [];
-      } else if (ui.followDraftRange && pts.length > 0) {
-        const a = Math.min(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
-        const b = Math.max(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
-        coords = trackSliceCoordinates(pts, a, b);
-      } else {
-        const activeId =
-          ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
-        const selected = useProjectStore
-          .getState()
-          .project.comments.find((c) => c.id === activeId);
-        if (
-          selected?.kind === "follow" &&
-          selected.timeStartMs != null &&
-          selected.timeEndMs != null &&
-          pts.length > 0
-        ) {
-          coords = trackSliceCoordinates(
-            pts,
-            selected.timeStartMs,
-            selected.timeEndMs,
-          );
-        }
+    if (ui.followRangeStartMs != null && pts.length > 0) {
+      // Single endpoint: no span yet (markers show the start).
+      coords = [];
+    } else if (ui.followDraftRange && pts.length > 0) {
+      const a = Math.min(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
+      const b = Math.max(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
+      coords = trackSliceCoordinates(pts, a, b);
+    } else {
+      const activeId =
+        ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
+      const selected = useProjectStore
+        .getState()
+        .project.comments.find((c) => c.id === activeId);
+      if (
+        selected?.kind === "follow" &&
+        selected.timeStartMs != null &&
+        selected.timeEndMs != null &&
+        pts.length > 0
+      ) {
+        coords = trackSliceCoordinates(
+          pts,
+          selected.timeStartMs,
+          selected.timeEndMs,
+        );
       }
+    }
 
-      const data: GeoJSON.FeatureCollection = {
-        type: "FeatureCollection",
-        features:
-          coords.length >= 2
-            ? [
-                {
-                  type: "Feature",
-                  properties: {},
-                  geometry: { type: "LineString", coordinates: coords },
-                },
-              ]
-            : [],
-      };
-      ensureGeoJsonSource(map, TRACK_RANGE_SOURCE, data);
-      if (!map.getLayer(TRACK_RANGE_LAYER)) {
-        map.addLayer({
-          id: TRACK_RANGE_LAYER,
-          type: "line",
-          source: TRACK_RANGE_SOURCE,
-          paint: {
-            "line-color": "#f59e0b",
-            "line-width": 5,
-            "line-opacity": 0.85,
-          },
-        });
-      }
-      ensureLayerOrder(map);
-    },
-    [],
-  );
+    const data: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features:
+        coords.length >= 2
+          ? [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: { type: "LineString", coordinates: coords },
+              },
+            ]
+          : [],
+    };
+    ensureGeoJsonSource(map, TRACK_RANGE_SOURCE, data);
+    if (!map.getLayer(TRACK_RANGE_LAYER)) {
+      map.addLayer({
+        id: TRACK_RANGE_LAYER,
+        type: "line",
+        source: TRACK_RANGE_SOURCE,
+        paint: {
+          "line-color": "#f59e0b",
+          "line-width": 5,
+          "line-opacity": 0.85,
+        },
+      });
+    }
+    ensureLayerOrder(map);
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -1080,9 +1077,7 @@ export function MapView() {
     const map = mapRef.current;
     if (!map || !mapInstance) return;
 
-    const onProfileMove = (e: {
-      lngLat: { lng: number; lat: number };
-    }) => {
+    const onProfileMove = (e: { lngLat: { lng: number; lat: number } }) => {
       const ui = useUiStore.getState();
       if (ui.mode !== "view" || ui.isPlaying || !ui.showProfileCharts) return;
       const pts = useProjectStore.getState().project.track.points;
@@ -1211,9 +1206,7 @@ export function MapView() {
           }
           const hit = isNearTrack(map, pts, lngLat.lng, lngLat.lat);
           if (!hit || hit.timeOffsetMs == null) {
-            setStatusMessage(
-              t("status.placeDanmaku", { verb: pointerVerb() }),
-            );
+            setStatusMessage(t("status.placeDanmaku", { verb: pointerVerb() }));
             return;
           }
           const id = addComment({
@@ -1278,18 +1271,14 @@ export function MapView() {
             );
             return;
           }
-          setStatusMessage(
-            t("status.nearTrackRange", { verb: pointerVerb() }),
-          );
+          setStatusMessage(t("status.nearTrackRange", { verb: pointerVerb() }));
           return;
         }
 
         const pendingStart = useUiStore.getState().followRangeStartMs;
         if (pendingStart == null) {
           setFollowRangeStartMs(hit.timeOffsetMs);
-          setStatusMessage(
-            t("status.startSet", { verb: pointerVerb() }),
-          );
+          setStatusMessage(t("status.startSet", { verb: pointerVerb() }));
           return;
         }
 
@@ -1429,9 +1418,7 @@ export function MapView() {
             </span>
             <div className="map-legend-speed-mid">
               <div className="map-legend-speed-bar" />
-              <span className="map-legend-speed-unit">
-                {t("map.paceUnit")}
-              </span>
+              <span className="map-legend-speed-unit">{t("map.paceUnit")}</span>
             </div>
             <span className="map-legend-speed-label">
               {t("map.fast")}

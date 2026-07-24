@@ -19,7 +19,7 @@ export const ja: Record<MessageKey, string> = {
   "common.untitled": "無題",
   "common.projectFallback": "project",
 
-  "empty.lead": "大会プロジェクトを開くか、新規作成してください",
+  "empty.lead": "プロジェクトを開くか、新規作成してください",
   "empty.loadZip": "ZIPを読み込む",
   "empty.createProject": "プロジェクトを作成",
 
@@ -42,8 +42,7 @@ export const ja: Record<MessageKey, string> = {
   "followBar.dragConfirm": "A/Bマーカーをドラッグしてから確定",
 
   "wizard.title": "プロジェクトを作成",
-  "wizard.gpxHint":
-    "GPXを読み込むと、地図がコース周辺に移動します。",
+  "wizard.gpxHint": "GPXを読み込むと、地図がコース周辺に移動します。",
   "wizard.gpx": "GPX",
   "wizard.skipGpx": "GPXをスキップ",
   "wizard.mapHint":
@@ -73,22 +72,20 @@ export const ja: Record<MessageKey, string> = {
   "project.georeference": "位置合わせ",
 
   "layers.title": "レイヤー",
-  "layers.pauseBasemap":
-    "ベースマップを切り替えるには再生を一時停止してください",
-  "layers.basemap": "ベースマップ",
+  "layers.pauseBasemap": "背景地図を切り替えるには再生を一時停止してください",
+  "layers.basemap": "背景地図",
   "layers.gpsTrack": "GPSトラック",
   "layers.colorBySpeed": "速度で色分け",
   "layers.trackWidth": "トラックの太さ（{width}）",
   "layers.profileCharts": "プロファイルチャート",
   "layers.elevationFailed": "標高の取得に失敗しました。",
 
-  "commentTool.follow": "フォロー",
-  "commentTool.map": "地図",
-  "commentTool.danmaku": "弾幕",
+  "commentTool.follow": "つぶやき",
+  "commentTool.map": "地点メモ",
+  "commentTool.danmaku": "テロップ",
   "commentTool.hintFollow":
     "GPSトラックを2回{verb}して始点・終点を決め、マーカーをドラッグ",
-  "commentTool.hintDanmaku":
-    "トラックを{verb}して流れるコメントを配置",
+  "commentTool.hintDanmaku": "トラックを{verb}して流れるコメントを配置",
   "commentTool.hintMap":
     "地図を{verb}してコメント吹き出しを配置（×で長いテキストを折りたたみ）",
   "commentTool.noComments": "コメントはまだありません。",
@@ -114,8 +111,7 @@ export const ja: Record<MessageKey, string> = {
   "plan.hintEditing":
     "「{name}」を編集中 — 地図を{verb}して追加 · ハンドルをドラッグして移動 · 頂点をダブルクリック / 長押しで削除",
   "plan.defaultName": "プラン",
-  "plan.vertexTitle":
-    "ドラッグで移動 · ダブルクリックまたは長押しで削除",
+  "plan.vertexTitle": "ドラッグで移動 · ダブルクリックまたは長押しで削除",
   "plan.midTitle": "ドラッグして頂点を追加",
   "plan.vertexAria": "プラン頂点 {n}",
   "plan.midAria": "プラン頂点を追加",
@@ -155,8 +151,7 @@ export const ja: Record<MessageKey, string> = {
   "marker.dragResize": "ドラッグでサイズ変更",
   "marker.foldedDrag": "折りたたみ地図コメント（ドラッグで移動）",
   "marker.foldedTap": "折りたたみ地図コメント — タップで展開",
-  "marker.followTitle":
-    "フォローコメント — クリックでテキスト編集 / 範囲表示",
+  "marker.followTitle": "フォローコメント — クリックでテキスト編集 / 範囲表示",
   "marker.followAria": "フォローコメント",
   "marker.endpointTitle": "トラックに沿ってドラッグして調整",
   "marker.endpointAria": "フォロー範囲の端点 {label}",
@@ -177,8 +172,7 @@ export const ja: Record<MessageKey, string> = {
   "profile.title": "プロファイル",
   "profile.loading": "標高を読み込み中…",
   "profile.unavailable": "標高を取得できません",
-  "profile.selectSeries":
-    "上の系列を選択するとチャートが表示されます。",
+  "profile.selectSeries": "上の系列を選択するとチャートが表示されます。",
   "profile.waiting": "標高データを待っています…",
 
   "map.legendAria": "地図レイヤー凡例",
@@ -206,28 +200,18 @@ export const ja: Record<MessageKey, string> = {
     "セットアップを完了：GPXを読み込む（またはスキップ）し、地図画像を追加（またはスキップ）してください。",
   "status.finishSetupMap":
     "セットアップを完了：地図画像を追加（またはスキップ）して続行してください。",
-  "status.georef0":
-    "位置合わせ：地図画像オーバーレイ上の特徴点を{verb}",
-  "status.georef1":
-    "位置合わせ：ベースマップ上の対応点を{verb}",
-  "status.georef2":
-    "位置合わせ：オーバーレイ上の2点目の特徴点を{verb}",
-  "status.georef3":
-    "位置合わせ：ベースマップ上の2点目の対応点を{verb}",
-  "status.editPlan":
-    "先にプランを追加してから、地図を{verb}して描画",
-  "status.editFollow":
-    "GPSトラックを{verb}またはドラッグして範囲を設定",
-  "status.editDanmaku":
-    "現在の再生時刻に弾幕を追加するには{verb}",
+  "status.georef0": "位置合わせ：地図画像オーバーレイ上の特徴点を{verb}",
+  "status.georef1": "位置合わせ：ベースマップ上の対応点を{verb}",
+  "status.georef2": "位置合わせ：オーバーレイ上の2点目の特徴点を{verb}",
+  "status.georef3": "位置合わせ：ベースマップ上の2点目の対応点を{verb}",
+  "status.editPlan": "先にプランを追加してから、地図を{verb}して描画",
+  "status.editFollow": "GPSトラックを{verb}またはドラッグして範囲を設定",
+  "status.editDanmaku": "現在の再生時刻に弾幕を追加するには{verb}",
   "status.editMap": "地図を{verb}してコメント吹き出しを配置",
-  "status.commentFollow":
-    "GPSトラックを2回{verb}して始点と終点を設定",
-  "status.commentDanmaku":
-    "GPSトラックを{verb}して流れるコメントを配置",
+  "status.commentFollow": "GPSトラックを2回{verb}して始点と終点を設定",
+  "status.commentDanmaku": "GPSトラックを{verb}して流れるコメントを配置",
   "status.commentMap": "地図を{verb}してコメント吹き出しを配置",
-  "status.followReselect":
-    "GPSトラックを2回{verb}して新しい範囲を設定",
+  "status.followReselect": "GPSトラックを2回{verb}して新しい範囲を設定",
   "status.followSaved":
     "フォローコメントを保存しました。地図上のポップアップでテキストを編集できます。",
   "status.addMapImage":
@@ -245,8 +229,7 @@ export const ja: Record<MessageKey, string> = {
     "先にプランを追加してから、地図をタップして描画してください。",
   "status.loadTrackDanmaku":
     "弾幕コメントを追加する前にGPSトラックを読み込んでください。",
-  "status.placeDanmaku":
-    "GPSトラック付近を{verb}して弾幕を配置してください。",
+  "status.placeDanmaku": "GPSトラック付近を{verb}して弾幕を配置してください。",
   "status.danmakuAdded":
     "弾幕を追加しました。パネルでテキストを編集するか、マーカーをトラックに沿ってドラッグできます。",
   "status.loadTrackFollow":

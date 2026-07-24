@@ -1142,9 +1142,10 @@ button.btn-skip {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 1rem;
-  padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+  gap: 0.45rem 0.65rem;
+  padding: 0.4rem 0.75rem;
+  /* Home indicator only — no extra rem under Speed / Head-up / 3D. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   background: rgba(26, 33, 28, 0.94);
   border-top: 1px solid var(--panel-edge);
   flex-shrink: 0;
@@ -1152,7 +1153,7 @@ button.btn-skip {
 }
 
 .animation-bar button {
-  padding: 0.35rem 0.85rem;
+  padding: 0.25rem 0.7rem;
   border: none;
   border-radius: 999px;
   background: var(--accent);
@@ -1184,8 +1185,8 @@ button.btn-skip {
 }
 
 .animation-chip {
-  min-height: 40px;
-  padding: 0.35rem 0.75rem !important;
+  min-height: 32px;
+  padding: 0.2rem 0.6rem !important;
   border: 1px solid var(--panel-edge) !important;
   border-radius: 999px !important;
   background: transparent !important;
@@ -1634,9 +1635,9 @@ button.btn-skip {
   }
 
   .animation-bar button {
-    min-height: 36px;
-    min-width: 56px;
-    padding: 0.3rem 0.75rem;
+    min-height: 32px;
+    min-width: 52px;
+    padding: 0.2rem 0.65rem;
   }
 
   .comment-editor-header .btn-done,
@@ -1753,26 +1754,24 @@ button.btn-skip {
     left: max(12px, env(safe-area-inset-left));
   }
 
-  .animation-bar {
-    flex-wrap: wrap;
+  .animation-bar,
+  .animation-bar--mobile {
     justify-content: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.6rem;
-    padding-bottom: max(0.2rem, env(safe-area-inset-bottom));
+    gap: 0.2rem 0.4rem;
+    padding: 0.2rem 0.5rem;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .animation-bar--mobile .animation-bar-extras {
     display: flex;
-    gap: 0.3rem;
+    gap: 0.25rem;
+    padding-top: 0;
+    margin: 0;
   }
 
   .animation-bar-extras .animation-chip {
-    min-height: 36px;
-    padding: 0.25rem 0.6rem !important;
-  }
-
-  .app--hub .main-map {
-    padding-top: 2rem;
+    min-height: 30px;
+    padding: 0.15rem 0.5rem !important;
   }
 
   .maplibregl-ctrl-top-right {
@@ -2304,7 +2303,13 @@ button.btn-skip {
 }
 
 .app--hub .main-map {
-  padding-top: 2.5rem;
+  padding-top: 2rem;
+}
+
+@media (min-width: 801px) {
+  .app--hub .main-map {
+    padding-top: 2.5rem;
+  }
 }
 
 .app--hub .main--wizard .main-map {

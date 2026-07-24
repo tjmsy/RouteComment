@@ -363,6 +363,15 @@ button.btn-skip {
   cursor: not-allowed;
 }
 
+.layer-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.15rem 0 0.35rem;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--panel-edge);
+}
+
 .hint {
   margin: 0;
   font-size: 0.8rem;
@@ -1341,6 +1350,20 @@ button.btn-skip {
   cursor: pointer;
 }
 
+.animation-bar .animation-play-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.animation-bar .animation-play-btn svg {
+  display: block;
+}
+
 .animation-bar button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1398,15 +1421,15 @@ button.btn-skip {
 }
 
 .comment-icon {
-  width: 32px;
-  height: 32px;
-  border: 2px solid #fff;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #fff;
   border-radius: 50%;
   background: #475569;
   color: #f8fafc;
   cursor: grab;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  font-size: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  font-size: 11px;
   line-height: 1;
   padding: 0;
   display: flex;
@@ -1436,12 +1459,12 @@ button.btn-skip {
 }
 
 .comment-icon-map {
-  font-size: 14px;
+  font-size: 11px;
   cursor: grab;
   background: #fff;
   color: #1a211c;
   border: 1px solid #cbd5e1;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .comment-icon-map svg {
@@ -1449,7 +1472,7 @@ button.btn-skip {
 }
 
 .comment-icon-follow {
-  font-size: 16px;
+  font-size: 12px;
   line-height: 1;
   background: #334155;
   color: #f8fafc;
@@ -1457,17 +1480,17 @@ button.btn-skip {
 }
 
 .follow-endpoint-marker {
-  width: 28px;
-  height: 28px;
-  border: 2px solid #fff;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #fff;
   border-radius: 999px;
   background: #f59e0b;
   color: #1a211c;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   font-weight: 700;
   line-height: 1;
   cursor: grab;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   display: grid;
   place-items: center;
   padding: 0;
@@ -1478,8 +1501,8 @@ button.btn-skip {
 }
 
 .comment-icon-danmaku {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   background: #334155;
   color: #f8fafc;
   cursor: grab;
@@ -1879,24 +1902,30 @@ button.btn-skip {
   }
 
   .comment-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 17px;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
   }
 
   .comment-icon-danmaku {
-    width: 40px;
-    height: 40px;
+    width: 28px;
+    height: 28px;
   }
 
   .comment-icon-map svg {
-    width: 20px;
-    height: 20px;
+    width: 14px;
+    height: 14px;
   }
 
   .comment-icon-danmaku svg {
-    width: 18px;
-    height: 18px;
+    width: 13px;
+    height: 13px;
+  }
+
+  .follow-endpoint-marker {
+    width: 28px;
+    height: 28px;
+    font-size: 0.7rem;
   }
 
   .comment-maplibre-popup .maplibregl-popup-close-button {
@@ -2133,7 +2162,8 @@ button.btn-skip {
   white-space: nowrap;
   font-size: 0.85rem;
   color: var(--muted);
-  text-align: center;
+  text-align: left;
+  padding-left: 0.25rem;
 }
 
 .review-chrome-actions {

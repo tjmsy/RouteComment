@@ -46,27 +46,27 @@ export function LayersPanel() {
         </label>
       )}
       {project.track.points.length > 0 && showTrack && (
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={colorTrackBySpeed}
-            onChange={(e) => setColorTrackBySpeed(e.target.checked)}
-          />
-          {t("layers.colorBySpeed")}
-        </label>
-      )}
-      {project.track.points.length > 0 && showTrack && (
-        <label className="field">
-          <span>{t("layers.trackWidth", { width: trackLineWidth })}</span>
-          <input
-            type="range"
-            min={1}
-            max={12}
-            step={1}
-            value={trackLineWidth}
-            onChange={(e) => setTrackLineWidth(Number(e.target.value))}
-          />
-        </label>
+        <div className="layer-sub">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={colorTrackBySpeed}
+              onChange={(e) => setColorTrackBySpeed(e.target.checked)}
+            />
+            {t("layers.colorBySpeed")}
+          </label>
+          <label className="field">
+            <span>{t("layers.trackWidth", { width: trackLineWidth })}</span>
+            <input
+              type="range"
+              min={1}
+              max={12}
+              step={1}
+              value={trackLineWidth}
+              onChange={(e) => setTrackLineWidth(Number(e.target.value))}
+            />
+          </label>
+        </div>
       )}
       {project.track.points.length > 0 && (
         <label className="check">

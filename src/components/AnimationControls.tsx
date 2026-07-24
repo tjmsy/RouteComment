@@ -8,6 +8,36 @@ import { t } from "../i18n";
 
 const SPEED_OPTIONS = [1, 5, 10, 30, 60, 120] as const;
 
+function PlayIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M8 5v14l11-7L8 5Z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M6 5h4v14H6V5Zm8 0h4v14h-4V5Z" />
+    </svg>
+  );
+}
+
 function formatTime(ms: number, minuteDigits = 1): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
@@ -96,10 +126,13 @@ export function AnimationControls() {
     >
       <button
         type="button"
+        className="animation-play-btn"
         onClick={() => setIsPlaying(!isPlaying)}
         disabled={duration <= 0}
+        title={isPlaying ? t("anim.pause") : t("anim.play")}
+        aria-label={isPlaying ? t("anim.pause") : t("anim.play")}
       >
-        {isPlaying ? t("anim.pause") : t("anim.play")}
+        {isPlaying ? <PauseIcon /> : <PlayIcon />}
       </button>
       <input
         type="range"

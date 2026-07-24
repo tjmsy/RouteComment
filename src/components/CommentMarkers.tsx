@@ -74,13 +74,13 @@ export function CommentMarkers({ map }: Props) {
 }
 
 /** Folded map-comment chip (not a location pin — the bubble is the comment). */
-const MAP_FOLD_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm3 4v2h10V9H7zm0 4v2h7v-2H7z"/></svg>`;
+const MAP_FOLD_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm3 4v2h10V9H7zm0 4v2h7v-2H7z"/></svg>`;
 
 /** Running person — edit-only landmark for follow comments. */
 const RUNNER_ICON = "🏃";
 
 /** Compact mark for danmaku timing on the track. */
-const DANMAKU_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M4 6h16v3H4V6zm0 5h12v3H4v-3zm0 5h14v3H4v-3z"/></svg>`;
+const DANMAKU_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M4 6h16v3H4V6zm0 5h12v3H4v-3zm0 5h14v3H4v-3z"/></svg>`;
 
 function createCommentPopup(className: string): maplibregl.Popup {
   return new maplibregl.Popup({

@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import type { ChartKind } from "../lib/chartScales";
-import { pointerVerb } from "../lib/mobile";
 import type { AppMode, EditTool } from "../lib/types";
 import { t } from "../i18n";
 import {
@@ -132,41 +131,16 @@ type UiState = {
   setStatusMessage: (msg: string) => void;
 };
 
-const georefHint = (step: GeorefStep): string => {
-  const verb = pointerVerb().toLowerCase();
-  switch (step) {
-    case 0:
-      return t("status.georef0", { verb });
-    case 1:
-      return t("status.georef1", { verb });
-    case 2:
-      return t("status.georef2", { verb });
-    case 3:
-      return t("status.georef3", { verb });
-  }
-};
-
-const editToolHint = (
-  tool: EditTool,
-  commentTool: "map" | "follow" | "danmaku",
-): string => {
-  const verb = pointerVerb();
-  if (tool === "setup") return "";
-  if (tool === "plan") return t("status.editPlan", { verb: verb.toLowerCase() });
-  if (commentTool === "follow")
-    return t("status.editFollow", { verb });
-  if (commentTool === "danmaku")
-    return t("status.editDanmaku", { verb });
-  return t("status.editMap", { verb });
-};
-
 function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
   const mode = deriveLegacyMode(screen);
   const editTool = deriveLegacyEditTool(screen);
   const leavingView = prev.mode === "view" && mode !== "view";
   const enteringGeoref = mode === "georef" && prev.mode !== "georef";
+  const leavingGeoref = prev.mode === "georef" && mode !== "georef";
+  const hideBasemapAfterGeoref = leavingGeoref && mode === "view";
   const editingComment = isEditingComment(screen);
   const wasEditingComment = isEditingComment(prev.screen);
+  const inToolMode = mode === "georef" || mode === "edit";
   return {
     screen,
     mode,
@@ -174,6 +148,7 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
     isPlaying: mode === "georef" || leavingView ? false : prev.isPlaying,
     terrain3d: leavingView ? false : prev.terrain3d,
     headingUp: leavingView ? false : prev.headingUp,
+    showBasemap: hideBasemapAfterGeoref ? false : prev.showBasemap,
     georefStep: enteringGeoref || mode !== "georef" ? 0 : prev.georefStep,
     georefPin: mode === "georef" ? prev.georefPin : null,
     georefPendingFrom: mode === "georef" ? prev.georefPendingFrom : null,
@@ -195,17 +170,8 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
         : [],
     commentTool:
       editingComment && !wasEditingComment ? "follow" : prev.commentTool,
-    statusMessage:
-      mode === "georef"
-        ? georefHint(0)
-        : mode === "edit"
-          ? editToolHint(
-              editTool,
-              editingComment && !wasEditingComment
-                ? "follow"
-                : prev.commentTool,
-            )
-          : prev.statusMessage,
+    // Mode guidance lives in tool-bar inline hints; clear toast on enter.
+    statusMessage: inToolMode ? "" : prev.statusMessage,
   };
 }
 
@@ -266,7 +232,7 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   setMode: (mode) => {
     const prev = get();
-    const { setupGpxDone, setupMapDone, editTool, commentTool } = prev;
+    const { setupGpxDone, setupMapDone, editTool } = prev;
     const setupComplete = setupGpxDone && setupMapDone;
     const leavingView = prev.mode === "view" && mode !== "view";
     if (!setupComplete && (mode === "view" || mode === "edit")) {
@@ -303,18 +269,14 @@ export const useUiStore = create<UiState>((set, get) => ({
         mode === "edit" && editTool === "comment"
           ? prev.expandedCommentIds
           : [],
-      statusMessage:
-        mode === "georef"
-          ? georefHint(0)
-          : mode === "edit"
-            ? editToolHint(editTool, commentTool)
-            : "",
+      // Tool-bar inline hints cover mode guidance; toast only for setup blocks above.
+      statusMessage: "",
     });
   },
 
   setEditTool: (tool) => {
     const prev = get();
-    const { setupGpxDone, setupMapDone, mode, commentTool } = prev;
+    const { setupGpxDone, setupMapDone, mode } = prev;
     const setupComplete = setupGpxDone && setupMapDone;
     if (!setupComplete && tool !== "setup") {
       set({
@@ -342,7 +304,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       followDraftRange: null,
       followRangeTargetId: null,
       expandedCommentIds: tool === "comment" ? prev.expandedCommentIds : [],
-      statusMessage: editToolHint(tool, commentTool),
+      statusMessage: "",
     });
   },
 
@@ -388,12 +350,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followDraftRange: null,
       followRangeTargetId: null,
-      statusMessage:
-        tool === "follow"
-          ? t("status.commentFollow", { verb: pointerVerb() })
-          : tool === "danmaku"
-            ? t("status.commentDanmaku", { verb: pointerVerb() })
-            : t("status.commentMap", { verb: pointerVerb() }),
+      // EditCommentBar inline hint already covers tool guidance.
+      statusMessage: "",
     }),
   setFollowRangeStartMs: (ms) => set({ followRangeStartMs: ms }),
   setFollowDraftRange: (draft) => set({ followDraftRange: draft }),
@@ -411,7 +369,8 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followDraftRange: null,
       expandedCommentIds: [],
-      statusMessage: t("status.followReselect", { verb: pointerVerb() }),
+      // FollowRangeConfirmBar shows reselecting hint.
+      statusMessage: "",
     }),
   confirmFollowDraft: () => {
     const draft = get().followDraftRange;
@@ -446,7 +405,8 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       followDraftRange: null,
       followRangeStartMs: null,
-      statusMessage: t("status.commentFollow", { verb: pointerVerb() }),
+      // EditCommentBar inline hint covers follow guidance.
+      statusMessage: "",
     }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),
@@ -491,8 +451,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       setupGpxDone: true,
       setupMapDone: true,
     }),
-  setGeorefStep: (step) =>
-    set({ georefStep: step, statusMessage: georefHint(step) }),
+  setGeorefStep: (step) => set({ georefStep: step }),
   setGeorefPin: (pin) => set({ georefPin: pin }),
   setGeorefPendingFrom: (pt) => set({ georefPendingFrom: pt }),
   resetGeorefAlign: () =>
@@ -500,7 +459,6 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefStep: 0,
       georefPin: null,
       georefPendingFrom: null,
-      statusMessage: georefHint(0),
     }),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
 }));

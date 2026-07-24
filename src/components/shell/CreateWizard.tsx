@@ -1,15 +1,30 @@
 import { useEffect } from "react";
 import { useProjectStore } from "../../store/projectStore";
-import { useUiStore } from "../../store/uiStore";
+import { useUiStore, type GeorefStep } from "../../store/uiStore";
 import { useProjectIO } from "../../hooks/useProjectIO";
 import { pointerVerb } from "../../lib/mobile";
 import { t } from "../../i18n";
+
+function georefStepHint(step: GeorefStep): string {
+  const verb = pointerVerb().toLowerCase();
+  switch (step) {
+    case 0:
+      return t("status.georef0", { verb });
+    case 1:
+      return t("status.georef1", { verb });
+    case 2:
+      return t("status.georef2", { verb });
+    case 3:
+      return t("status.georef3", { verb });
+  }
+}
 
 export function CreateWizard() {
   const screen = useUiStore((s) => s.screen);
   const dispatch = useUiStore((s) => s.dispatch);
   const mapOpacity = useUiStore((s) => s.mapOpacity);
   const setMapOpacity = useUiStore((s) => s.setMapOpacity);
+  const georefStep = useUiStore((s) => s.georefStep);
   const markSetupGpxDone = useUiStore((s) => s.markSetupGpxDone);
   const markSetupMapDone = useUiStore((s) => s.markSetupMapDone);
   const completeSetup = useUiStore((s) => s.completeSetup);
@@ -29,7 +44,6 @@ export function CreateWizard() {
 
   if (screen.kind !== "createWizard") return null;
   const step = screen.step;
-  const verb = pointerVerb();
 
   const finish = () => {
     completeSetup();
@@ -80,9 +94,7 @@ export function CreateWizard() {
 
       {step === "map" && (
         <section className="panel">
-          <p className="hint">
-            {t("wizard.mapHint")}
-          </p>
+          <p className="hint">{t("wizard.mapHint")}</p>
           <div className="btn-row">
             <button
               type="button"
@@ -108,9 +120,7 @@ export function CreateWizard() {
 
       {step === "georef" && (
         <section className="panel">
-          <p className="hint">
-            {t("wizard.georefHint", { verb: verb.toLowerCase() })}
-          </p>
+          <p className="hint">{georefStepHint(georefStep)}</p>
           {project.mapImage && (
             <label className="field">
               <span>{t("wizard.mapOpacity")}</span>

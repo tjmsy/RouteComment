@@ -1188,7 +1188,7 @@ export function MapView() {
           useUiStore.getState().activeRoutePlanId ??
           useProjectStore.getState().project.routePlans[0]?.id;
         if (!planId) {
-          setStatusMessage(t("status.addPlanFirst"));
+          // EditPlanBar already shows plan.hintNoPlan inline.
           return;
         }
         appendPlanCoordinate(planId, [lngLat.lng, lngLat.lat]);
@@ -1252,7 +1252,7 @@ export function MapView() {
         }
         const draft = useUiStore.getState().followDraftRange;
         if (draft) {
-          setStatusMessage(t("status.dragEndpoints"));
+          // FollowRangeConfirmBar already shows drag/confirm guidance.
           return;
         }
         const hit = isNearTrack(
@@ -1266,9 +1266,7 @@ export function MapView() {
           const pending = useUiStore.getState().followRangeStartMs;
           if (pending != null) {
             setFollowRangeStartMs(null);
-            setStatusMessage(
-              t("status.commentFollow", { verb: pointerVerb() }),
-            );
+            // EditCommentBar inline hint covers follow placement.
             return;
           }
           setStatusMessage(t("status.nearTrackRange", { verb: pointerVerb() }));
@@ -1310,7 +1308,7 @@ export function MapView() {
           targetId,
         });
         setFollowRangeStartMs(null);
-        setStatusMessage(t("status.dragConfirmRedo"));
+        // FollowRangeConfirmBar takes over guidance once draft exists.
       }
     };
 

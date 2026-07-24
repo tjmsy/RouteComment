@@ -1,266 +1,187 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Comment } from "../lib/types";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
 import { isReviewReadonly } from "../ui/machine";
 
-/** Inspired by sweet-danmaku / rc-danmaku lane allocation. */
+/**
+ * Track-time window to notice the trigger (same idea as follow's
+ * commentActiveAt range). Wide enough that 120× playback still hits it.
+ */
+export const DANMAKU_ARM_MS = 60_000;
+/** Wall-clock scroll once the caption has been armed. */
+export const DANMAKU_SCROLL_MS = 7000;
+
 const FONT_SIZE = 26;
 const ROW_HEIGHT = Math.round(FONT_SIZE * 1.4);
 const AREA_RATIO = 0.65;
-const MIN_GAP_PX = 40;
-const SCROLL_DURATION_MS = 7000;
 
-const measureCanvas =
-  typeof document !== "undefined" ? document.createElement("canvas") : null;
-
-type ActiveBullet = {
-  id: string;
-  el: HTMLDivElement;
-  lane: number;
-  startedAt: number;
-  textWidth: number;
-};
-
-function measureTextWidth(text: string): number {
-  const ctx = measureCanvas?.getContext("2d");
-  if (!ctx) return text.length * FONT_SIZE * 0.6;
-  ctx.font = `600 ${FONT_SIZE}px "DM Sans", system-ui, sans-serif`;
-  return ctx.measureText(text).width;
+/**
+ * Playhead is in the arming window — same style as commentActiveAt(follow).
+ */
+export function danmakuActiveAt(
+  comment: Comment,
+  timeMs: number,
+): boolean {
+  if (comment.kind !== "danmaku") return false;
+  if (comment.timeStartMs == null || !Number.isFinite(comment.timeStartMs)) {
+    return false;
+  }
+  if (!comment.text.trim()) return false;
+  const start = comment.timeStartMs;
+  return timeMs >= start && timeMs < start + DANMAKU_ARM_MS;
 }
 
 function maxLanes(containerHeight: number): number {
   return Math.max(1, Math.floor((containerHeight * AREA_RATIO) / ROW_HEIGHT));
 }
 
-function laneIsFree(
-  lane: number,
-  now: number,
-  containerWidth: number,
-  textWidth: number,
-  active: ActiveBullet[],
-): boolean {
-  const speed = (containerWidth + textWidth) / SCROLL_DURATION_MS;
-  for (const b of active) {
-    if (b.lane !== lane) continue;
-    const elapsed = now - b.startedAt;
-    if (elapsed < 0 || elapsed >= SCROLL_DURATION_MS) continue;
-    const existingRight =
-      containerWidth -
-      elapsed * ((containerWidth + b.textWidth) / SCROLL_DURATION_MS);
-    if (existingRight > containerWidth - MIN_GAP_PX) return false;
-    const existingSpeed = (containerWidth + b.textWidth) / SCROLL_DURATION_MS;
-    if (speed > existingSpeed) {
-      const catchUpTime =
-        (existingRight - (containerWidth - textWidth)) /
-        (speed - existingSpeed);
-      if (catchUpTime > 0 && catchUpTime < SCROLL_DURATION_MS - elapsed) {
-        return false;
-      }
-    }
-  }
-  return true;
+function laneForId(id: string, laneCount: number): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(h) % Math.max(1, laneCount);
 }
 
-function pickLane(
-  containerWidth: number,
-  containerHeight: number,
-  textWidth: number,
-  active: ActiveBullet[],
-): number {
-  const lanes = maxLanes(containerHeight);
-  const now = performance.now();
-  for (let lane = 0; lane < lanes; lane++) {
-    if (laneIsFree(lane, now, containerWidth, textWidth, active)) return lane;
-  }
-  let best = 0;
-  let oldest = Infinity;
-  for (let lane = 0; lane < lanes; lane++) {
-    const onLane = active.filter((b) => b.lane === lane);
-    if (onLane.length === 0) return lane;
-    const newest = Math.max(...onLane.map((b) => b.startedAt));
-    if (newest < oldest) {
-      oldest = newest;
-      best = lane;
-    }
-  }
-  return best;
-}
-
-function isDanmakuReady(
-  c: Comment,
-): c is Comment & { timeStartMs: number } {
-  return (
-    c.kind === "danmaku" &&
-    typeof c.timeStartMs === "number" &&
-    Number.isFinite(c.timeStartMs) &&
-    c.text.trim().length > 0
-  );
-}
+type ArmedBullet = {
+  comment: Comment;
+  lane: number;
+  armedAt: number;
+};
 
 /**
- * Should this caption fire for a playhead step from `prev` → `next`?
- * - Crossed the trigger in this step (play / scrub forward / large jump)
- * - Or playhead sits in the scroll window after the trigger (scrub landed on it)
- */
-export function shouldFireDanmaku(
-  timeStartMs: number,
-  prev: number,
-  next: number,
-): boolean {
-  if (timeStartMs > prev && timeStartMs <= next) return true;
-  if (next >= timeStartMs && next < timeStartMs + SCROLL_DURATION_MS) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Niconico-style captions over the map during readonly review.
- * Playhead is observed via store.subscribe so every animation tick is seen.
+ * Captions mirror follow bubbles: React subscribes to animationTimeMs and
+ * arms when danmakuActiveAt is true. Display then runs on wall-clock so high
+ * playback speed cannot tear the bullet down mid-scroll.
  */
 export function DanmakuOverlay() {
   const screen = useUiStore((s) => s.screen);
-  const active = isReviewReadonly(screen);
+  const review = isReviewReadonly(screen);
+  const animationTimeMs = useUiStore((s) => s.animationTimeMs);
   const comments = useProjectStore((s) => s.project.comments);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const lastTimeRef = useRef(-1);
-  const firedRef = useRef(new Set<string>());
-  const activeBulletsRef = useRef<ActiveBullet[]>([]);
-  const activeRef = useRef(active);
-  const commentsRef = useRef(comments);
-  activeRef.current = active;
-  commentsRef.current = comments;
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [laneCount, setLaneCount] = useState(3);
+  const [armed, setArmed] = useState<ArmedBullet[]>([]);
+  const lastTimeRef = useRef(animationTimeMs);
 
-  const clearStage = () => {
-    const root = containerRef.current;
-    if (root) root.replaceChildren();
-    activeBulletsRef.current = [];
-    firedRef.current.clear();
-  };
+  useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const update = () => setLaneCount(maxLanes(el.clientHeight || 300));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [review]);
 
-  const spawn = (comment: Comment & { timeStartMs: number }) => {
-    const root = containerRef.current;
-    if (!root || firedRef.current.has(comment.id)) return;
-
-    firedRef.current.add(comment.id);
-    const text = comment.text.trim();
-    const textWidth = measureTextWidth(text);
-    const width = root.clientWidth || window.innerWidth;
-    const height = root.clientHeight || window.innerHeight;
-    const distance = width + textWidth;
-    const lane = pickLane(
-      width,
-      height,
-      textWidth,
-      activeBulletsRef.current,
-    );
-
-    const el = document.createElement("div");
-    el.className = "danmaku-bullet";
-    el.textContent = text;
-    el.style.top = `${lane * ROW_HEIGHT + 8}px`;
-    el.style.fontSize = `${FONT_SIZE}px`;
-    root.appendChild(el);
-
-    const bullet: ActiveBullet = {
-      id: comment.id,
-      el,
-      lane,
-      startedAt: performance.now(),
-      textWidth,
-    };
-    activeBulletsRef.current.push(bullet);
-
-    const finish = () => {
-      el.remove();
-      activeBulletsRef.current = activeBulletsRef.current.filter(
-        (b) => b !== bullet,
-      );
-    };
-
-    // WAAPI is reliable for elements created outside React; CSS keyframes
-    // can leave the bullet stuck at left:100% (invisible) in some cases.
-    if (typeof el.animate === "function") {
-      const anim = el.animate(
-        [
-          { transform: "translateX(0)" },
-          { transform: `translateX(-${distance}px)` },
-        ],
-        {
-          duration: SCROLL_DURATION_MS,
-          easing: "linear",
-          fill: "forwards",
-        },
-      );
-      anim.onfinish = finish;
-      anim.oncancel = finish;
-    } else {
-      el.style.setProperty("--danmaku-distance", `${distance}px`);
-      el.style.animationDuration = `${SCROLL_DURATION_MS}ms`;
-      el.addEventListener("animationend", finish, { once: true });
+  useEffect(() => {
+    if (!review) {
+      setArmed([]);
+      lastTimeRef.current = 0;
     }
-  };
+  }, [review]);
 
-  const onTime = (next: number) => {
-    if (!activeRef.current) return;
-    if (!containerRef.current) return;
+  useEffect(() => {
+    if (!review) return;
 
     const prev = lastTimeRef.current;
-
-    // Rewind: allow captions to fire again.
-    if (next < prev) {
-      clearStage();
-    }
-
-    for (const c of commentsRef.current) {
-      if (!isDanmakuReady(c)) continue;
-      if (firedRef.current.has(c.id)) continue;
-      if (shouldFireDanmaku(c.timeStartMs, prev, next)) {
-        spawn(c);
-      }
-    }
-
+    const next = animationTimeMs;
     lastTimeRef.current = next;
-  };
+    const now = performance.now();
 
-  // Keep the latest handler in a ref so the store subscription stays stable.
-  const onTimeRef = useRef(onTime);
-  onTimeRef.current = onTime;
+    setArmed((curr) => {
+      // Drop finished scrolls and captions rewound before their trigger.
+      let list = curr.filter((b) => {
+        const start = b.comment.timeStartMs ?? 0;
+        if (next < start) return false;
+        if (now - b.armedAt >= DANMAKU_SCROLL_MS) return false;
+        return true;
+      });
 
-  useEffect(() => {
-    clearStage();
-    if (!active) {
-      lastTimeRef.current = -1;
-      return;
-    }
-    const t = useUiStore.getState().animationTimeMs;
-    lastTimeRef.current = t <= 0 ? -1 : t;
-    // Evaluate once for the current playhead (scrub-land / resume).
-    onTimeRef.current(t);
-  }, [active]);
+      const armedIds = new Set(list.map((b) => b.comment.id));
 
-  useEffect(() => {
-    const unsub = useUiStore.subscribe((s, prev) => {
-      if (s.animationTimeMs === prev.animationTimeMs) return;
-      onTimeRef.current(s.animationTimeMs);
+      const tryArm = (c: Comment) => {
+        if (armedIds.has(c.id)) return;
+        if (c.kind !== "danmaku" || !c.text.trim()) return;
+        if (c.timeStartMs == null) return;
+        list = [
+          ...list,
+          {
+            comment: c,
+            lane: laneForId(c.id, laneCount),
+            armedAt: now,
+          },
+        ];
+        armedIds.add(c.id);
+      };
+
+      // Same gate as follow: playhead inside the active window.
+      for (const c of comments) {
+        if (danmakuActiveAt(c, next)) tryArm(c);
+      }
+
+      // High-speed jump that skipped the window: still arm if we crossed.
+      if (next > prev) {
+        for (const c of comments) {
+          if (c.kind !== "danmaku" || c.timeStartMs == null) continue;
+          if (!c.text.trim()) continue;
+          if (c.timeStartMs > prev && c.timeStartMs <= next) tryArm(c);
+        }
+      }
+
+      return list;
     });
-    return unsub;
-  }, []);
+  }, [animationTimeMs, comments, review, laneCount]);
 
-  // New/updated captions while the playhead is still.
   useEffect(() => {
-    if (!active) return;
-    onTimeRef.current(useUiStore.getState().animationTimeMs);
-  }, [comments, active]);
+    if (armed.length === 0) return;
+    const id = window.setInterval(() => {
+      const now = performance.now();
+      setArmed((curr) => {
+        const next = curr.filter((b) => now - b.armedAt < DANMAKU_SCROLL_MS);
+        return next.length === curr.length ? curr : next;
+      });
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [armed.length]);
 
-  // Always mount the host so containerRef is ready before the first tick.
+  if (!review) return null;
+
+  return (
+    <div ref={overlayRef} className="danmaku-overlay" aria-hidden="true">
+      {armed.map((b) => (
+        <DanmakuBullet
+          key={`${b.comment.id}-${Math.round(b.armedAt)}`}
+          text={b.comment.text.trim()}
+          lane={b.lane}
+        />
+      ))}
+    </div>
+  );
+}
+
+function DanmakuBullet({ text, lane }: { text: string; lane: number }) {
+  const elRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = elRef.current;
+    if (!el) return;
+    const parent = el.parentElement;
+    const width = parent?.clientWidth || window.innerWidth;
+    const textWidth = el.offsetWidth || text.length * FONT_SIZE * 0.6;
+    el.style.setProperty("--danmaku-distance", `${width + textWidth}px`);
+  }, [text]);
+
   return (
     <div
-      ref={containerRef}
-      className="danmaku-overlay"
-      aria-hidden="true"
-      hidden={!active}
-    />
+      ref={elRef}
+      className="danmaku-bullet"
+      style={{
+        top: `${lane * ROW_HEIGHT + 8}px`,
+        fontSize: `${FONT_SIZE}px`,
+        animationDuration: `${DANMAKU_SCROLL_MS}ms`,
+      }}
+    >
+      {text}
+    </div>
   );
 }

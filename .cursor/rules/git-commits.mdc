@@ -9,13 +9,16 @@ Create a git commit after each completed unit of work, not only at the end of a 
 
 ## When to commit
 
+Commit **proactively** after each logical unit — do not wait for the user to ask, and do not batch multiple unrelated fixes into one commit.
+
 - After a feature slice, bug fix, or refactor that builds and makes sense on its own
 - After each step in a multi-step plan (unless the user asks to squash later)
 - Before starting an unrelated task
+- After updating project rules / docs that are part of the same request (separate commit from code when both change)
 
 ## When not to commit
 
-- Do not commit unless the user asked, or completing a plan step that explicitly includes a commit
+- When the user explicitly says not to commit (or to hold / squash first)
 - Do not commit broken builds, secrets, or unrelated drive-by edits
 - Do not push unless the user asks
 

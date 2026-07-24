@@ -37,7 +37,7 @@ export const ja: Record<MessageKey, string> = {
     "オーバーレイ → ベースマップの順に{verb}し、2点目で回転・拡大を合わせます。",
   "georef.opacity": "不透明度",
 
-  "followBar.cancelled": "フォロー範囲をキャンセルしました。",
+  "followBar.cancelled": "つぶやき範囲をキャンセルしました。",
   "followBar.reselecting": "範囲を選び直しています…",
   "followBar.dragConfirm": "A/Bマーカーをドラッグしてから確定",
 
@@ -81,18 +81,18 @@ export const ja: Record<MessageKey, string> = {
   "layers.elevationFailed": "標高の取得に失敗しました。",
 
   "commentTool.follow": "つぶやき",
-  "commentTool.map": "地点メモ",
+  "commentTool.map": "ノート",
   "commentTool.danmaku": "テロップ",
   "commentTool.hintFollow":
     "GPSトラックを2回{verb}して始点・終点を決め、マーカーをドラッグ",
   "commentTool.hintDanmaku": "トラックを{verb}して流れるコメントを配置",
   "commentTool.hintMap":
-    "地図を{verb}してコメント吹き出しを配置（×で長いテキストを折りたたみ）",
+    "地図を{verb}してノートを配置（×で長いテキストを折りたたみ）",
   "commentTool.noComments": "コメントはまだありません。",
   "commentTool.comments": "コメント",
-  "commentTool.kindFollow": "フォロー",
-  "commentTool.kindMap": "地図",
-  "commentTool.kindDanmaku": "弾幕",
+  "commentTool.kindFollow": "つぶやき",
+  "commentTool.kindMap": "ノート",
+  "commentTool.kindDanmaku": "テロップ",
 
   "plan.done": "完了",
   "plan.undo": "元に戻す",
@@ -127,11 +127,11 @@ export const ja: Record<MessageKey, string> = {
   "toast.dismiss": "閉じる",
   "sheet.closeComment": "コメントを閉じる",
 
-  "comment.kindFollow": "フォローコメント",
-  "comment.kindDanmaku": "弾幕コメント",
-  "comment.kindMap": "地図コメント",
+  "comment.kindFollow": "つぶやき",
+  "comment.kindDanmaku": "テロップ",
+  "comment.kindMap": "ノート",
   "comment.placeholder": "コメントを書く…",
-  "comment.followPlaceholder": "フォローコメントを書く…",
+  "comment.followPlaceholder": "つぶやきを書く…",
   "comment.editInPopup": "地図上のポップアップでテキストを編集できます。",
   "comment.start": "開始",
   "comment.end": "終了",
@@ -147,17 +147,17 @@ export const ja: Record<MessageKey, string> = {
   "comment.deleteConfirm": "完全に削除しますか？",
   "comment.confirmDelete": "削除を確定",
 
-  "marker.showMap": "地図コメントを表示",
+  "marker.showMap": "ノートを表示",
   "marker.dragResize": "ドラッグでサイズ変更",
-  "marker.foldedDrag": "折りたたみ地図コメント（ドラッグで移動）",
-  "marker.foldedTap": "折りたたみ地図コメント — タップで展開",
-  "marker.followTitle": "フォローコメント — クリックでテキスト編集 / 範囲表示",
-  "marker.followAria": "フォローコメント",
+  "marker.foldedDrag": "折りたたみノート（ドラッグで移動）",
+  "marker.foldedTap": "折りたたみノート — タップで展開",
+  "marker.followTitle": "つぶやき — クリックでテキスト編集 / 範囲表示",
+  "marker.followAria": "つぶやき",
   "marker.endpointTitle": "トラックに沿ってドラッグして調整",
-  "marker.endpointAria": "フォロー範囲の端点 {label}",
-  "marker.danmakuDrag": "弾幕 — トラックに沿ってドラッグして時刻を設定",
-  "marker.danmakuTap": "弾幕 — タップで開く",
-  "marker.danmakuAria": "弾幕コメント",
+  "marker.endpointAria": "つぶやき範囲の端点 {label}",
+  "marker.danmakuDrag": "テロップ — トラックに沿ってドラッグして時刻を設定",
+  "marker.danmakuTap": "テロップ — タップで開く",
+  "marker.danmakuAria": "テロップ",
 
   "profile.elevation": "標高",
   "profile.heartRate": "心拍数",
@@ -206,14 +206,14 @@ export const ja: Record<MessageKey, string> = {
   "status.georef3": "位置合わせ：ベースマップ上の2点目の対応点を{verb}",
   "status.editPlan": "先にプランを追加してから、地図を{verb}して描画",
   "status.editFollow": "GPSトラックを{verb}またはドラッグして範囲を設定",
-  "status.editDanmaku": "現在の再生時刻に弾幕を追加するには{verb}",
-  "status.editMap": "地図を{verb}してコメント吹き出しを配置",
+  "status.editDanmaku": "現在の再生時刻にテロップを追加するには{verb}",
+  "status.editMap": "地図を{verb}してノートを配置",
   "status.commentFollow": "GPSトラックを2回{verb}して始点と終点を設定",
   "status.commentDanmaku": "GPSトラックを{verb}して流れるコメントを配置",
-  "status.commentMap": "地図を{verb}してコメント吹き出しを配置",
+  "status.commentMap": "地図を{verb}してノートを配置",
   "status.followReselect": "GPSトラックを2回{verb}して新しい範囲を設定",
   "status.followSaved":
-    "フォローコメントを保存しました。地図上のポップアップでテキストを編集できます。",
+    "つぶやきを保存しました。地図上のポップアップでテキストを編集できます。",
   "status.addMapImage":
     "位置合わせ用の地図画像を追加するか、スキップして続行できます。",
   "status.gpxSkipped":
@@ -228,12 +228,13 @@ export const ja: Record<MessageKey, string> = {
   "status.addPlanFirst":
     "先にプランを追加してから、地図をタップして描画してください。",
   "status.loadTrackDanmaku":
-    "弾幕コメントを追加する前にGPSトラックを読み込んでください。",
-  "status.placeDanmaku": "GPSトラック付近を{verb}して弾幕を配置してください。",
+    "テロップを追加する前にGPSトラックを読み込んでください。",
+  "status.placeDanmaku":
+    "GPSトラック付近を{verb}してテロップを配置してください。",
   "status.danmakuAdded":
-    "弾幕を追加しました。パネルでテキストを編集するか、マーカーをトラックに沿ってドラッグできます。",
+    "テロップを追加しました。パネルでテキストを編集するか、マーカーをトラックに沿ってドラッグできます。",
   "status.loadTrackFollow":
-    "フォローコメントを追加する前にGPSトラックを読み込んでください。",
+    "つぶやきを追加する前にGPSトラックを読み込んでください。",
   "status.dragEndpoints":
     "端点マーカーをドラッグして調整し、「確定」を押してください。",
   "status.nearTrackRange":

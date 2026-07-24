@@ -33,7 +33,9 @@ export function FollowRangeConfirmBar() {
 
   return (
     <div className="follow-range-confirm-bar" role="status">
-      <p className="follow-range-confirm-hint">Confirm range</p>
+      <p className="follow-range-confirm-hint">
+        Drag A/B markers, then Confirm
+      </p>
       <div className="follow-range-confirm-actions">
         <button type="button" onClick={() => redoFollowDraft()}>
           Redo

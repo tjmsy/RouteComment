@@ -10,7 +10,6 @@ import {
   MIN_POPUP_WIDTH,
 } from "../lib/types";
 import { interpolateTrackPosition, nearestTrackPoint } from "../lib/gpx";
-import { useMobileLayout } from "../hooks/useMobileLayout";
 import { isMobileViewport } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
 import { useUiStore } from "../store/uiStore";
@@ -29,7 +28,6 @@ export function CommentMarkers({ map }: Props) {
   const toggleCommentExpanded = useUiStore((s) => s.toggleCommentExpanded);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const screen = useUiStore((s) => s.screen);
-  const mobile = useMobileLayout();
   const commentEditing = isEditingComment(screen);
   /** Map comments are written on the map bubble (including phone). */
   const mapPopupEditable = commentEditing;
@@ -54,7 +52,6 @@ export function CommentMarkers({ map }: Props) {
             map={map}
             comment={comment}
             expanded={expandedCommentIds.includes(comment.id)}
-            useMapPopup={commentEditing && !mobile}
             onToggle={() => toggleCommentExpanded(comment.id)}
             onClose={() => setCommentExpanded(comment.id, false)}
           />
@@ -69,6 +66,7 @@ export function CommentMarkers({ map }: Props) {
           />
         ) : null,
       )}
+      <FollowEndpointMarkers map={map} />
       <FollowBubbles map={map} />
     </>
   );
@@ -119,6 +117,7 @@ function MapPinMarker({
   const popupOpenRef = useRef(popupOpen);
   const suppressCloseRef = useRef(false);
   const updateComment = useProjectStore((s) => s.updateComment);
+  const removeComment = useProjectStore((s) => s.removeComment);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   popupOpenRef.current = popupOpen;
 
@@ -208,6 +207,15 @@ function MapPinMarker({
     const onPopupClose = () => {
       // Ignore teardown (mode / editable rebuild) so popupOpen is not cleared.
       if (suppressCloseRef.current) return;
+      const latest = useProjectStore
+        .getState()
+        .project.comments.find((c) => c.id === comment.id);
+      // Empty new/edited bubble closed with × → cancel placement.
+      if (editable && !(latest?.text ?? "").trim()) {
+        removeComment(comment.id);
+        setCommentExpanded(comment.id, false);
+        return;
+      }
       updateComment(comment.id, { popupOpen: false });
     };
     popup.on("close", onPopupClose);
@@ -346,15 +354,12 @@ function FollowRangeMarker({
   map,
   comment,
   expanded,
-  useMapPopup,
   onToggle,
   onClose,
 }: {
   map: maplibregl.Map;
   comment: Comment;
   expanded: boolean;
-  /** When false, selection is shown via icon + side panel / sheet only. */
-  useMapPopup: boolean;
   onToggle: () => void;
   onClose: () => void;
 }) {
@@ -373,9 +378,7 @@ function FollowRangeMarker({
     const icon = document.createElement("button");
     icon.type = "button";
     icon.className = "comment-icon comment-icon-follow";
-    icon.title = useMapPopup
-      ? "Follow comment — click to edit text / show range"
-      : "Follow comment — tap to open";
+    icon.title = "Follow comment — click to edit text / show range";
     icon.textContent = RUNNER_ICON;
     icon.setAttribute("aria-label", "Follow comment");
     iconRef.current = icon;
@@ -394,58 +397,44 @@ function FollowRangeMarker({
 
     markerRef.current = marker;
 
-    if (useMapPopup) {
-      const content = document.createElement("div");
-      content.className = "comment-popup-content comment-follow-popup-content";
-      content.style.width = "160px";
-      content.style.height = "72px";
+    const content = document.createElement("div");
+    content.className = "comment-popup-content comment-follow-popup-content";
+    content.style.width = "160px";
+    content.style.height = "72px";
 
-      const body = document.createElement("textarea");
-      body.className = "comment-map-popup-body comment-map-popup-edit";
-      body.value = comment.text;
-      body.placeholder = "Write a follow comment…";
-      body.addEventListener("input", () => {
-        updateComment(comment.id, { text: body.value });
-      });
-      content.appendChild(body);
-      bodyRef.current = body;
+    const body = document.createElement("textarea");
+    body.className = "comment-map-popup-body comment-map-popup-edit";
+    body.value = comment.text;
+    body.placeholder = "Write a follow comment…";
+    body.addEventListener("input", () => {
+      updateComment(comment.id, { text: body.value });
+    });
+    content.appendChild(body);
+    bodyRef.current = body;
 
-      const popup = createCommentPopup(
-        "comment-maplibre-popup comment-maplibre-popup-follow",
-      );
-      popup.setDOMContent(content).setLngLat([comment.lng, comment.lat]);
+    const popup = createCommentPopup(
+      "comment-maplibre-popup comment-maplibre-popup-follow",
+    );
+    popup.setDOMContent(content).setLngLat([comment.lng, comment.lat]);
 
-      const onPopupClose = () => {
-        if (suppressCloseRef.current) return;
-        onClose();
-      };
-      popup.on("close", onPopupClose);
-      popupRef.current = popup;
+    const onPopupClose = () => {
+      if (suppressCloseRef.current) return;
+      onClose();
+    };
+    popup.on("close", onPopupClose);
+    popupRef.current = popup;
 
-      if (expandedRef.current) {
-        popup.addTo(map);
-      } else {
-        marker.addTo(map);
-      }
-
-      return () => {
-        suppressCloseRef.current = true;
-        icon.removeEventListener("click", onIconClick);
-        popup.off("close", onPopupClose);
-        popup.remove();
-        marker.remove();
-        markerRef.current = null;
-        popupRef.current = null;
-        iconRef.current = null;
-        bodyRef.current = null;
-      };
+    if (expandedRef.current) {
+      popup.addTo(map);
+    } else {
+      marker.addTo(map);
     }
 
-    marker.addTo(map);
-    icon.classList.toggle("comment-icon-selected", expandedRef.current);
-
     return () => {
+      suppressCloseRef.current = true;
       icon.removeEventListener("click", onIconClick);
+      popup.off("close", onPopupClose);
+      popup.remove();
       marker.remove();
       markerRef.current = null;
       popupRef.current = null;
@@ -453,7 +442,7 @@ function FollowRangeMarker({
       bodyRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, comment.id, useMapPopup]);
+  }, [map, comment.id]);
 
   useEffect(() => {
     markerRef.current?.setLngLat([comment.lng, comment.lat]);
@@ -461,14 +450,6 @@ function FollowRangeMarker({
   }, [comment.lng, comment.lat]);
 
   useEffect(() => {
-    if (!useMapPopup) {
-      if (!markerRef.current?.getElement().isConnected) {
-        markerRef.current?.addTo(map);
-      }
-      iconRef.current?.classList.toggle("comment-icon-selected", expanded);
-      return;
-    }
-
     const marker = markerRef.current;
     const popup = popupRef.current;
     if (!marker || !popup) return;
@@ -484,13 +465,169 @@ function FollowRangeMarker({
       suppressCloseRef.current = false;
       marker.addTo(map);
     }
-  }, [expanded, map, useMapPopup]);
+  }, [expanded, map]);
 
   useEffect(() => {
     const body = bodyRef.current;
     if (!body) return;
     if (document.activeElement !== body) body.value = comment.text;
   }, [comment.text]);
+
+  return null;
+}
+
+/** Start/end handles while picking a follow range (cleared on Confirm). */
+function FollowEndpointMarkers({ map }: { map: maplibregl.Map }) {
+  const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
+  const followDraftRange = useUiStore((s) => s.followDraftRange);
+  const setFollowRangeStartMs = useUiStore((s) => s.setFollowRangeStartMs);
+  const setFollowDraftRange = useUiStore((s) => s.setFollowDraftRange);
+  const trackPoints = useProjectStore((s) => s.project.track.points);
+
+  if (followDraftRange) {
+    return (
+      <>
+        <FollowEndpointHandle
+          map={map}
+          label="A"
+          timeMs={followDraftRange.aMs}
+          trackPoints={trackPoints}
+          onTimeMs={(ms) => {
+            const mid = interpolateTrackPosition(
+              trackPoints,
+              (ms + followDraftRange.bMs) / 2,
+            );
+            setFollowDraftRange({
+              ...followDraftRange,
+              aMs: ms,
+              lng: mid?.lng ?? followDraftRange.lng,
+              lat: mid?.lat ?? followDraftRange.lat,
+            });
+          }}
+        />
+        <FollowEndpointHandle
+          map={map}
+          label="B"
+          timeMs={followDraftRange.bMs}
+          trackPoints={trackPoints}
+          onTimeMs={(ms) => {
+            const mid = interpolateTrackPosition(
+              trackPoints,
+              (followDraftRange.aMs + ms) / 2,
+            );
+            setFollowDraftRange({
+              ...followDraftRange,
+              bMs: ms,
+              lng: mid?.lng ?? followDraftRange.lng,
+              lat: mid?.lat ?? followDraftRange.lat,
+            });
+          }}
+        />
+      </>
+    );
+  }
+
+  if (followRangeStartMs != null) {
+    return (
+      <FollowEndpointHandle
+        map={map}
+        label="A"
+        timeMs={followRangeStartMs}
+        trackPoints={trackPoints}
+        onTimeMs={(ms) => setFollowRangeStartMs(ms)}
+      />
+    );
+  }
+
+  return null;
+}
+
+function FollowEndpointHandle({
+  map,
+  label,
+  timeMs,
+  trackPoints,
+  onTimeMs,
+}: {
+  map: maplibregl.Map;
+  label: string;
+  timeMs: number;
+  trackPoints: ReturnType<
+    typeof useProjectStore.getState
+  >["project"]["track"]["points"];
+  onTimeMs: (ms: number) => void;
+}) {
+  const markerRef = useRef<maplibregl.Marker | null>(null);
+  const draggingRef = useRef(false);
+  const onTimeMsRef = useRef(onTimeMs);
+  const trackPointsRef = useRef(trackPoints);
+  onTimeMsRef.current = onTimeMs;
+  trackPointsRef.current = trackPoints;
+
+  useEffect(() => {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "follow-endpoint-marker";
+    el.textContent = label;
+    el.title = "Drag along the track to adjust";
+    el.setAttribute("aria-label", `Follow range endpoint ${label}`);
+
+    const pos = interpolateTrackPosition(trackPointsRef.current, timeMs);
+    const marker = new maplibregl.Marker({
+      element: el,
+      anchor: "center",
+      draggable: true,
+    }).setLngLat(
+      pos ? [pos.lng, pos.lat] : map.getCenter().toArray(),
+    );
+
+    marker.on("dragstart", () => {
+      draggingRef.current = true;
+      map.dragPan.disable();
+    });
+    marker.on("drag", () => {
+      const ll = marker.getLngLat();
+      const hit = nearestTrackPoint(trackPointsRef.current, ll.lng, ll.lat);
+      if (hit?.timeOffsetMs == null) return;
+      const snap = interpolateTrackPosition(
+        trackPointsRef.current,
+        hit.timeOffsetMs,
+      );
+      if (snap) marker.setLngLat([snap.lng, snap.lat]);
+      onTimeMsRef.current(hit.timeOffsetMs);
+    });
+    marker.on("dragend", () => {
+      draggingRef.current = false;
+      map.dragPan.enable();
+      const ll = marker.getLngLat();
+      const hit = nearestTrackPoint(trackPointsRef.current, ll.lng, ll.lat);
+      if (hit?.timeOffsetMs == null) return;
+      const snap = interpolateTrackPosition(
+        trackPointsRef.current,
+        hit.timeOffsetMs,
+      );
+      if (snap) marker.setLngLat([snap.lng, snap.lat]);
+      onTimeMsRef.current(hit.timeOffsetMs);
+    });
+
+    marker.addTo(map);
+    markerRef.current = marker;
+
+    return () => {
+      map.dragPan.enable();
+      marker.remove();
+      markerRef.current = null;
+    };
+    // Recreate only when label identity changes; position synced below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, label]);
+
+  useEffect(() => {
+    if (draggingRef.current) return;
+    const pos = interpolateTrackPosition(trackPoints, timeMs);
+    if (!pos || !markerRef.current) return;
+    markerRef.current.setLngLat([pos.lng, pos.lat]);
+  }, [timeMs, trackPoints]);
 
   return null;
 }

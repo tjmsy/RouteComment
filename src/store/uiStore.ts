@@ -23,13 +23,24 @@ export type ProfileChartCollapsed = Record<ChartKind, boolean>;
 
 /** Draft follow range awaiting explicit Confirm (not yet written / expanded). */
 export type FollowDraftRange = {
-  timeStartMs: number;
-  timeEndMs: number;
+  /** Unordered endpoints — keep identity stable while dragging markers. */
+  aMs: number;
+  bMs: number;
   lng: number;
   lat: number;
   /** Existing follow to update; null = create on confirm. */
   targetId: string | null;
 };
+
+export function followDraftTimes(d: FollowDraftRange): {
+  timeStartMs: number;
+  timeEndMs: number;
+} {
+  return {
+    timeStartMs: Math.min(d.aMs, d.bMs),
+    timeEndMs: Math.max(d.aMs, d.bMs),
+  };
+}
 
 const DEFAULT_PROFILE_CHART_COLLAPSED: ProfileChartCollapsed = {
   ele: false,
@@ -380,7 +391,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeTargetId: null,
       statusMessage:
         tool === "follow"
-          ? `${pointerVerb()} or drag along the GPS track to set the range`
+          ? `${pointerVerb()} the GPS track twice to set start and end`
           : tool === "danmaku"
             ? `${pointerVerb()} the GPS track to place a scrolling comment`
             : `${pointerVerb()} the map to place a comment bubble`,
@@ -401,16 +412,17 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followDraftRange: null,
       expandedCommentIds: [],
-      statusMessage: `${pointerVerb()} or drag on the GPS track to set a new range`,
+      statusMessage: `${pointerVerb()} the GPS track twice to set a new range`,
     }),
   confirmFollowDraft: () => {
     const draft = get().followDraftRange;
     if (!draft) return null;
+    const { timeStartMs, timeEndMs } = followDraftTimes(draft);
     const patch = {
       lng: draft.lng,
       lat: draft.lat,
-      timeStartMs: draft.timeStartMs,
-      timeEndMs: draft.timeEndMs,
+      timeStartMs,
+      timeEndMs,
     };
     let id = draft.targetId;
     if (id) {
@@ -427,7 +439,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       followRangeStartMs: null,
       followRangeTargetId: null,
       expandedCommentIds: [id],
-      statusMessage: "Follow comment saved. Edit text below.",
+      statusMessage: "Follow comment saved. Edit text in the map popup.",
     });
     return id;
   },
@@ -435,7 +447,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     set({
       followDraftRange: null,
       followRangeStartMs: null,
-      statusMessage: `${pointerVerb()} or drag along the GPS track to set the range`,
+      statusMessage: `${pointerVerb()} the GPS track twice to set start and end`,
     }),
   setActiveRoutePlanId: (id) => set({ activeRoutePlanId: id }),
   setShowTrack: (show) => set({ showTrack: show }),

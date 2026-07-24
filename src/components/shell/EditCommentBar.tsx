@@ -54,7 +54,7 @@ function CommentToolControls() {
       </div>
       <p className="hint comment-tool-hint">
         {commentTool === "follow"
-          ? `${verb} or drag on the GPS track to set a time range`
+          ? `${verb} the GPS track twice for start/end, then drag the markers`
           : commentTool === "danmaku"
             ? `${verb} the track to place a scrolling comment`
             : `${verb} the map to place a comment bubble (× collapses long text)`}

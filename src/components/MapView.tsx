@@ -986,13 +986,7 @@ export function MapView() {
   }, [headingUp, mode, mapInstance]);
 
   // Preview highlight while picking a follow-comment range, draft, or selected follow
-  const followHoverMsRef = useRef<number | null>(null);
-  const skipFollowClickRef = useRef(false);
-  /** True while a follow range drag has disabled map pan. */
-  const followDragPanLockedRef = useRef(false);
-
-  const syncTrackRangeHighlight = useCallback(
-    (endMs: number | null = null) => {
+  const syncTrackRangeHighlight = useCallback(() => {
       const map = mapRef.current;
       if (!map || !map.isStyleLoaded()) return;
 
@@ -1001,14 +995,12 @@ export function MapView() {
       let coords: [number, number][] = [];
 
       if (ui.followRangeStartMs != null && pts.length > 0) {
-        const end = endMs ?? followHoverMsRef.current ?? ui.followRangeStartMs;
-        coords = trackSliceCoordinates(pts, ui.followRangeStartMs, end);
+        // Single endpoint: no span yet (markers show the start).
+        coords = [];
       } else if (ui.followDraftRange && pts.length > 0) {
-        coords = trackSliceCoordinates(
-          pts,
-          ui.followDraftRange.timeStartMs,
-          ui.followDraftRange.timeEndMs,
-        );
+        const a = Math.min(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
+        const b = Math.max(ui.followDraftRange.aMs, ui.followDraftRange.bMs);
+        coords = trackSliceCoordinates(pts, a, b);
       } else {
         const activeId =
           ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
@@ -1078,211 +1070,8 @@ export function MapView() {
     syncTrackRangeHighlight,
   ]);
 
-  // Follow range: pan stays on unless actively dragging a range on the track.
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapInstance) return;
-
-    const dragStartMsRef = { current: null as number | null };
-    const dragCommittedStartRef = { current: false };
-
-    const unlockDragPan = () => {
-      if (!followDragPanLockedRef.current) return;
-      followDragPanLockedRef.current = false;
-      map.dragPan.enable();
-    };
-
-    const lockDragPan = () => {
-      if (followDragPanLockedRef.current) return;
-      followDragPanLockedRef.current = true;
-      map.dragPan.disable();
-    };
-
-    const followTargetId = (): string | null => {
-      const ui = useUiStore.getState();
-      if (ui.followRangeTargetId) return ui.followRangeTargetId;
-      const activeId =
-        ui.expandedCommentIds[ui.expandedCommentIds.length - 1] ?? null;
-      if (!activeId) return null;
-      const c = useProjectStore
-        .getState()
-        .project.comments.find((x) => x.id === activeId);
-      return c?.kind === "follow" ? activeId : null;
-    };
-
-    const stageFollowDraft = (
-      timeStartMs: number,
-      timeEndMs: number,
-      pts: ReturnType<
-        typeof useProjectStore.getState
-      >["project"]["track"]["points"],
-      hitLng: number,
-      hitLat: number,
-    ) => {
-      const mid = interpolateTrackPose(pts, (timeStartMs + timeEndMs) / 2);
-      useUiStore.getState().setFollowDraftRange({
-        timeStartMs,
-        timeEndMs,
-        lng: mid?.lng ?? hitLng,
-        lat: mid?.lat ?? hitLat,
-        targetId: followTargetId(),
-      });
-      setFollowRangeStartMs(null);
-      followHoverMsRef.current = null;
-      setStatusMessage("Range set — Confirm to save, or Redo to pick again.");
-      syncTrackRangeHighlight();
-    };
-
-    type LngLatEvent = { lngLat: { lng: number; lat: number } };
-
-    const onMove = (e: LngLatEvent) => {
-      const ui = useUiStore.getState();
-      if (
-        ui.mode !== "edit" ||
-        ui.editTool !== "comment" ||
-        ui.commentTool !== "follow"
-      )
-        return;
-      const startMs = dragStartMsRef.current ?? ui.followRangeStartMs;
-      if (startMs == null) return;
-      const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(
-        map,
-        pts,
-        e.lngLat.lng,
-        e.lngLat.lat,
-        trackDragHitPx(),
-      );
-      if (hit?.timeOffsetMs == null) return;
-      followHoverMsRef.current = hit.timeOffsetMs;
-      // Mirror drag start into store only after movement so short taps don't
-      // lock the user into two-tap mode.
-      if (
-        dragStartMsRef.current != null &&
-        !dragCommittedStartRef.current &&
-        Math.abs(hit.timeOffsetMs - dragStartMsRef.current) >= 300
-      ) {
-        dragCommittedStartRef.current = true;
-        setFollowRangeStartMs(dragStartMsRef.current);
-      }
-      syncTrackRangeHighlight(hit.timeOffsetMs);
-    };
-
-    const onDown = (e: LngLatEvent) => {
-      const ui = useUiStore.getState();
-      if (
-        ui.mode !== "edit" ||
-        ui.editTool !== "comment" ||
-        ui.commentTool !== "follow"
-      )
-        return;
-      // Two-tap second point: wait for click, don't start a new drag.
-      if (ui.followRangeStartMs != null && dragStartMsRef.current == null)
-        return;
-      const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(
-        map,
-        pts,
-        e.lngLat.lng,
-        e.lngLat.lat,
-        trackDragHitPx(),
-      );
-      if (hit?.timeOffsetMs == null) return;
-      // Replacing a draft: start a fresh drag over the track.
-      if (ui.followDraftRange) {
-        useUiStore.getState().setFollowDraftRange(null);
-      }
-      dragStartMsRef.current = hit.timeOffsetMs;
-      dragCommittedStartRef.current = false;
-      followHoverMsRef.current = hit.timeOffsetMs;
-      lockDragPan();
-    };
-
-    const onUp = (e: LngLatEvent) => {
-      const dragStart = dragStartMsRef.current;
-      const committed = dragCommittedStartRef.current;
-      dragStartMsRef.current = null;
-      dragCommittedStartRef.current = false;
-      unlockDragPan();
-      if (dragStart == null) return;
-
-      const ui = useUiStore.getState();
-      if (
-        ui.mode !== "edit" ||
-        ui.editTool !== "comment" ||
-        ui.commentTool !== "follow"
-      )
-        return;
-      const pts = useProjectStore.getState().project.track.points;
-      const hit = isNearTrack(
-        map,
-        pts,
-        e.lngLat.lng,
-        e.lngLat.lat,
-        trackDragHitPx(),
-      );
-      if (hit?.timeOffsetMs == null || !committed) {
-        // Short / cancelled drag — clear any partial start so pan stays free.
-        if (committed || ui.followRangeStartMs === dragStart) {
-          setFollowRangeStartMs(null);
-          followHoverMsRef.current = null;
-          syncTrackRangeHighlight();
-        }
-        return;
-      }
-      if (Math.abs(hit.timeOffsetMs - dragStart) < 300) {
-        setFollowRangeStartMs(null);
-        followHoverMsRef.current = null;
-        syncTrackRangeHighlight();
-        return;
-      }
-
-      const timeStartMs = Math.min(dragStart, hit.timeOffsetMs);
-      const timeEndMs = Math.max(dragStart, hit.timeOffsetMs);
-      skipFollowClickRef.current = true;
-      stageFollowDraft(timeStartMs, timeEndMs, pts, hit.lng, hit.lat);
-    };
-
-    const onTouchMove = (e: maplibregl.MapTouchEvent) => {
-      if (e.points.length !== 1) return;
-      onMove(e);
-    };
-    const onTouchStart = (e: maplibregl.MapTouchEvent) => {
-      if (e.points.length !== 1) return;
-      onDown(e);
-    };
-    const onTouchEnd = (e: maplibregl.MapTouchEvent) => {
-      onUp(e);
-    };
-    const onTouchCancel = () => {
-      dragStartMsRef.current = null;
-      dragCommittedStartRef.current = false;
-      unlockDragPan();
-    };
-
-    map.on("mousemove", onMove);
-    map.on("mousedown", onDown);
-    map.on("mouseup", onUp);
-    map.on("touchmove", onTouchMove);
-    map.on("touchstart", onTouchStart);
-    map.on("touchend", onTouchEnd);
-    map.on("touchcancel", onTouchCancel);
-    return () => {
-      unlockDragPan();
-      map.off("mousemove", onMove);
-      map.off("mousedown", onDown);
-      map.off("mouseup", onUp);
-      map.off("touchmove", onTouchMove);
-      map.off("touchstart", onTouchStart);
-      map.off("touchend", onTouchEnd);
-      map.off("touchcancel", onTouchCancel);
-    };
-  }, [
-    mapInstance,
-    setFollowRangeStartMs,
-    setStatusMessage,
-    syncTrackRangeHighlight,
-  ]);
+  // Follow range uses two track taps + draggable endpoint markers (no drag-select).
+  // Endpoint markers live in CommentMarkers / FollowEndpointMarkers.
 
   // Profile chart sync: hover near track in view mode scrubs playback time.
   // Touch is omitted so one-finger pan doesn't fight scrubbing (use profile chart).
@@ -1457,16 +1246,29 @@ export function MapView() {
             popupOpen: true,
           });
           setCommentExpanded(id, true);
+          // Keep the popup on-screen: pad the top so the bubble above the pin fits.
+          const padTop = Math.min(
+            180,
+            Math.round(map.getContainer().clientHeight * 0.38),
+          );
+          map.easeTo({
+            center: [lngLat.lng, lngLat.lat],
+            duration: 280,
+            padding: { top: padTop, bottom: 24, left: 24, right: 24 },
+          });
           return;
         }
 
-        // follow: pick start then end on the track (2-click; drag handled above)
-        if (skipFollowClickRef.current) {
-          skipFollowClickRef.current = false;
-          return;
-        }
+        // follow: two track taps → endpoints; then drag markers to adjust
         if (pts.length === 0) {
           setStatusMessage("Load a GPS track before adding a follow comment.");
+          return;
+        }
+        const draft = useUiStore.getState().followDraftRange;
+        if (draft) {
+          setStatusMessage(
+            "Drag the endpoint markers to adjust, then Confirm.",
+          );
           return;
         }
         const hit = isNearTrack(
@@ -1477,13 +1279,11 @@ export function MapView() {
           trackDragHitPx(),
         );
         if (!hit || hit.timeOffsetMs == null) {
-          // Off-track tap cancels an in-progress start or clears guidance.
           const pending = useUiStore.getState().followRangeStartMs;
           if (pending != null) {
             setFollowRangeStartMs(null);
-            followHoverMsRef.current = null;
             setStatusMessage(
-              `${pointerVerb()} or drag along the GPS track to set the range`,
+              `${pointerVerb()} the GPS track twice to set start and end`,
             );
             return;
           }
@@ -1493,24 +1293,16 @@ export function MapView() {
           return;
         }
 
-        const draft = useUiStore.getState().followDraftRange;
-        if (draft) {
-          // Starting a new two-tap after a draft replaces it.
-          useUiStore.getState().setFollowDraftRange(null);
-        }
-
         const pendingStart = useUiStore.getState().followRangeStartMs;
         if (pendingStart == null) {
           setFollowRangeStartMs(hit.timeOffsetMs);
           setStatusMessage(
-            `Range start set. ${pointerVerb()} the track again to set the end.`,
+            `Start set. ${pointerVerb()} the track again to set the end.`,
           );
           return;
         }
 
-        const timeStartMs = Math.min(pendingStart, hit.timeOffsetMs);
-        const timeEndMs = Math.max(pendingStart, hit.timeOffsetMs);
-        if (timeEndMs - timeStartMs < 300) {
+        if (Math.abs(hit.timeOffsetMs - pendingStart) < 300) {
           setStatusMessage(
             "End is too close to start — pick farther along the track.",
           );
@@ -1518,7 +1310,7 @@ export function MapView() {
         }
         const mid = interpolateTrackPose(
           pts,
-          (timeStartMs + timeEndMs) / 2,
+          (pendingStart + hit.timeOffsetMs) / 2,
         );
         const targetId =
           useUiStore.getState().followRangeTargetId ??
@@ -1533,15 +1325,16 @@ export function MapView() {
             return selected?.kind === "follow" ? selected.id : null;
           })();
         useUiStore.getState().setFollowDraftRange({
-          timeStartMs,
-          timeEndMs,
+          aMs: pendingStart,
+          bMs: hit.timeOffsetMs,
           lng: mid?.lng ?? hit.lng,
           lat: mid?.lat ?? hit.lat,
           targetId,
         });
         setFollowRangeStartMs(null);
-        followHoverMsRef.current = null;
-        setStatusMessage("Range set — Confirm to save, or Redo to pick again.");
+        setStatusMessage(
+          "Drag markers to adjust, then Confirm — or Redo to pick again.",
+        );
       }
     };
 

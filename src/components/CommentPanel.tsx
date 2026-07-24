@@ -124,23 +124,25 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
         </button>
       </div>
 
-      {editable ? (
+      {editable && !isFollow && !isMap ? (
         <textarea
           value={draft}
           rows={variant === "sheet" ? 3 : 4}
           placeholder="Write a comment…"
-          autoFocus={!isMap && !mobile}
+          autoFocus={!mobile}
           onChange={(e) => {
             const v = e.target.value;
             setDraft(v);
             updateComment(comment.id, { text: v });
           }}
         />
-      ) : (
+      ) : !editable ? (
         <p className="comment-readonly-text">
           {comment.text.trim() ? comment.text : "(No text)"}
         </p>
-      )}
+      ) : isFollow ? (
+        <p className="hint">Edit text in the map popup.</p>
+      ) : null}
 
       {isFollow && (
         <>

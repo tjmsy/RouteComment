@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { pointerVerb } from "../../lib/mobile";
 import { PLAN_COLORS } from "../../lib/types";
 import { useProjectStore } from "../../store/projectStore";
@@ -17,6 +17,10 @@ export function EditPlanBar() {
   const activeRoutePlanId = useUiStore((s) => s.activeRoutePlanId);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [colorOpen, setColorOpen] = useState(false);
+  const [planMenuOpen, setPlanMenuOpen] = useState(false);
+  const colorWrapRef = useRef<HTMLDivElement>(null);
+  const planMenuRef = useRef<HTMLDivElement>(null);
   const verb = pointerVerb();
 
   const activePlan =
@@ -26,7 +30,24 @@ export function EditPlanBar() {
 
   useEffect(() => {
     setConfirmAction(null);
+    setColorOpen(false);
+    setPlanMenuOpen(false);
   }, [activePlan?.id]);
+
+  useEffect(() => {
+    if (!colorOpen && !planMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (colorOpen && colorWrapRef.current && !colorWrapRef.current.contains(t)) {
+        setColorOpen(false);
+      }
+      if (planMenuOpen && planMenuRef.current && !planMenuRef.current.contains(t)) {
+        setPlanMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [colorOpen, planMenuOpen]);
 
   const deleteActivePlan = () => {
     if (!activePlan) return;
@@ -65,21 +86,61 @@ export function EditPlanBar() {
         Add plan
       </button>
       {project.routePlans.length > 0 && (
-        <select
-          className="tool-bar-plan-select"
-          value={activePlan?.id ?? ""}
-          onChange={(e) => {
-            setConfirmAction(null);
-            setActiveRoutePlanId(e.target.value || null);
-          }}
-          aria-label="Active plan"
-        >
-          {project.routePlans.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="plan-picker" ref={planMenuRef}>
+          <button
+            type="button"
+            className="plan-picker-trigger"
+            aria-haspopup="listbox"
+            aria-expanded={planMenuOpen}
+            aria-label="Active plan"
+            onClick={() => {
+              setPlanMenuOpen((o) => !o);
+              setColorOpen(false);
+            }}
+          >
+            {activePlan && (
+              <span
+                className="plan-picker-swatch"
+                style={{ background: activePlan.color }}
+                aria-hidden
+              />
+            )}
+            <span className="plan-picker-label">
+              {activePlan?.name ?? "Select plan"}
+            </span>
+            <span className="plan-picker-caret" aria-hidden>
+              ▾
+            </span>
+          </button>
+          {planMenuOpen && (
+            <ul className="plan-picker-menu" role="listbox">
+              {project.routePlans.map((p) => (
+                <li key={p.id} role="option" aria-selected={p.id === activePlan?.id}>
+                  <button
+                    type="button"
+                    className={
+                      p.id === activePlan?.id
+                        ? "plan-picker-option plan-picker-option--active"
+                        : "plan-picker-option"
+                    }
+                    onClick={() => {
+                      setConfirmAction(null);
+                      setActiveRoutePlanId(p.id);
+                      setPlanMenuOpen(false);
+                    }}
+                  >
+                    <span
+                      className="plan-picker-swatch"
+                      style={{ background: p.color }}
+                      aria-hidden
+                    />
+                    <span>{p.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
       {activePlan && (
         <>
@@ -90,23 +151,49 @@ export function EditPlanBar() {
               updateRoutePlan(activePlan.id, { name: e.target.value })
             }
           />
-          <div className="plan-color-swatches" role="group" aria-label="Plan color">
-            {PLAN_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                className={
-                  c === activePlan.color
-                    ? "plan-color-swatch plan-color-swatch--active"
-                    : "plan-color-swatch"
-                }
-                style={{ background: c }}
-                title={c}
-                aria-label={`Color ${c}`}
-                aria-pressed={c === activePlan.color}
-                onClick={() => updateRoutePlan(activePlan.id, { color: c })}
+          <div className="plan-color-picker" ref={colorWrapRef}>
+            <button
+              type="button"
+              className="plan-color-trigger"
+              aria-label="Plan color"
+              aria-haspopup="true"
+              aria-expanded={colorOpen}
+              onClick={() => {
+                setColorOpen((o) => !o);
+                setPlanMenuOpen(false);
+              }}
+            >
+              <span
+                className="plan-color-swatch"
+                style={{ background: activePlan.color }}
               />
-            ))}
+              <span className="plan-picker-caret" aria-hidden>
+                ▾
+              </span>
+            </button>
+            {colorOpen && (
+              <div className="plan-color-popover" role="listbox" aria-label="Plan colors">
+                {PLAN_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={
+                      c === activePlan.color
+                        ? "plan-color-swatch plan-color-swatch--active"
+                        : "plan-color-swatch"
+                    }
+                    style={{ background: c }}
+                    title={c}
+                    aria-label={`Color ${c}`}
+                    aria-selected={c === activePlan.color}
+                    onClick={() => {
+                      updateRoutePlan(activePlan.id, { color: c });
+                      setColorOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
           {confirmAction == null ? (
             <>

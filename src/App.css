@@ -1045,6 +1045,122 @@ button.btn-skip {
   gap: 0.3rem;
 }
 
+.plan-color-picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.plan-color-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 32px;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.plan-color-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: max-content;
+  max-width: 11rem;
+  padding: 0.4rem;
+  background: rgba(26, 33, 28, 0.98);
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.plan-picker {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.plan-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 32px;
+  max-width: 12rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.plan-picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.plan-picker-caret {
+  color: var(--muted);
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+
+.plan-picker-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.plan-picker-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  min-width: 100%;
+  max-height: min(40vh, 220px);
+  overflow-y: auto;
+  background: rgba(26, 33, 28, 0.98);
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.plan-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 32px;
+  padding: 0.3rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.plan-picker-option:hover,
+.plan-picker-option--active {
+  background: rgba(196, 245, 66, 0.12);
+}
+
 .plan-color-swatch {
   width: 22px;
   height: 22px;
@@ -1207,8 +1323,8 @@ button.btn-skip {
   align-items: center;
   gap: 0.45rem 0.65rem;
   padding: 0.4rem 0.75rem;
-  /* Home indicator only — no extra rem under Speed / Head-up / 3D. */
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* Home indicator + breathing room under Speed / Head-up / 3D chips. */
+  padding-bottom: max(0.55rem, calc(env(safe-area-inset-bottom, 0px) + 0.35rem));
   background: rgba(26, 33, 28, 0.94);
   border-top: 1px solid var(--panel-edge);
   flex-shrink: 0;
@@ -1338,6 +1454,27 @@ button.btn-skip {
   background: #334155;
   color: #f8fafc;
   cursor: pointer;
+}
+
+.follow-endpoint-marker {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #1a211c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: grab;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.follow-endpoint-marker:active {
+  cursor: grabbing;
 }
 
 .comment-icon-danmaku {
@@ -1827,7 +1964,7 @@ button.btn-skip {
     justify-content: center;
     gap: 0.2rem 0.4rem;
     padding: 0.2rem 0.5rem;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom, 0px));
   }
 
   .animation-bar--mobile .animation-bar-extras {

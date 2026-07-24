@@ -10,7 +10,6 @@ export type UiState =
   | { kind: "layers" }
   | { kind: "playback" }
   | { kind: "chooseEdit" }
-  | { kind: "chooseComment" }
   | { kind: "editPlan" }
   | { kind: "editComment" }
   | { kind: "georef" };
@@ -31,11 +30,9 @@ export type UiEvent =
   | { type: "OPEN_LAYERS" }
   | { type: "OPEN_PLAYBACK" }
   | { type: "OPEN_EDIT_MENU" }
-  | { type: "OPEN_ADD_COMMENT" }
   | { type: "DISMISS" }
   | { type: "START_GEOREF" }
   | { type: "SELECT_PLAN" }
-  | { type: "SELECT_COMMENT" }
   | { type: "SELECT_COMMENT_KIND"; kind: CommentKindChoice }
   | { type: "TOOL_DONE" }
   | { type: "GEOREF_DONE" };

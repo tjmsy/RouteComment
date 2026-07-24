@@ -13,9 +13,8 @@ export const transitions: Record<
     OPEN_LAYERS: "layers",
     OPEN_PLAYBACK: "playback",
     OPEN_EDIT_MENU: "chooseEdit",
-    OPEN_ADD_COMMENT: "chooseComment",
     SELECT_PLAN: "editPlan",
-    SELECT_COMMENT: "editComment",
+    SELECT_COMMENT_KIND: "editComment",
   },
   project: {
     DISMISS: "review",
@@ -26,10 +25,6 @@ export const transitions: Record<
   chooseEdit: {
     DISMISS: "review",
     SELECT_PLAN: "editPlan",
-    SELECT_COMMENT: "editComment",
-  },
-  chooseComment: {
-    DISMISS: "review",
     SELECT_COMMENT_KIND: "editComment",
   },
   editPlan: { TOOL_DONE: "review" },

@@ -29,6 +29,7 @@ export function CommentMarkers({ map }: Props) {
   const toggleCommentExpanded = useUiStore((s) => s.toggleCommentExpanded);
   const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
   const screen = useUiStore((s) => s.screen);
+  const commentTool = useUiStore((s) => s.commentTool);
   const commentEditing = isEditingComment(screen);
   /** Map comments are written on the map bubble (including phone). */
   const mapPopupEditable = commentEditing;
@@ -37,36 +38,46 @@ export function CommentMarkers({ map }: Props) {
 
   return (
     <>
-      {comments.map((comment) =>
-        comment.kind === "map" ? (
-          <MapPinMarker
-            key={comment.id}
-            map={map}
-            comment={comment}
-            popupOpen={comment.popupOpen !== false}
-            draggable={commentEditing}
-            editable={mapPopupEditable}
-          />
-        ) : comment.kind === "follow" && commentEditing ? (
-          <FollowRangeMarker
-            key={comment.id}
-            map={map}
-            comment={comment}
-            expanded={expandedCommentIds.includes(comment.id)}
-            onToggle={() => toggleCommentExpanded(comment.id)}
-            onClose={() => setCommentExpanded(comment.id, false)}
-          />
-        ) : comment.kind === "danmaku" && commentEditing ? (
-          <DanmakuMarker
-            key={comment.id}
-            map={map}
-            comment={comment}
-            selected={expandedCommentIds.includes(comment.id)}
-            draggable={commentEditing}
-            onSelect={() => setCommentExpanded(comment.id, true)}
-          />
-        ) : null,
-      )}
+      {comments.map((comment) => {
+        if (commentEditing && comment.kind !== commentTool) return null;
+        if (comment.kind === "map") {
+          return (
+            <MapPinMarker
+              key={comment.id}
+              map={map}
+              comment={comment}
+              popupOpen={comment.popupOpen !== false}
+              draggable={commentEditing}
+              editable={mapPopupEditable}
+            />
+          );
+        }
+        if (comment.kind === "follow" && commentEditing) {
+          return (
+            <FollowRangeMarker
+              key={comment.id}
+              map={map}
+              comment={comment}
+              expanded={expandedCommentIds.includes(comment.id)}
+              onToggle={() => toggleCommentExpanded(comment.id)}
+              onClose={() => setCommentExpanded(comment.id, false)}
+            />
+          );
+        }
+        if (comment.kind === "danmaku" && commentEditing) {
+          return (
+            <DanmakuMarker
+              key={comment.id}
+              map={map}
+              comment={comment}
+              selected={expandedCommentIds.includes(comment.id)}
+              draggable={commentEditing}
+              onSelect={() => setCommentExpanded(comment.id, true)}
+            />
+          );
+        }
+        return null;
+      })}
       <FollowEndpointMarkers map={map} />
       <FollowBubbles map={map} />
     </>
@@ -160,6 +171,18 @@ function MapPinMarker({
       handle.className = "comment-map-popup-resize";
       handle.title = t("marker.dragResize");
       content.appendChild(handle);
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "comment-map-popup-delete";
+      del.textContent = t("common.delete");
+      del.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeComment(comment.id);
+        setCommentExpanded(comment.id, false);
+      });
+      content.appendChild(del);
     }
 
     contentRef.current = content;
@@ -479,11 +502,17 @@ function FollowRangeMarker({
 
 /** Start/end handles while picking a follow range (cleared on Confirm). */
 function FollowEndpointMarkers({ map }: { map: maplibregl.Map }) {
+  const screen = useUiStore((s) => s.screen);
+  const commentTool = useUiStore((s) => s.commentTool);
   const followRangeStartMs = useUiStore((s) => s.followRangeStartMs);
   const followDraftRange = useUiStore((s) => s.followDraftRange);
   const setFollowRangeStartMs = useUiStore((s) => s.setFollowRangeStartMs);
   const setFollowDraftRange = useUiStore((s) => s.setFollowDraftRange);
   const trackPoints = useProjectStore((s) => s.project.track.points);
+
+  if (!isEditingComment(screen) || commentTool !== "follow") {
+    return null;
+  }
 
   if (followDraftRange) {
     return (

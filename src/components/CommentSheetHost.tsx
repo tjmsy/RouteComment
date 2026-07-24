@@ -36,7 +36,8 @@ export function CommentSheetHost({ children }: Props) {
 
   /**
    * Keep the map free while picking or confirming a follow range.
-   * Map + Follow comments edit on the bubble itself — never cover with a sheet.
+   * Map comments edit on the bubble itself — never cover with a sheet.
+   * Follow shows the sheet after placement for range / delete controls.
    */
   const pickingFollow =
     isEditingComment(screen) &&
@@ -48,8 +49,7 @@ export function CommentSheetHost({ children }: Props) {
   const open =
     expandedCommentIds.length > 0 &&
     !pickingFollow &&
-    active?.kind !== "map" &&
-    !(active?.kind === "follow" && isEditingComment(screen));
+    active?.kind !== "map";
 
   useEffect(() => {
     const vv = window.visualViewport;

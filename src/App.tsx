@@ -45,8 +45,7 @@ export default function App() {
     (screen.kind === "review" ||
       screen.kind === "layers" ||
       screen.kind === "playback" ||
-      screen.kind === "editComment" ||
-      screen.kind === "chooseComment");
+      screen.kind === "editComment");
   const wizardGeoref =
     screen.kind === "createWizard" && screen.step === "georef";
 

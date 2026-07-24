@@ -183,8 +183,7 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
       editingComment || isReviewReadonly(screen)
         ? prev.expandedCommentIds
         : [],
-    commentTool:
-      editingComment && !wasEditingComment ? "follow" : prev.commentTool,
+    commentTool: prev.commentTool,
     // Mode guidance lives in tool-bar inline hints; clear toast on enter.
     statusMessage: inToolMode ? "" : prev.statusMessage,
   };
@@ -243,7 +242,19 @@ export const useUiStore = create<UiState>((set, get) => ({
     const prev = get();
     const screen = reduceUiState(prev.screen, event);
     if (sameScreen(screen, prev.screen)) return;
-    set(applyScreen(screen, prev));
+    const next = applyScreen(screen, prev);
+    if (event.type === "SELECT_COMMENT_KIND") {
+      set({
+        ...next,
+        commentTool: event.kind,
+        expandedCommentIds: [],
+        followRangeStartMs: null,
+        followDraftRange: null,
+        followRangeTargetId: null,
+      });
+      return;
+    }
+    set(next);
   },
 
   setMode: (mode) => {

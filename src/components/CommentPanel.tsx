@@ -166,7 +166,7 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
               : comment.text
             : t("common.noText")}
         </p>
-      ) : isFollow ? (
+      ) : isFollow || isMap ? (
         <p className="hint">{t("comment.editInPopup")}</p>
       ) : null}
 

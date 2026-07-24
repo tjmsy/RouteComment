@@ -25,7 +25,6 @@ export const ja: Record<MessageKey, string> = {
 
   "choose.edit": "編集",
   "choose.plan": "プラン",
-  "choose.comment": "コメント",
 
   "panel.close": "閉じる",
 
@@ -88,11 +87,6 @@ export const ja: Record<MessageKey, string> = {
   "commentTool.hintDanmaku": "トラックを{verb}して流れるコメントを配置",
   "commentTool.hintMap":
     "地図を{verb}してノートを配置（×で長いテキストを折りたたみ）",
-  "commentTool.noComments": "コメントはまだありません。",
-  "commentTool.comments": "コメント",
-  "commentTool.kindFollow": "つぶやき",
-  "commentTool.kindMap": "ノート",
-  "commentTool.kindDanmaku": "テロップ",
 
   "plan.done": "完了",
   "plan.undo": "元に戻す",
@@ -141,7 +135,7 @@ export const ja: Record<MessageKey, string> = {
   "comment.triggerTime": "表示タイミング",
   "comment.atTime": "{time}",
   "comment.mapReadonlyHint":
-    "地図上のピンアイコンを{verb}して開きます。ピンの編集・移動はコメントモードに切り替えてください。",
+    "地図上のピンアイコンを{verb}して開きます。ピンの編集・移動はノート編集に切り替えてください。",
   "comment.danmakuReadonlyHint":
     "再生がトリガー時刻に達すると、右から左へ一度スクロール表示されます。",
   "comment.delete": "コメントを削除…",

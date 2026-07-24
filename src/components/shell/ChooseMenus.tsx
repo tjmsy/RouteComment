@@ -18,9 +18,29 @@ export function ChooseEditMenu() {
         <button
           type="button"
           className="setup-primary"
-          onClick={() => dispatch({ type: "SELECT_COMMENT" })}
+          onClick={() =>
+            dispatch({ type: "SELECT_COMMENT_KIND", kind: "follow" })
+          }
         >
-          {t("choose.comment")}
+          {t("commentTool.follow")}
+        </button>
+        <button
+          type="button"
+          className="setup-primary"
+          onClick={() =>
+            dispatch({ type: "SELECT_COMMENT_KIND", kind: "map" })
+          }
+        >
+          {t("commentTool.map")}
+        </button>
+        <button
+          type="button"
+          className="setup-primary"
+          onClick={() =>
+            dispatch({ type: "SELECT_COMMENT_KIND", kind: "danmaku" })
+          }
+        >
+          {t("commentTool.danmaku")}
         </button>
       </div>
     </PanelHost>

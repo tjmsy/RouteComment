@@ -11,7 +11,6 @@ export function deriveLegacyMode(screen: UiState): AppMode {
     case "editPlan":
     case "editComment":
     case "chooseEdit":
-    case "chooseComment":
     case "project":
     case "empty":
       return "edit";
@@ -29,7 +28,6 @@ export function deriveLegacyEditTool(screen: UiState): EditTool {
     case "editPlan":
       return "plan";
     case "editComment":
-    case "chooseComment":
       return "comment";
     case "empty":
     case "createWizard":
@@ -49,7 +47,6 @@ export function isReviewChrome(screen: UiState): boolean {
     screen.kind === "layers" ||
     screen.kind === "playback" ||
     screen.kind === "chooseEdit" ||
-    screen.kind === "chooseComment" ||
     screen.kind === "editComment"
   );
 }

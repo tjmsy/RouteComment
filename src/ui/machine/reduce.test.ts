@@ -73,6 +73,18 @@ describe("reduceUiState flow", () => {
     expect(s.kind).toBe("review");
   });
 
+  it("hub: chooseEdit → SELECT_COMMENT_KIND → editComment → TOOL_DONE", () => {
+    let s: UiState = { kind: "review" };
+    s = reduceUiState(s, { type: "OPEN_EDIT_MENU" });
+    s = reduceUiState(s, {
+      type: "SELECT_COMMENT_KIND",
+      kind: "danmaku",
+    });
+    expect(s.kind).toBe("editComment");
+    s = reduceUiState(s, { type: "TOOL_DONE" });
+    expect(s.kind).toBe("review");
+  });
+
   it("unknown event is a no-op", () => {
     const s: UiState = { kind: "review" };
     expect(reduceUiState(s, { type: "TOOL_DONE" })).toEqual(s);

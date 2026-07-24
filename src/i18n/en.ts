@@ -23,7 +23,6 @@ export const en = {
 
   "choose.edit": "Edit",
   "choose.plan": "Plan",
-  "choose.comment": "Comment",
 
   "panel.close": "Close",
 
@@ -85,11 +84,6 @@ export const en = {
   "commentTool.hintDanmaku": "{verb} the track to place a scrolling comment",
   "commentTool.hintMap":
     "{verb} the map to place a comment bubble (× collapses long text)",
-  "commentTool.noComments": "No comments yet.",
-  "commentTool.comments": "Comments",
-  "commentTool.kindFollow": "voice",
-  "commentTool.kindMap": "map",
-  "commentTool.kindDanmaku": "caption",
 
   "plan.done": "Done",
   "plan.undo": "Undo",
@@ -137,7 +131,7 @@ export const en = {
   "comment.triggerTime": "Trigger time",
   "comment.atTime": "At {time}",
   "comment.mapReadonlyHint":
-    "{verb} the pin icon on the map to open it. Switch to Comment mode to edit or move the pin.",
+    "{verb} the pin icon on the map to open it. Switch to Notes edit to edit or move the pin.",
   "comment.danmakuReadonlyHint":
     "Scrolls right-to-left once when playback reaches the trigger time.",
   "comment.delete": "Delete comment…",

@@ -729,6 +729,25 @@ button.btn-skip {
   margin: 0;
 }
 
+.comment-map-popup-delete {
+  flex: 0 0 auto;
+  align-self: stretch;
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid #d0d5ce;
+  border-radius: 3px;
+  background: #fff;
+  color: #8a3b3b;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.comment-map-popup-delete:hover {
+  background: #f8ecec;
+}
+
 .comment-map-popup-resize {
   position: absolute;
   right: 1px;

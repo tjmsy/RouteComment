@@ -10,8 +10,6 @@ const ROW_HEIGHT = Math.round(FONT_SIZE * 1.4);
 const AREA_RATIO = 0.65;
 const MIN_GAP_PX = 40;
 const SCROLL_DURATION_MS = 7000;
-/** After a scrub/seek, fire bullets whose trigger lies in (playhead - NEAR, playhead]. */
-const NEAR_MS = 400;
 
 const measureCanvas =
   typeof document !== "undefined" ? document.createElement("canvas") : null;
@@ -35,10 +33,6 @@ function maxLanes(containerHeight: number): number {
   return Math.max(1, Math.floor((containerHeight * AREA_RATIO) / ROW_HEIGHT));
 }
 
-/**
- * Estimate whether a new bullet can enter a lane without overlapping an
- * existing one still near the right edge (rc-danmaku-style gap check).
- */
 function laneIsFree(
   lane: number,
   now: number,
@@ -93,55 +87,73 @@ function pickLane(
   return best;
 }
 
-function danmakuList(
-  comments: Comment[],
-): (Comment & { timeStartMs: number })[] {
-  return comments.filter(
-    (c): c is Comment & { timeStartMs: number } =>
-      c.kind === "danmaku" &&
-      typeof c.timeStartMs === "number" &&
-      c.text.trim().length > 0,
+function isDanmakuReady(
+  c: Comment,
+): c is Comment & { timeStartMs: number } {
+  return (
+    c.kind === "danmaku" &&
+    typeof c.timeStartMs === "number" &&
+    Number.isFinite(c.timeStartMs) &&
+    c.text.trim().length > 0
   );
 }
 
 /**
- * Niconico-style captions: fire once when the playhead crosses timeStartMs.
- * Time updates are read from the store subscribe (same pattern as the runner
- * marker) so React render coalescing cannot skip a crossing during Play.
+ * Should this caption fire for a playhead step from `prev` → `next`?
+ * - Crossed the trigger in this step (play / scrub forward / large jump)
+ * - Or playhead sits in the scroll window after the trigger (scrub landed on it)
+ */
+export function shouldFireDanmaku(
+  timeStartMs: number,
+  prev: number,
+  next: number,
+): boolean {
+  if (timeStartMs > prev && timeStartMs <= next) return true;
+  if (next >= timeStartMs && next < timeStartMs + SCROLL_DURATION_MS) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Niconico-style captions over the map during readonly review.
+ * Playhead is observed via store.subscribe so every animation tick is seen.
  */
 export function DanmakuOverlay() {
   const screen = useUiStore((s) => s.screen);
   const active = isReviewReadonly(screen);
   const comments = useProjectStore((s) => s.project.comments);
   const containerRef = useRef<HTMLDivElement>(null);
-  const lastTimeRef = useRef(0);
+  const lastTimeRef = useRef(-1);
   const firedRef = useRef(new Set<string>());
-  const activeRef = useRef<ActiveBullet[]>([]);
-  /** Last non-empty text seen per id — detect late text fill at the playhead. */
-  const textSeenRef = useRef(new Map<string, string>());
+  const activeBulletsRef = useRef<ActiveBullet[]>([]);
+  const activeRef = useRef(active);
   const commentsRef = useRef(comments);
+  activeRef.current = active;
   commentsRef.current = comments;
 
   const clearStage = () => {
     const root = containerRef.current;
     if (root) root.replaceChildren();
-    activeRef.current = [];
+    activeBulletsRef.current = [];
     firedRef.current.clear();
   };
 
-  const spawn = (
-    comment: Comment & { timeStartMs: number },
-    root: HTMLDivElement,
-  ) => {
+  const spawn = (comment: Comment & { timeStartMs: number }) => {
+    const root = containerRef.current;
+    if (!root || firedRef.current.has(comment.id)) return;
+
     firedRef.current.add(comment.id);
     const text = comment.text.trim();
     const textWidth = measureTextWidth(text);
-    const rect = root.getBoundingClientRect();
+    const width = root.clientWidth || window.innerWidth;
+    const height = root.clientHeight || window.innerHeight;
+    const distance = width + textWidth;
     const lane = pickLane(
-      rect.width || window.innerWidth,
-      rect.height || window.innerHeight,
+      width,
+      height,
       textWidth,
-      activeRef.current,
+      activeBulletsRef.current,
     );
 
     const el = document.createElement("div");
@@ -149,11 +161,7 @@ export function DanmakuOverlay() {
     el.textContent = text;
     el.style.top = `${lane * ROW_HEIGHT + 8}px`;
     el.style.fontSize = `${FONT_SIZE}px`;
-    el.style.setProperty(
-      "--danmaku-distance",
-      `${(rect.width || window.innerWidth) + textWidth}px`,
-    );
-    el.style.animationDuration = `${SCROLL_DURATION_MS}ms`;
+    root.appendChild(el);
 
     const bullet: ActiveBullet = {
       id: comment.id,
@@ -162,97 +170,97 @@ export function DanmakuOverlay() {
       startedAt: performance.now(),
       textWidth,
     };
-    activeRef.current.push(bullet);
-    root.appendChild(el);
+    activeBulletsRef.current.push(bullet);
 
-    const onEnd = () => {
-      el.removeEventListener("animationend", onEnd);
+    const finish = () => {
       el.remove();
-      activeRef.current = activeRef.current.filter((b) => b !== bullet);
+      activeBulletsRef.current = activeBulletsRef.current.filter(
+        (b) => b !== bullet,
+      );
     };
-    el.addEventListener("animationend", onEnd);
-  };
 
-  /** Fire bullets whose timeStartMs lies in (from, to]. */
-  const fireInRange = (from: number, to: number, root: HTMLDivElement) => {
-    if (!(to > from)) return;
-    for (const c of danmakuList(commentsRef.current)) {
-      if (firedRef.current.has(c.id)) continue;
-      if (c.timeStartMs > from && c.timeStartMs <= to) {
-        spawn(c, root);
-      }
+    // WAAPI is reliable for elements created outside React; CSS keyframes
+    // can leave the bullet stuck at left:100% (invisible) in some cases.
+    if (typeof el.animate === "function") {
+      const anim = el.animate(
+        [
+          { transform: "translateX(0)" },
+          { transform: `translateX(-${distance}px)` },
+        ],
+        {
+          duration: SCROLL_DURATION_MS,
+          easing: "linear",
+          fill: "forwards",
+        },
+      );
+      anim.onfinish = finish;
+      anim.oncancel = finish;
+    } else {
+      el.style.setProperty("--danmaku-distance", `${distance}px`);
+      el.style.animationDuration = `${SCROLL_DURATION_MS}ms`;
+      el.addEventListener("animationend", finish, { once: true });
     }
   };
 
   const onTime = (next: number) => {
-    const root = containerRef.current;
-    if (!root) return;
+    if (!activeRef.current) return;
+    if (!containerRef.current) return;
 
     const prev = lastTimeRef.current;
 
-    // Rewind / scrub backward: reset and show bullets near the new playhead.
+    // Rewind: allow captions to fire again.
     if (next < prev) {
       clearStage();
-      fireInRange(next - NEAR_MS, next, root);
-      lastTimeRef.current = next;
-      return;
     }
 
-    fireInRange(prev, next, root);
-
-    // Late text fill while paused/scrubbed on the trigger.
-    for (const c of danmakuList(commentsRef.current)) {
-      const text = c.text.trim();
-      const prevText = textSeenRef.current.get(c.id);
-      const textJustFilled =
-        (prevText == null || prevText === "") && text !== "";
-      textSeenRef.current.set(c.id, text);
+    for (const c of commentsRef.current) {
+      if (!isDanmakuReady(c)) continue;
       if (firedRef.current.has(c.id)) continue;
-      if (textJustFilled && Math.abs(c.timeStartMs - next) <= NEAR_MS) {
-        spawn(c, root);
-      }
-    }
-
-    for (const id of [...textSeenRef.current.keys()]) {
-      if (!commentsRef.current.some((c) => c.id === id)) {
-        textSeenRef.current.delete(id);
+      if (shouldFireDanmaku(c.timeStartMs, prev, next)) {
+        spawn(c);
       }
     }
 
     lastTimeRef.current = next;
   };
 
-  // Enter / leave readonly review: reset without back-filling the whole track.
+  // Keep the latest handler in a ref so the store subscription stays stable.
+  const onTimeRef = useRef(onTime);
+  onTimeRef.current = onTime;
+
   useEffect(() => {
     clearStage();
-    textSeenRef.current.clear();
-    if (!active) return;
+    if (!active) {
+      lastTimeRef.current = -1;
+      return;
+    }
     const t = useUiStore.getState().animationTimeMs;
     lastTimeRef.current = t <= 0 ? -1 : t;
+    // Evaluate once for the current playhead (scrub-land / resume).
+    onTimeRef.current(t);
   }, [active]);
 
-  // Subscribe to every playhead tick (do not rely on React render coalescing).
   useEffect(() => {
-    if (!active) return;
     const unsub = useUiStore.subscribe((s, prev) => {
       if (s.animationTimeMs === prev.animationTimeMs) return;
-      onTime(s.animationTimeMs);
+      onTimeRef.current(s.animationTimeMs);
     });
     return unsub;
-    // onTime closes over refs; rebind only when becoming active.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, []);
 
-  // Comment list changes (new caption / text edit) while playhead is still.
+  // New/updated captions while the playhead is still.
   useEffect(() => {
     if (!active) return;
-    onTime(useUiStore.getState().animationTimeMs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    onTimeRef.current(useUiStore.getState().animationTimeMs);
   }, [comments, active]);
 
-  if (!active) return null;
-
+  // Always mount the host so containerRef is ready before the first tick.
   return (
-    <div ref={containerRef} className="danmaku-overlay" aria-hidden="true" />
+    <div
+      ref={containerRef}
+      className="danmaku-overlay"
+      aria-hidden="true"
+      hidden={!active}
+    />
   );
 }

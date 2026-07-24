@@ -758,7 +758,11 @@ button.btn-skip {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  z-index: 5;
+  z-index: 25;
+}
+
+.danmaku-overlay[hidden] {
+  display: none !important;
 }
 
 .danmaku-bullet {
@@ -771,10 +775,14 @@ button.btn-skip {
     0 0 3px #000,
     1px 1px 2px #000,
     -1px -1px 2px #000;
+  will-change: transform;
+}
+
+/* Fallback when Element.animate is unavailable */
+.danmaku-bullet[style*="--danmaku-distance"] {
   animation-name: danmaku-scroll;
   animation-timing-function: linear;
   animation-fill-mode: forwards;
-  will-change: transform;
 }
 
 @keyframes danmaku-scroll {

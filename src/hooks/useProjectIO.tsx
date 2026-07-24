@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { interpolateTrackPosition, parseGpx } from "../lib/gpx";
+import { parseGpx } from "../lib/gpx";
 import {
   downloadBlob,
   loadProjectZip,
@@ -152,26 +152,6 @@ export function useProjectIO() {
     ],
   );
 
-  const addDanmakuAtPlayhead = useCallback(() => {
-    const points = useProjectStore.getState().project.track.points;
-    if (points.length === 0) {
-      setStatusMessage("Load a GPS track before adding a danmaku comment.");
-      return;
-    }
-    const t = useUiStore.getState().animationTimeMs;
-    const pos = interpolateTrackPosition(points, t);
-    if (!pos) return;
-    const id = useProjectStore.getState().addComment({
-      kind: "danmaku",
-      lng: pos.lng,
-      lat: pos.lat,
-      text: "",
-      timeStartMs: t,
-    });
-    useUiStore.getState().setCommentExpanded(id, true);
-    setStatusMessage("Danmaku added at the current playback time.");
-  }, [setStatusMessage]);
-
   return {
     mapInputRef,
     gpxInputRef,
@@ -180,7 +160,6 @@ export function useProjectIO() {
     onMapImage,
     onSave,
     onLoadZip,
-    addDanmakuAtPlayhead,
     hiddenInputs: (
       <>
         <input

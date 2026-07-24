@@ -1,16 +1,35 @@
-import { interpolateTrackPosition } from "../../lib/gpx";
 import { useProjectStore } from "../../store/projectStore";
 import { useUiStore } from "../../store/uiStore";
 import { useMobileLayout } from "../../hooks/useMobileLayout";
 
-/** Thin Review hub chrome: Project, name, Edit, Layers, +. */
+/** Stacked layers — common map UI affordance. */
+function LayersIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 2 2 7l10 5 10-5-10-5Z" />
+      <path d="m2 17 10 5 10-5" />
+      <path d="m2 12 10 5 10-5" />
+    </svg>
+  );
+}
+
+/** Thin Review hub chrome: Project, name, Edit, Layers. */
 export function ReviewChrome() {
   const screen = useUiStore((s) => s.screen);
   const dispatch = useUiStore((s) => s.dispatch);
   const name = useProjectStore((s) => s.project.name);
   const mobile = useMobileLayout();
-  const setStatusMessage = useUiStore((s) => s.setStatusMessage);
-  const setCommentExpanded = useUiStore((s) => s.setCommentExpanded);
 
   const hideChrome =
     screen.kind === "empty" ||
@@ -21,28 +40,6 @@ export function ReviewChrome() {
 
   const inTool = screen.kind === "editPlan" || screen.kind === "editComment";
   if (inTool) return null;
-
-  const addDanmakuAtPlayhead = () => {
-    const points = useProjectStore.getState().project.track.points;
-    if (points.length === 0) {
-      setStatusMessage("Load a GPS track before adding a danmaku comment.");
-      return;
-    }
-    const t = useUiStore.getState().animationTimeMs;
-    const pos = interpolateTrackPosition(points, t);
-    if (!pos) return;
-    const id = useProjectStore.getState().addComment({
-      kind: "danmaku",
-      lng: pos.lng,
-      lat: pos.lat,
-      text: "",
-      timeStartMs: t,
-    });
-    setCommentExpanded(id, true);
-    dispatch({ type: "SELECT_COMMENT" });
-    useUiStore.getState().setCommentTool("danmaku");
-    setStatusMessage("Danmaku added at the current playback time. Edit text below.");
-  };
 
   return (
     <header className={`review-chrome${mobile ? " review-chrome--mobile" : ""}`}>
@@ -76,15 +73,7 @@ export function ReviewChrome() {
             )
           }
         >
-          □
-        </button>
-        <button
-          type="button"
-          title="Add danmaku at playhead"
-          aria-label="Add danmaku at playhead"
-          onClick={addDanmakuAtPlayhead}
-        >
-          ＋
+          <LayersIcon />
         </button>
         <button
           type="button"

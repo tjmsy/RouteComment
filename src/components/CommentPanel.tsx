@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMobileLayout } from "../hooks/useMobileLayout";
 import { pointerVerb } from "../lib/mobile";
 import { useProjectStore } from "../store/projectStore";
@@ -58,6 +58,8 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
   const [startDraft, setStartDraft] = useState("");
   const [endDraft, setEndDraft] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const startFocusedRef = useRef(false);
+  const endFocusedRef = useRef(false);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -68,8 +70,12 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
       return;
     }
     setDraft(comment.text);
-    setStartDraft(formatHms(comment.timeStartMs));
-    setEndDraft(formatHms(comment.timeEndMs));
+    if (!startFocusedRef.current) {
+      setStartDraft(formatHms(comment.timeStartMs));
+    }
+    if (!endFocusedRef.current) {
+      setEndDraft(formatHms(comment.timeEndMs));
+    }
   }, [comment?.id, comment?.text, comment?.timeStartMs, comment?.timeEndMs]);
 
   if (!comment) return null;
@@ -82,6 +88,28 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
     variant === "sheet"
       ? "panel comment-side-panel comment-sheet"
       : "panel comment-side-panel";
+
+  const commitStart = () => {
+    startFocusedRef.current = false;
+    const ms = parseHms(startDraft);
+    if (ms != null) {
+      setStartDraft(formatHms(ms));
+      updateComment(comment.id, { timeStartMs: ms });
+    } else {
+      setStartDraft(formatHms(comment.timeStartMs));
+    }
+  };
+
+  const commitEnd = () => {
+    endFocusedRef.current = false;
+    const ms = parseHms(endDraft);
+    if (ms != null) {
+      setEndDraft(formatHms(ms));
+      updateComment(comment.id, { timeEndMs: ms });
+    } else {
+      setEndDraft(formatHms(comment.timeEndMs));
+    }
+  };
 
   return (
     <section className={panelClass}>
@@ -126,19 +154,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                     inputMode="numeric"
                     placeholder="hh:mm:ss"
                     value={startDraft}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setStartDraft(v);
-                      const ms = parseHms(v);
-                      if (ms != null) {
-                        updateComment(comment.id, { timeStartMs: ms });
-                      }
+                    onFocus={() => {
+                      startFocusedRef.current = true;
                     }}
-                    onBlur={() => {
-                      const ms = parseHms(startDraft);
-                      if (ms != null) setStartDraft(formatHms(ms));
-                      else setStartDraft(formatHms(comment.timeStartMs));
-                    }}
+                    onChange={(e) => setStartDraft(e.target.value)}
+                    onBlur={commitStart}
                   />
                 </label>
                 <label className="comment-time">
@@ -148,19 +168,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                     inputMode="numeric"
                     placeholder="hh:mm:ss"
                     value={endDraft}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEndDraft(v);
-                      const ms = parseHms(v);
-                      if (ms != null) {
-                        updateComment(comment.id, { timeEndMs: ms });
-                      }
+                    onFocus={() => {
+                      endFocusedRef.current = true;
                     }}
-                    onBlur={() => {
-                      const ms = parseHms(endDraft);
-                      if (ms != null) setEndDraft(formatHms(ms));
-                      else setEndDraft(formatHms(comment.timeEndMs));
-                    }}
+                    onChange={(e) => setEndDraft(e.target.value)}
+                    onBlur={commitEnd}
                   />
                 </label>
               </div>
@@ -190,19 +202,11 @@ export function CommentPanel({ variant = "sidebar" }: { variant?: "sidebar" | "s
                 inputMode="numeric"
                 placeholder="hh:mm:ss"
                 value={startDraft}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStartDraft(v);
-                  const ms = parseHms(v);
-                  if (ms != null) {
-                    updateComment(comment.id, { timeStartMs: ms });
-                  }
+                onFocus={() => {
+                  startFocusedRef.current = true;
                 }}
-                onBlur={() => {
-                  const ms = parseHms(startDraft);
-                  if (ms != null) setStartDraft(formatHms(ms));
-                  else setStartDraft(formatHms(comment.timeStartMs));
-                }}
+                onChange={(e) => setStartDraft(e.target.value)}
+                onBlur={commitStart}
               />
             </label>
           ) : (

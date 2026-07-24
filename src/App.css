@@ -499,12 +499,36 @@ button.btn-skip {
 }
 
 .map-legend--speed {
-  left: 12px;
-  bottom: 72px;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  top: auto;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   max-width: min(260px, calc(100% - 24px));
+  background: rgba(26, 33, 28, 0.72);
+  opacity: 0.92;
+  /* Reset MapLibre ctrl chrome so our legend look wins. */
+  margin: 0 0 8px 0 !important;
+  float: none !important;
+  clear: none !important;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Sit in the map pane’s bottom-left stack (with attribution), not mid-screen. */
+.map-legend-speed-anchor {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: 0;
+  pointer-events: none;
+  margin: 0 0 max(4px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
 }
 
 .map-legend-speed-mid {
@@ -1789,8 +1813,13 @@ button.btn-skip {
   }
 
   .map-legend--speed {
-    bottom: 72px;
-    left: max(12px, env(safe-area-inset-left));
+    left: auto;
+    bottom: auto;
+  }
+
+  .map-legend-speed-anchor {
+    margin: 0 0 max(4px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
   }
 
   .animation-bar,
@@ -1973,6 +2002,10 @@ button.btn-skip {
 .review-chrome-actions {
   display: flex;
   gap: 0.35rem;
+}
+
+.review-chrome-actions button svg {
+  display: block;
 }
 
 .tool-bar {

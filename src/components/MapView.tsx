@@ -592,6 +592,8 @@ export function MapView() {
       };
       const lineColor: string | maplibregl.ExpressionSpecification =
         useSpeedColors ? ["get", "color"] : TRACK_SOLID_COLOR;
+      const lineOpacity = useSpeedColors ? 0.72 : 0.9;
+      const haloOpacity = useSpeedColors ? 0.55 : 0.85;
       const haloWidth = trackLineWidth + TRACK_HALO_EXTRA_WIDTH;
       const visibility = visible ? "visible" : "none";
 
@@ -605,11 +607,12 @@ export function MapView() {
           paint: {
             "line-color": "#ffffff",
             "line-width": haloWidth,
-            "line-opacity": 0.85,
+            "line-opacity": haloOpacity,
           },
         });
       } else if (map.getLayer(TRACK_HALO_LAYER)) {
         map.setPaintProperty(TRACK_HALO_LAYER, "line-width", haloWidth);
+        map.setPaintProperty(TRACK_HALO_LAYER, "line-opacity", haloOpacity);
       }
 
       if (!map.getLayer(TRACK_LAYER) && pts.length >= 2) {
@@ -620,12 +623,13 @@ export function MapView() {
           paint: {
             "line-color": lineColor,
             "line-width": trackLineWidth,
-            "line-opacity": 0.9,
+            "line-opacity": lineOpacity,
           },
         });
       } else if (map.getLayer(TRACK_LAYER)) {
         map.setPaintProperty(TRACK_LAYER, "line-color", lineColor);
         map.setPaintProperty(TRACK_LAYER, "line-width", trackLineWidth);
+        map.setPaintProperty(TRACK_LAYER, "line-opacity", lineOpacity);
       }
 
       if (map.getLayer(TRACK_HALO_LAYER)) {
@@ -1629,27 +1633,32 @@ export function MapView() {
       )}
       {showSpeedScale && speedColoredTrack && (
         <div
-          className="map-legend map-legend--speed"
-          aria-label="Track pace scale (min/km)"
+          className="maplibregl-ctrl-bottom-left map-legend-speed-anchor"
+          aria-hidden={false}
         >
-          <span className="map-legend-speed-label">
-            Slow
-            <br />
-            {formatPaceValue(
-              mpsToPaceMinPerKm(speedColoredTrack.minSpeedMps) ?? 0,
-            )}
-          </span>
-          <div className="map-legend-speed-mid">
-            <div className="map-legend-speed-bar" />
-            <span className="map-legend-speed-unit">min/km</span>
+          <div
+            className="maplibregl-ctrl map-legend map-legend--speed"
+            aria-label="Track pace scale (min/km)"
+          >
+            <span className="map-legend-speed-label">
+              Slow
+              <br />
+              {formatPaceValue(
+                mpsToPaceMinPerKm(speedColoredTrack.minSpeedMps) ?? 0,
+              )}
+            </span>
+            <div className="map-legend-speed-mid">
+              <div className="map-legend-speed-bar" />
+              <span className="map-legend-speed-unit">min/km</span>
+            </div>
+            <span className="map-legend-speed-label">
+              Fast
+              <br />
+              {formatPaceValue(
+                mpsToPaceMinPerKm(speedColoredTrack.maxSpeedMps) ?? 0,
+              )}
+            </span>
           </div>
-          <span className="map-legend-speed-label">
-            Fast
-            <br />
-            {formatPaceValue(
-              mpsToPaceMinPerKm(speedColoredTrack.maxSpeedMps) ?? 0,
-            )}
-          </span>
         </div>
       )}
       <CommentMarkers map={mapInstance} />

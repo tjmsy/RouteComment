@@ -65,6 +65,8 @@ const CHART_ROWS: ChartRow[] = [
 ];
 
 const PROFILE_HEADER_MIN_H = 36;
+/** Matches `.profile-charts-resize-handle` (6px desktop / 12px mobile). */
+const PROFILE_RESIZE_HANDLE_H = () => (isMobileViewport() ? 12 : 6);
 const PROFILE_MIN_HEIGHT = 60;
 const PROFILE_MAX_HEIGHT_RATIO = 0.5;
 const MIN_CHART_HEIGHT = 40;
@@ -348,12 +350,20 @@ export function TrackProfileCharts() {
     const n = expandedRows.length;
     const gaps = Math.max(0, n - 1) * CHART_ROW_GAP_PX;
     const measured = bodyContentH > 0 ? bodyContentH - gaps : 0;
-    if (measured > 0) {
-      return Math.max(MIN_CHART_HEIGHT, Math.floor(measured / n));
+    const budget =
+      measured > 0
+        ? measured
+        : profilePanelHeightPx -
+          PROFILE_RESIZE_HANDLE_H() -
+          PROFILE_HEADER_MIN_H -
+          gaps;
+    if (budget <= 0) return 0;
+    const perRow = Math.floor(budget / n);
+    // Use MIN_CHART_HEIGHT only when the stack still fits; never clip the body.
+    if (MIN_CHART_HEIGHT * n <= budget) {
+      return Math.max(MIN_CHART_HEIGHT, perRow);
     }
-    const fallback =
-      profilePanelHeightPx - PROFILE_HEADER_MIN_H - 14 - gaps;
-    return Math.max(MIN_CHART_HEIGHT, Math.floor(fallback / n));
+    return Math.max(0, perRow);
   }, [profilePanelHeightPx, expandedRows.length, bodyContentH]);
 
   const hideTooltip = useCallback(() => {

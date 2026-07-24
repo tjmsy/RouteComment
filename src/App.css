@@ -832,8 +832,8 @@ button.btn-skip {
   max-height: min(48vh, 420px);
   overflow-y: auto;
   margin: 0;
-  padding: 0.85rem 1rem;
-  padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+  padding: 0.55rem 0.75rem;
+  padding-bottom: max(0.55rem, env(safe-area-inset-bottom));
   border-radius: 14px 14px 0 0;
   border: 1px solid var(--panel-edge);
   border-bottom: none;
@@ -845,10 +845,10 @@ button.btn-skip {
   content: "";
   display: block;
   width: 36px;
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: rgba(154, 171, 158, 0.45);
-  margin: 0 auto 0.65rem;
+  margin: 0 auto 0.35rem;
 }
 
 .comment-side-panel textarea {
@@ -1174,7 +1174,7 @@ button.btn-skip {
 .animation-bar-extras {
   display: none;
   grid-column: 1 / -1;
-  gap: 0.5rem;
+  gap: 0.3rem;
   justify-content: center;
 }
 
@@ -1628,29 +1628,29 @@ button.btn-skip {
   }
 
   .mode-row button {
-    min-height: 44px;
-    padding: 0.55rem 0.35rem;
+    min-height: 36px;
+    padding: 0.35rem 0.35rem;
     font-size: 0.8rem;
   }
 
   .animation-bar button {
-    min-height: 44px;
-    min-width: 64px;
-    padding: 0.5rem 1rem;
+    min-height: 36px;
+    min-width: 56px;
+    padding: 0.3rem 0.75rem;
   }
 
   .comment-editor-header .btn-done,
   .btn-delete-confirm,
   .comment-delete-confirm button {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.5rem 0.85rem !important;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0.35rem 0.65rem !important;
     font-size: 0.85rem !important;
   }
 
   .btn-delete {
-    min-height: 44px;
-    padding: 0.5rem 0 !important;
+    min-height: 36px;
+    padding: 0.35rem 0 !important;
     font-size: 0.85rem !important;
   }
 
@@ -1673,14 +1673,14 @@ button.btn-skip {
 
   .comment-side-panel .comment-time input,
   .comment-sheet .comment-time input {
-    min-height: 44px;
+    min-height: 36px;
     font-size: 1rem;
   }
 
   .comment-icon {
-    width: 44px;
-    height: 44px;
-    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    font-size: 17px;
   }
 
   .comment-icon-danmaku {
@@ -1729,17 +1729,17 @@ button.btn-skip {
   }
 
   .profile-charts-resize-handle {
-    height: 24px;
+    height: 12px;
   }
 
   .profile-charts-toggle {
-    min-height: 44px;
-    padding: 0.45rem 0.65rem;
+    min-height: 36px;
+    padding: 0.3rem 0.5rem;
   }
 
   .profile-charts-series-toggle {
-    min-height: 44px;
-    padding: 0.35rem 0.55rem;
+    min-height: 36px;
+    padding: 0.25rem 0.45rem;
     font-size: 0.8rem;
   }
 
@@ -1756,13 +1756,23 @@ button.btn-skip {
   .animation-bar {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    gap: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    padding-bottom: max(0.2rem, env(safe-area-inset-bottom));
   }
 
   .animation-bar--mobile .animation-bar-extras {
     display: flex;
+    gap: 0.3rem;
+  }
+
+  .animation-bar-extras .animation-chip {
+    min-height: 36px;
+    padding: 0.25rem 0.6rem !important;
+  }
+
+  .app--hub .main-map {
+    padding-top: 2rem;
   }
 
   .maplibregl-ctrl-top-right {
@@ -1883,9 +1893,9 @@ button.btn-skip {
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
-  padding-top: max(0.35rem, env(safe-area-inset-top));
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  padding-top: max(0.2rem, env(safe-area-inset-top));
   background: rgba(26, 33, 28, 0.88);
   border-bottom: 1px solid var(--panel-edge);
   backdrop-filter: blur(8px);
@@ -1902,9 +1912,8 @@ button.btn-skip {
 }
 
 .review-chrome--mobile button {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.4rem 0.65rem;
+  min-height: 36px;
+  padding: 0.2rem 0.5rem;
 }
 
 .review-chrome button.active {
@@ -1937,9 +1946,9 @@ button.btn-skip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.6rem;
-  padding-top: max(0.4rem, env(safe-area-inset-top));
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  padding-top: max(0.25rem, env(safe-area-inset-top));
   background: rgba(26, 33, 28, 0.92);
   border-bottom: 1px solid var(--panel-edge);
 }
@@ -1965,12 +1974,12 @@ button.btn-skip {
 .comment-list-details {
   margin: 0;
   border-top: 1px solid var(--panel-edge);
-  padding-top: 0.35rem;
+  padding-top: 0.2rem;
 }
 
 .comment-list-details > summary {
   cursor: pointer;
-  min-height: 44px;
+  min-height: 36px;
   display: flex;
   align-items: center;
   font-size: 0.85rem;
@@ -1997,19 +2006,24 @@ button.btn-skip {
 .comment-list-details .cp-list {
   max-height: min(40vh, 240px);
   overflow-y: auto;
-  margin: 0.35rem 0 0;
+  margin: 0.2rem 0 0;
+}
+
+.comment-list-details .cp-list button {
+  padding: 0.35rem 0.5rem;
 }
 
 .follow-range-confirm-bar {
   position: absolute;
   left: 0.5rem;
   right: 0.5rem;
-  top: calc(4.75rem + env(safe-area-inset-top));
+  top: calc(2.75rem + env(safe-area-inset-top));
   z-index: 33;
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.65rem 0.75rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
   background: rgba(26, 33, 28, 0.96);
   border: 1px solid var(--panel-edge);
   border-radius: 10px;
@@ -2019,33 +2033,40 @@ button.btn-skip {
 
 .follow-range-confirm-hint {
   margin: 0;
-  font-size: 0.8rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
   color: var(--muted);
-  line-height: 1.35;
+  line-height: 1.25;
 }
 
 .follow-range-confirm-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
 }
 
 .follow-range-confirm-actions button {
-  min-height: 44px;
-  padding: 0.4rem 0.85rem;
+  min-height: 32px;
+  padding: 0.2rem 0.65rem;
   border-radius: 6px;
   border: 1px solid var(--panel-edge);
   background: var(--panel);
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  font-size: 0.8rem;
 }
 
 .btn-reselect-range {
-  min-height: 44px;
+  min-height: 36px;
   width: 100%;
-  margin-top: 0.15rem;
-  padding: 0.45rem 0.75rem;
+  margin-top: 0.1rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 6px;
   border: 1px dashed var(--accent-dim);
   background: transparent;
@@ -2059,7 +2080,7 @@ button.btn-skip {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .comment-tool-controls .comment-tool-row {
@@ -2069,9 +2090,12 @@ button.btn-skip {
 
 .comment-tool-hint {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--muted);
-  line-height: 1.35;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tool-bar-name {
@@ -2151,27 +2175,31 @@ button.btn-skip {
 
 @media (max-width: 800px) {
   .btn-dismiss {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.5rem 0.85rem;
+    min-height: 36px;
+    padding: 0.25rem 0.65rem;
   }
 
   .follow-range-confirm-bar {
-    top: calc(5.5rem + env(safe-area-inset-top));
+    top: calc(3rem + env(safe-area-inset-top));
   }
 
   .tool-bar--comment .comment-tool-controls .btn-done,
   .tool-bar--comment .mode-row button {
-    min-height: 44px;
+    min-height: 36px;
   }
 
   .tool-bar button {
-    min-height: 44px;
+    min-height: 36px;
   }
 
   .comment-list-details .cp-delete {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .follow-range-confirm-actions .btn-done,
+  .follow-range-confirm-actions .btn-dismiss {
+    min-height: 32px;
   }
 }
 

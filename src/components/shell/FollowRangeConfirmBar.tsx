@@ -21,9 +21,7 @@ export function FollowRangeConfirmBar() {
   if (!draft) {
     return (
       <div className="follow-range-confirm-bar" role="status">
-        <p className="follow-range-confirm-hint">
-          Re-selecting range — tap or drag the track, or cancel.
-        </p>
+        <p className="follow-range-confirm-hint">Re-selecting range…</p>
         <div className="follow-range-confirm-actions">
           <button type="button" className="btn-dismiss" onClick={cancel}>
             Cancel
@@ -35,9 +33,7 @@ export function FollowRangeConfirmBar() {
 
   return (
     <div className="follow-range-confirm-bar" role="status">
-      <p className="follow-range-confirm-hint">
-        Range ready — confirm to edit text, or redo / pan the map to adjust.
-      </p>
+      <p className="follow-range-confirm-hint">Confirm range</p>
       <div className="follow-range-confirm-actions">
         <button type="button" onClick={() => redoFollowDraft()}>
           Redo

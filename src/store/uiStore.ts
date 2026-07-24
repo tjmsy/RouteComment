@@ -14,6 +14,15 @@ import {
 } from "../ui/machine";
 import { useProjectStore } from "./projectStore";
 
+function removeEmptyMapComments(): void {
+  const { project, removeComment } = useProjectStore.getState();
+  for (const c of project.comments) {
+    if (c.kind === "map" && !(c.text ?? "").trim()) {
+      removeComment(c.id);
+    }
+  }
+}
+
 /** Two-point fine-tune steps (streetview-o style). */
 export type GeorefStep = 0 | 1 | 2 | 3;
 
@@ -129,6 +138,9 @@ type UiState = {
   setGeorefPendingFrom: (pt: LngLat | null) => void;
   resetGeorefAlign: () => void;
   setStatusMessage: (msg: string) => void;
+  /** Bump to force MapView to fit track (or map image) after load. */
+  mapFitRequestId: number;
+  requestMapFit: () => void;
 };
 
 function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
@@ -141,6 +153,9 @@ function applyScreen(screen: ScreenState, prev: UiState): Partial<UiState> {
   const editingComment = isEditingComment(screen);
   const wasEditingComment = isEditingComment(prev.screen);
   const inToolMode = mode === "georef" || mode === "edit";
+  if (wasEditingComment && !editingComment) {
+    removeEmptyMapComments();
+  }
   return {
     screen,
     mode,
@@ -222,6 +237,7 @@ export const useUiStore = create<UiState>((set, get) => ({
   georefPin: null,
   georefPendingFrom: null,
   statusMessage: t("status.startWithGpx"),
+  mapFitRequestId: 0,
 
   dispatch: (event) => {
     const prev = get();
@@ -461,4 +477,6 @@ export const useUiStore = create<UiState>((set, get) => ({
       georefPendingFrom: null,
     }),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
+  requestMapFit: () =>
+    set((s) => ({ mapFitRequestId: s.mapFitRequestId + 1 })),
 }));

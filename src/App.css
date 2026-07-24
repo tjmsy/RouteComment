@@ -372,6 +372,11 @@ button.btn-skip {
   border-left: 2px solid var(--panel-edge);
 }
 
+.layer-plan-group {
+  display: flex;
+  flex-direction: column;
+}
+
 .hint {
   margin: 0;
   font-size: 0.8rem;

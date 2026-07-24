@@ -34,23 +34,22 @@ export const ja: Record<MessageKey, string> = {
   "review.edit": "編集",
 
   "georef.hint":
-    "オーバーレイ → ベースマップの順に{verb}し、2点目で回転・拡大を合わせます。",
+    "オーバーレイ → 背景地図の順に{verb}し、2点目で回転・拡大を合わせます。",
   "georef.opacity": "不透明度",
 
   "followBar.cancelled": "つぶやき範囲をキャンセルしました。",
   "followBar.reselecting": "範囲を選び直しています…",
-  "followBar.dragConfirm": "A/Bマーカーをドラッグしてから確定",
+  "followBar.dragConfirm": "A/Bマーカーをドラッグして範囲を調整できます。",
 
   "wizard.title": "プロジェクトを作成",
   "wizard.gpxHint": "GPXを読み込むと、地図がコース周辺に移動します。",
   "wizard.gpx": "GPX",
   "wizard.skipGpx": "GPXをスキップ",
-  "wizard.mapHint":
-    "位置合わせ用の地図画像を追加するか、スキップして続行できます。",
+  "wizard.mapHint": "地図画像を追加するか、スキップして続行できます。",
   "wizard.mapImage": "地図画像",
   "wizard.skipMap": "地図をスキップ",
   "wizard.georefHint":
-    "2点合わせ：オーバーレイの特徴点 → ベースマップの順に{verb}し、同様に2点目を指定。終わったら「完了」をタップ。",
+    "2点合わせ：オーバーレイの特徴点 → 背景地図の順に{verb}し、同様に2点目を指定。終わったら「完了」をタップ。",
   "wizard.mapOpacity": "地図の不透明度",
   "wizard.cancelMap": "地図画像をキャンセル",
   "wizard.mapRemoved":
@@ -63,7 +62,7 @@ export const ja: Record<MessageKey, string> = {
   "project.namePlaceholder": "例：ローカル大会 2026",
   "project.distance": "距離",
   "project.time": "時間",
-  "project.elevGain": "獲得標高",
+  "project.elevGain": "累積標高",
   "project.avgHr": "平均心拍",
   "project.unitM": "m",
   "project.unitBpm": "bpm",
@@ -77,6 +76,7 @@ export const ja: Record<MessageKey, string> = {
   "layers.gpsTrack": "GPSトラック",
   "layers.colorBySpeed": "速度で色分け",
   "layers.trackWidth": "トラックの太さ（{width}）",
+  "layers.planWidth": "プランの太さ（{width}）",
   "layers.profileCharts": "プロファイルチャート",
   "layers.elevationFailed": "標高の取得に失敗しました。",
 
@@ -201,9 +201,9 @@ export const ja: Record<MessageKey, string> = {
   "status.finishSetupMap":
     "セットアップを完了：地図画像を追加（またはスキップ）して続行してください。",
   "status.georef0": "位置合わせ：地図画像オーバーレイ上の特徴点を{verb}",
-  "status.georef1": "位置合わせ：ベースマップ上の対応点を{verb}",
+  "status.georef1": "位置合わせ：背景地図上の対応点を{verb}",
   "status.georef2": "位置合わせ：オーバーレイ上の2点目の特徴点を{verb}",
-  "status.georef3": "位置合わせ：ベースマップ上の2点目の対応点を{verb}",
+  "status.georef3": "位置合わせ：背景地図上の2点目の対応点を{verb}",
   "status.editPlan": "先にプランを追加してから、地図を{verb}して描画",
   "status.editFollow": "GPSトラックを{verb}またはドラッグして範囲を設定",
   "status.editDanmaku": "現在の再生時刻にテロップを追加するには{verb}",
@@ -214,10 +214,9 @@ export const ja: Record<MessageKey, string> = {
   "status.followReselect": "GPSトラックを2回{verb}して新しい範囲を設定",
   "status.followSaved":
     "つぶやきを保存しました。地図上のポップアップでテキストを編集できます。",
-  "status.addMapImage":
-    "位置合わせ用の地図画像を追加するか、スキップして続行できます。",
+  "status.addMapImage": "地図画像を追加するか、スキップして続行できます。",
   "status.gpxSkipped":
-    "GPXをスキップしました。位置合わせ用の地図画像を追加するか、スキップして続行できます。",
+    "GPXをスキップしました。地図画像を追加するか、スキップして続行できます。",
   "status.setupComplete":
     "セットアップ完了。地図画像は後から「編集 → セットアップ」で追加できます。",
   "status.loadMapFirst": "先に地図画像を読み込んでください。",

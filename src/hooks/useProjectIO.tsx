@@ -21,6 +21,17 @@ async function readImageSize(
   });
 }
 
+/** Keep Unicode letters; strip path-illegal characters for download names. */
+function sanitizeDownloadName(name: string): string {
+  const cleaned = name
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^\.+|\.+$/g, "")
+    .trim();
+  return cleaned.slice(0, 80) || "project";
+}
+
 /** Shared GPX / map / ZIP load-save used by empty, wizard, and project panel. */
 export function useProjectIO() {
   const mapInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +52,7 @@ export function useProjectIO() {
   const markSetupMapDone = useUiStore((s) => s.markSetupMapDone);
   const completeSetup = useUiStore((s) => s.completeSetup);
   const resetGeorefAlign = useUiStore((s) => s.resetGeorefAlign);
+  const requestMapFit = useUiStore((s) => s.requestMapFit);
   const screen = useUiStore((s) => s.screen);
 
   const onGpx = useCallback(
@@ -56,6 +68,7 @@ export function useProjectIO() {
         setTrack(points);
         setAnimationTimeMs(0);
         markSetupGpxDone();
+        requestMapFit();
         setStatusMessage(t("io.loadedTrackPoints", { count: points.length }));
         if (screen.kind === "createWizard") {
           dispatch({ type: "WIZARD_NEXT" });
@@ -67,6 +80,7 @@ export function useProjectIO() {
     [
       dispatch,
       markSetupGpxDone,
+      requestMapFit,
       screen.kind,
       setAnimationTimeMs,
       setStatusMessage,
@@ -107,9 +121,8 @@ export function useProjectIO() {
   const onSave = useCallback(async () => {
     try {
       const blob = await saveProjectZip(project, mapImageBlob);
-      const name = (project.name || t("common.projectFallback")).replace(
-        /[^\w-]+/g,
-        "_",
+      const name = sanitizeDownloadName(
+        project.name || t("common.projectFallback"),
       );
       downloadBlob(blob, `${name}.zip`);
       setStatusMessage(t("io.projectSaved"));
@@ -139,6 +152,7 @@ export function useProjectIO() {
         setAnimationTimeMs(0);
         completeSetup();
         dispatch({ type: "LOAD_ZIP_SUCCESS" });
+        requestMapFit();
         setStatusMessage(t("io.projectLoaded"));
       } catch (e) {
         setStatusMessage(
@@ -150,6 +164,7 @@ export function useProjectIO() {
       completeSetup,
       dispatch,
       loadProject,
+      requestMapFit,
       setActiveRoutePlanId,
       setAnimationTimeMs,
       setStatusMessage,

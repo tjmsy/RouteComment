@@ -10,7 +10,7 @@ type Props = {
   footer?: ReactNode;
   /** information → 閉じる; action → 閉じる after pick often handled by parent */
   role?: "information" | "action";
-  /** Desktop dock side (Project opens near the Project button). */
+  /** Desktop dock side (Project / Layers / Edit open on the right). */
   side?: "left" | "right";
 };
 

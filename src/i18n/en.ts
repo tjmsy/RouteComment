@@ -43,8 +43,7 @@ export const en = {
   "wizard.gpxHint": "Load a GPX so the map jumps to the course area.",
   "wizard.gpx": "GPX",
   "wizard.skipGpx": "Skip GPX",
-  "wizard.mapHint":
-    "Add a map image to georeference, or skip to continue without one.",
+  "wizard.mapHint": "Add a map image or skip to continue without one.",
   "wizard.mapImage": "Map image",
   "wizard.skipMap": "Skip map",
   "wizard.georefHint":
@@ -74,6 +73,7 @@ export const en = {
   "layers.gpsTrack": "GPS track",
   "layers.colorBySpeed": "Color by speed",
   "layers.trackWidth": "Track width ({width})",
+  "layers.planWidth": "Plan width ({width})",
   "layers.profileCharts": "Profile charts",
   "layers.elevationFailed": "Elevation fetch failed.",
 
@@ -209,10 +209,9 @@ export const en = {
   "status.commentMap": "{verb} the map to place a note",
   "status.followReselect": "{verb} the GPS track twice to set a new range",
   "status.followSaved": "Voice saved. Edit text in the map popup.",
-  "status.addMapImage":
-    "Add a map image to georeference, or Skip to continue without one.",
+  "status.addMapImage": "Add a map image or Skip to continue without one.",
   "status.gpxSkipped":
-    "GPX skipped. Add a map image to georeference, or Skip to continue without one.",
+    "GPX skipped. Add a map image or Skip to continue without one.",
   "status.setupComplete":
     "Setup complete. You can add a map image later in Edit → Setup.",
   "status.loadMapFirst": "Load a map image first.",

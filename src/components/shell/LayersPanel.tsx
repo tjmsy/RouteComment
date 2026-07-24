@@ -6,6 +6,7 @@ import { PanelHost } from "./PanelHost";
 export function LayersPanel() {
   const project = useProjectStore((s) => s.project);
   const togglePlanVisible = useProjectStore((s) => s.togglePlanVisible);
+  const updateRoutePlan = useProjectStore((s) => s.updateRoutePlan);
   const showTrack = useUiStore((s) => s.showTrack);
   const setShowTrack = useUiStore((s) => s.setShowTrack);
   const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
@@ -82,19 +83,42 @@ export function LayersPanel() {
         <p className="hint">{t("layers.elevationFailed")}</p>
       )}
       {project.routePlans.map((plan) => (
-        <label key={plan.id} className="check plan-layer-row">
-          <input
-            type="checkbox"
-            checked={plan.visible}
-            onChange={() => togglePlanVisible(plan.id)}
-          />
-          <span
-            className="plan-swatch"
-            style={{ background: plan.color }}
-            aria-hidden
-          />
-          {plan.name}
-        </label>
+        <div key={plan.id} className="layer-plan-group">
+          <label className="check plan-layer-row">
+            <input
+              type="checkbox"
+              checked={plan.visible}
+              onChange={() => togglePlanVisible(plan.id)}
+            />
+            <span
+              className="plan-swatch"
+              style={{ background: plan.color }}
+              aria-hidden
+            />
+            {plan.name}
+          </label>
+          {plan.visible && (
+            <div className="layer-sub">
+              <label className="field">
+                <span>
+                  {t("layers.planWidth", { width: plan.lineWidth ?? 3 })}
+                </span>
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={plan.lineWidth ?? 3}
+                  onChange={(e) =>
+                    updateRoutePlan(plan.id, {
+                      lineWidth: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          )}
+        </div>
       ))}
     </PanelHost>
   );

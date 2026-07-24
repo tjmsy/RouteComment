@@ -35,7 +35,7 @@ export function ProjectPanel() {
   return (
     <PanelHost
       title={t("project.title")}
-      side="left"
+      side="right"
       footer={
         <div className="btn-row panel-host-footer-actions">
           <button type="button" className="setup-primary" onClick={() => void onSave()}>

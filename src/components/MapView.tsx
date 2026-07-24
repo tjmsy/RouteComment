@@ -217,6 +217,8 @@ export function MapView() {
   const setFollowRangeStartMs = useUiStore((s) => s.setFollowRangeStartMs);
   const setActiveRoutePlanId = useUiStore((s) => s.setActiveRoutePlanId);
   const setStatusMessage = useUiStore((s) => s.setStatusMessage);
+  const mapFitRequestId = useUiStore((s) => s.mapFitRequestId);
+  const removeComment = useProjectStore((s) => s.removeComment);
 
   const appliedImageUrlRef = useRef<string | null>(null);
   const pendingFitImageRef = useRef(false);
@@ -395,6 +397,9 @@ export function MapView() {
 
       if (pendingFitImageRef.current && currentPose) {
         pendingFitImageRef.current = false;
+        // Prefer GPS track bounds when a track is present (ZIP load).
+        const pts = useProjectStore.getState().project.track.points;
+        if (pts.length >= 2) return;
         const corners = cornersFromPose(currentPose);
         const bounds = new maplibregl.LngLatBounds(corners[0], corners[0]);
         corners.forEach((c) => bounds.extend(c));
@@ -665,19 +670,36 @@ export function MapView() {
   ]);
 
   const fittedTrackRef = useRef("");
+  const lastFitRequestRef = useRef(0);
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || trackPoints.length < 2) return;
-    const key = `${trackPoints[0].lng},${trackPoints[0].lat}-${trackPoints.length}`;
-    if (fittedTrackRef.current === key) return;
-    fittedTrackRef.current = key;
-    const bounds = new maplibregl.LngLatBounds(
-      [trackPoints[0].lng, trackPoints[0].lat],
-      [trackPoints[0].lng, trackPoints[0].lat],
-    );
-    trackPoints.forEach((p) => bounds.extend([p.lng, p.lat]));
-    map.fitBounds(bounds, { padding: 60, maxZoom: 16, animate: false });
-  }, [trackPoints]);
+    if (!map || !mapInstance) return;
+
+    const forceFit = mapFitRequestId !== lastFitRequestRef.current;
+    if (forceFit) lastFitRequestRef.current = mapFitRequestId;
+
+    if (trackPoints.length >= 2) {
+      const key = `${trackPoints[0].lng},${trackPoints[0].lat}-${trackPoints.length}`;
+      if (!forceFit && fittedTrackRef.current === key) return;
+      fittedTrackRef.current = key;
+      const bounds = new maplibregl.LngLatBounds(
+        [trackPoints[0].lng, trackPoints[0].lat],
+        [trackPoints[0].lng, trackPoints[0].lat],
+      );
+      trackPoints.forEach((p) => bounds.extend([p.lng, p.lat]));
+      map.fitBounds(bounds, { padding: 60, maxZoom: 16, animate: false });
+      return;
+    }
+
+    if (forceFit) {
+      const currentPose = useProjectStore.getState().project.georef.pose;
+      if (!currentPose) return;
+      const corners = cornersFromPose(currentPose);
+      const bounds = new maplibregl.LngLatBounds(corners[0], corners[0]);
+      corners.forEach((c) => bounds.extend(c));
+      map.fitBounds(bounds, { padding: 48, maxZoom: 16, animate: false });
+    }
+  }, [trackPoints, mapInstance, mapFitRequestId]);
 
   // Route plans
   useEffect(() => {
@@ -1199,6 +1221,13 @@ export function MapView() {
         const tool = useUiStore.getState().commentTool;
         const pts = useProjectStore.getState().project.track.points;
 
+        // Drop empty map notes when the user clicks elsewhere on the map.
+        for (const c of useProjectStore.getState().project.comments) {
+          if (c.kind === "map" && !(c.text ?? "").trim()) {
+            removeComment(c.id);
+          }
+        }
+
         if (tool === "danmaku") {
           if (pts.length === 0) {
             setStatusMessage(t("status.loadTrackDanmaku"));
@@ -1320,6 +1349,7 @@ export function MapView() {
     mapInstance,
     appendPlanCoordinate,
     addComment,
+    removeComment,
     updateComment,
     setPose,
     setGeorefStep,

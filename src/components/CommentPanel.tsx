@@ -17,9 +17,9 @@ function formatHms(ms: number | undefined): string {
 
 /** Parse hh:mm:ss, mm:ss, or plain seconds. */
 function parseHms(v: string): number | undefined {
-  const t = v.trim();
-  if (t === "") return undefined;
-  const parts = t.split(":");
+  const trimmed = v.trim();
+  if (trimmed === "") return undefined;
+  const parts = trimmed.split(":");
   if (parts.length > 3) return undefined;
   const nums = parts.map((p) => Number(p));
   if (nums.some((n) => !Number.isFinite(n) || n < 0)) return undefined;

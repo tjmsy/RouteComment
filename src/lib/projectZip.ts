@@ -92,7 +92,7 @@ function normalizeProject(
     georef?: { pose?: unknown; controlPoints?: unknown };
   },
 ): ProjectData {
-  const base = createEmptyProject(parsed.name ?? "Untitled");
+  const base = createEmptyProject(parsed.name ?? t("common.untitled"));
   const pose = isPose(parsed.georef?.pose) ? parsed.georef.pose : null;
   return {
     version: 1,

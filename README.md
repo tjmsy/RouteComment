@@ -23,4 +23,5 @@ npm run dev
 4. **Plan** — draw a planned route; toggle visibility against the track
 5. **Comment** — Map pin (bubble + on-map popup), Follow (runner bubble), or Danmaku (scrolls once at a playback time)
 6. **View** — play back the track (speed up to 120×); follow bubbles and danmaku appear on cue
-7. **Save / Load ZIP** — `project.json` + map image + optional `track.gpx`
+7. **Save / Load ZIP** — `project.json` + optional map image
+

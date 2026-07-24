@@ -6,7 +6,7 @@ import {
   normalizeComment,
   normalizeRoutePlan,
 } from "./types";
-import { parseGpx, withTimeOffsets } from "./gpx";
+import { withTimeOffsets } from "./gpx";
 
 export type LoadedProject = {
   data: ProjectData;
@@ -45,10 +45,6 @@ export async function saveProjectZip(
     zip.file(serializable.mapImage.fileName, mapImageBlob);
   }
 
-  if (data.track.points.length > 0) {
-    zip.file("track.gpx", trackToGpx(data));
-  }
-
   return zip.generateAsync({ type: "blob" });
 }
 
@@ -64,6 +60,7 @@ export async function loadProjectZip(file: Blob): Promise<LoadedProject> {
     georef?: { pose?: unknown; controlPoints?: unknown };
   };
   const data = normalizeProject(parsed);
+  data.track.points = withTimeOffsets(data.track.points);
 
   let mapImageBlob: Blob | null = null;
   let mapImageUrl: string | null = null;
@@ -74,14 +71,6 @@ export async function loadProjectZip(file: Blob): Promise<LoadedProject> {
       mapImageBlob = await imgFile.async("blob");
       mapImageUrl = URL.createObjectURL(mapImageBlob);
     }
-  }
-
-  const gpxFile = zip.file("track.gpx");
-  if (gpxFile && data.track.points.length === 0) {
-    const gpxText = await gpxFile.async("string");
-    data.track.points = parseGpx(gpxText);
-  } else {
-    data.track.points = withTimeOffsets(data.track.points);
   }
 
   return { data, mapImageBlob, mapImageUrl };
@@ -114,36 +103,6 @@ function guessImageName(blob: Blob): string {
   if (blob.type.includes("png")) return "map.png";
   if (blob.type.includes("webp")) return "map.webp";
   return "map.jpg";
-}
-
-function trackToGpx(data: ProjectData): string {
-  const pts = data.track.points
-    .map((p) => {
-      const ele =
-        typeof p.ele === "number" && Number.isFinite(p.ele)
-          ? `<ele>${p.ele}</ele>`
-          : "";
-      const time = p.time ? `<time>${escapeXml(p.time)}</time>` : "";
-      return `<trkpt lat="${p.lat}" lon="${p.lng}">${ele}${time}</trkpt>`;
-    })
-    .join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="RouteComment">
-  <trk>
-    <name>${escapeXml(data.name)}</name>
-    <trkseg>
-${pts}
-    </trkseg>
-  </trk>
-</gpx>`;
-}
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 export function downloadBlob(blob: Blob, fileName: string) {

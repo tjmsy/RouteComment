@@ -1,0 +1,172 @@
+import { useProjectStore } from "../../store/projectStore";
+import { useUiStore } from "../../store/uiStore";
+import { t } from "../../i18n";
+import { PanelHost } from "./PanelHost";
+
+export function LayersPanel() {
+  const project = useProjectStore((s) => s.project);
+  const togglePlanVisible = useProjectStore((s) => s.togglePlanVisible);
+  const updateRoutePlan = useProjectStore((s) => s.updateRoutePlan);
+  const showTrack = useUiStore((s) => s.showTrack);
+  const setShowTrack = useUiStore((s) => s.setShowTrack);
+  const colorTrackBySpeed = useUiStore((s) => s.colorTrackBySpeed);
+  const setColorTrackBySpeed = useUiStore((s) => s.setColorTrackBySpeed);
+  const trackLineWidth = useUiStore((s) => s.trackLineWidth);
+  const setTrackLineWidth = useUiStore((s) => s.setTrackLineWidth);
+  const showBasemap = useUiStore((s) => s.showBasemap);
+  const setShowBasemap = useUiStore((s) => s.setShowBasemap);
+  const showProfileCharts = useUiStore((s) => s.showProfileCharts);
+  const setShowProfileCharts = useUiStore((s) => s.setShowProfileCharts);
+  const showVoices = useUiStore((s) => s.showVoices);
+  const setShowVoices = useUiStore((s) => s.setShowVoices);
+  const showNotes = useUiStore((s) => s.showNotes);
+  const setShowNotes = useUiStore((s) => s.setShowNotes);
+  const showCaptions = useUiStore((s) => s.showCaptions);
+  const setShowCaptions = useUiStore((s) => s.setShowCaptions);
+  const captionFontSize = useUiStore((s) => s.captionFontSize);
+  const setCaptionFontSize = useUiStore((s) => s.setCaptionFontSize);
+  const isPlaying = useUiStore((s) => s.isPlaying);
+  const elevationStatus = useUiStore((s) => s.elevationStatus);
+
+  return (
+    <PanelHost title={t("layers.title")} side="right">
+      {(project.track.points.length > 0 || project.mapImage) && (
+        <label
+          className={`check${isPlaying ? " check--disabled" : ""}`}
+          title={isPlaying ? t("layers.pauseBasemap") : undefined}
+        >
+          <input
+            type="checkbox"
+            checked={showBasemap}
+            disabled={isPlaying}
+            onChange={(e) => setShowBasemap(e.target.checked)}
+          />
+          {t("layers.basemap")}
+        </label>
+      )}
+      {project.track.points.length > 0 && (
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showTrack}
+            onChange={(e) => setShowTrack(e.target.checked)}
+          />
+          {t("layers.gpsTrack")}
+        </label>
+      )}
+      {project.track.points.length > 0 && showTrack && (
+        <div className="layer-sub">
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={colorTrackBySpeed}
+              onChange={(e) => setColorTrackBySpeed(e.target.checked)}
+            />
+            {t("layers.colorBySpeed")}
+          </label>
+          <label className="field">
+            <span>{t("layers.trackWidth", { width: trackLineWidth })}</span>
+            <input
+              type="range"
+              min={1}
+              max={12}
+              step={1}
+              value={trackLineWidth}
+              onChange={(e) => setTrackLineWidth(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
+      {project.track.points.length > 0 && (
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showProfileCharts}
+            onChange={(e) => setShowProfileCharts(e.target.checked)}
+          />
+          {t("layers.profileCharts")}
+        </label>
+      )}
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={showVoices}
+          onChange={(e) => setShowVoices(e.target.checked)}
+        />
+        {t("layers.voices")}
+      </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={showNotes}
+          onChange={(e) => setShowNotes(e.target.checked)}
+        />
+        {t("layers.notes")}
+      </label>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={showCaptions}
+          onChange={(e) => setShowCaptions(e.target.checked)}
+        />
+        {t("layers.captions")}
+      </label>
+      {showCaptions && (
+        <div className="layer-sub">
+          <label className="field">
+            <span>{t("layers.captionSize", { size: captionFontSize })}</span>
+            <input
+              type="range"
+              min={14}
+              max={48}
+              step={2}
+              value={captionFontSize}
+              onChange={(e) => setCaptionFontSize(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
+      {elevationStatus === "failed" && (
+        <p className="hint">{t("layers.elevationFailed")}</p>
+      )}
+      {project.routePlans.map((plan) => (
+        <div key={plan.id} className="layer-plan-group">
+          <label className="check plan-layer-row">
+            <input
+              type="checkbox"
+              checked={plan.visible}
+              onChange={() => togglePlanVisible(plan.id)}
+            />
+            <span
+              className="plan-swatch"
+              style={{ background: plan.color }}
+              aria-hidden
+            />
+            {plan.name}
+          </label>
+          {plan.visible && (
+            <div className="layer-sub">
+              <label className="field">
+                <span>
+                  {t("layers.planWidth", { width: plan.lineWidth ?? 3 })}
+                </span>
+                <input
+                  type="range"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={plan.lineWidth ?? 3}
+                  onChange={(e) =>
+                    updateRoutePlan(plan.id, {
+                      lineWidth: Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      ))}
+    </PanelHost>
+  );
+}
